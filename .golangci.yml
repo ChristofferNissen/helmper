@@ -1,0 +1,48 @@
+# Refer to golangci-lint's example config file for more options and information:
+# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
+
+run:
+  timeout: 10m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - goimports
+    - revive
+    - govet
+    - staticcheck
+    - sloglint
+
+issues:
+  # exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters-settings:
+  sloglint:
+    # Enforce not mixing key-value pairs and attributes.
+    # Default: true
+    no-mixed-args: false
+    # Enforce using key-value pairs only (overrides no-mixed-args, incompatible with attr-only).
+    # Default: false
+    kv-only: true
+    # Enforce using attributes only (overrides no-mixed-args, incompatible with kv-only).
+    # Default: false
+    attr-only: true
+    # Enforce using methods that accept a context.
+    # Default: false
+    context-only: true
+    # Enforce using static values for log messages.
+    # Default: false
+    static-msg: true
+    # Enforce using constants instead of raw keys.
+    # Default: false
+    no-raw-keys: true
+    # Enforce a single key naming convention.
+    # Values: snake, kebab, camel, pascal
+    # Default: ""
+    key-naming-case: snake
+    # Enforce putting arguments on separate lines.
+    # Default: false
+    args-on-sep-lines: true

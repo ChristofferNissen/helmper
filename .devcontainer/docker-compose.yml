@@ -1,0 +1,34 @@
+
+services:
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/go:1.22
+    volumes: 
+      - ..:/workspace:cached
+    network_mode: "host"
+    command: sleep infinity
+  
+  buildkitd:
+    image: moby/buildkit:v0.12.4
+    entrypoint: ["buildkitd"]
+    command: ["--addr", "tcp://0.0.0.0:8888"]
+    privileged: true
+    ports:
+      - 8888:8888/tcp
+
+  trivy:
+    image: aquasec/trivy:0.50.4
+    command: ["server", "--listen=0.0.0.0:8887"]
+    ports:
+      - 8887:8887
+
+  # registry:
+  #   image: registry:2
+  #   restart: always
+  #   ports:
+  #     - 5124:5000
+    
+  # registry2:
+  #   image: registry:2
+  #   restart: always
+  #   ports:
+  #     - 5001:5000

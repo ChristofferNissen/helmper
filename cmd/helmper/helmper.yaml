@@ -1,0 +1,60 @@
+k8s_version: 1.27.7
+verbose: true
+update: false
+all: true
+import:
+  enabled: true
+  copacetic:
+    enabled: true
+    ignoreErrors: true
+    buildkitd:
+      addr: tcp://0.0.0.0:8888
+      CACertPath: ""
+      certPath: ""
+      keyPath: ""
+    trivy:
+      addr: http://0.0.0.0:8887
+      insecure: true
+      ignoreUnfixed: true
+    output:
+      tars:
+        folder: /workspace/.out/tars
+        clean: true
+      reports:
+        folder: /workspace/.out/reports
+        clean: true
+  cosign:
+    enabled: true
+    keyRef: /workspace/.devcontainer/cosign.key
+    KeyRefPass: ""
+    allowInsecure: true
+    allowHTTPRegistry: true
+charts:
+  - name: loki
+    repoName: grafana
+    version: 5.38.0
+    url: https://grafana.github.io/helm-charts/
+    valuesFilePath: /workspace/.in/values/loki/values.yaml
+  - name: kyverno
+    repoName: kyverno
+    url: https://kyverno.github.io/kyverno/
+    version: 3.1.1
+    valuesFilePath: /workspace/.in/values/kyverno/values.yaml
+  - name: keda
+    repoName: kedacore
+    url: https://kedacore.github.io/charts/
+    version: 2.11.2
+  - name: argo-cd
+    repoName: argo
+    url: https://argoproj.github.io/argo-helm/
+    version: 5.51.4
+  - name: prometheus
+    repoName: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts/
+    version: 25.8.0
+    valuesFilePath: /workspace/.in/values/prometheus/values.yaml
+registries:
+  - name: registry
+    url: 0.0.0.0:5000
+  # - name: registry2
+  #   url: 127.0.0.1:5001

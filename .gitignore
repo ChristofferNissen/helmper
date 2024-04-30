@@ -1,0 +1,9 @@
+**/.devcontainer/cache/go/bin/**
+**/.devcontainer/cache/go/pkg/** 
+**/.devcontainer/cache/helm/cache/**
+**/.devcontainer/cache/helm/config/** 
+
+**/.out
+**/.in
+
+**/cache/go/*/
