@@ -35,7 +35,7 @@ type Chart struct {
 func (c Chart) AddToHelmRepositoryFile() error {
 	config := cli.New()
 	repoConfig := config.RepositoryConfig
-	
+
 	var f *repo.File = repo.NewFile()
 	if file.Exists(repoConfig) {
 		file, err := repo.LoadFile(repoConfig)

@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 	"testing"
-	
+
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 )
 
