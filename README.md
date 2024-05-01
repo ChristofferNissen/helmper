@@ -49,6 +49,8 @@ registries:
 
 Helmper will then import the charts, the charts listed as dependencies including all images specified through the Helm `values.yaml` file.
 
+<p align="center"><img src="docs/gifs/simple.gif?raw=true"/></p>
+
 **Note** Authentication
 
 Helmper utilizes the `~/.docker/config.json` file for picking up authentication credentials for all registries. If your registries requires authentication, simply login with the services own login command.
@@ -78,7 +80,7 @@ charts:
   version: 25.8.0
   valuesFile: /workspace/in/values/prometheus/values.yaml # (Optional)
 registries:
-- name: registry `Helmper` picks up authentication from the environment automatically.
+- name: registry # `Helmper` picks up authentication from the environment automatically.
   url: 0.0.0.0:5000
 import:
   enabled: true
@@ -108,6 +110,8 @@ import:
     allowInsecure: true
     allowHTTPRegistry: true
 ```
+
+<p align="center"><img src="/docs/gifs/full.gif?raw=true"/></p>
 
 ## Status
 
