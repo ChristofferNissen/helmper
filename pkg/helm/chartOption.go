@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
@@ -107,7 +107,7 @@ func determineSubChartPath(d *chart.Dependency, subChart *Chart, c *Chart, path 
 	if d.Repository == "" {
 		p := path
 
-		// Check if path is archieve e.g. contains '.tgz'
+		// Check if path is archive e.g. contains '.tgz'
 		if strings.Contains(p, ".tgz") {
 			// Unpack tar
 			if err := chartutil.ExpandFile(cli.New().EnvVars()["HELM_CACHE_HOME"], p); err != nil {

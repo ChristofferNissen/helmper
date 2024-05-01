@@ -8,13 +8,13 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/ChristofferNissen/helmper/helmper/internal/bootstrap"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/helm"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/registry"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/counter"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/file"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/state"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/terminal"
+	"github.com/ChristofferNissen/helmper/internal/bootstrap"
+	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/counter"
+	"github.com/ChristofferNissen/helmper/pkg/util/file"
+	"github.com/ChristofferNissen/helmper/pkg/util/state"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/jedib0t/go-pretty/table"
 )
 

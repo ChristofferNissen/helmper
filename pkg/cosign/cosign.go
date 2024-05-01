@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ChristofferNissen/helmper/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 	"github.com/sigstore/cosign/cmd/cosign/cli/options"

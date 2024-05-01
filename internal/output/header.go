@@ -3,7 +3,7 @@ package output
 import (
 	"fmt"
 
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/terminal"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/common-nighthawk/go-figure"
 )
 

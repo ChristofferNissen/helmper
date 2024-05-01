@@ -24,13 +24,13 @@
 	],
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	"features": {
-		"ghcr.io/devcontainers/features/azure-cli:1": {},
-		"ghcr.io/devcontainers/features/common-utils:2": {},
-		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/devcontainers/features/go:1": {},
-		"ghcr.io/guiyomh/features/goreleaser:0": {}
-	},
+	// "features": {
+	// 	"ghcr.io/devcontainers/features/azure-cli:1": {},
+	// 	"ghcr.io/devcontainers/features/common-utils:2": {},
+	// 	"ghcr.io/devcontainers/features/git:1": {},
+	// 	"ghcr.io/devcontainers/features/go:1": {},
+	// 	"ghcr.io/guiyomh/features/goreleaser:0": {}
+	// },
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

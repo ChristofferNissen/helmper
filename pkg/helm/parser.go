@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/helmper/pkg/registry"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/ternary"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/ternary"
 )
 
 // traverse helm chart values to determine if condition is met

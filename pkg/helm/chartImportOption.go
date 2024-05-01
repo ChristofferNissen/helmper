@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/ChristofferNissen/helmper/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 )

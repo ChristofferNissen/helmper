@@ -1,4 +1,4 @@
-module github.com/ChristofferNissen/helmper/helmper
+module github.com/ChristofferNissen/helmper
 
 go 1.22.0
 

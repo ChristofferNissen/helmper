@@ -3,8 +3,8 @@ package internal
 import (
 	"context"
 	"testing"
-
-	"github.com/ChristofferNissen/helmper/helmper/pkg/helm"
+	
+	"github.com/ChristofferNissen/helmper/pkg/helm"
 )
 
 // "Integration" tests below. Tests the expected result of parsing a Helm Chart (number of charts, images)
@@ -27,7 +27,7 @@ import (
 // ArgoCD
 
 func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -78,7 +78,7 @@ func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -127,7 +127,7 @@ func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -176,7 +176,7 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -225,7 +225,7 @@ func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -275,7 +275,7 @@ func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -324,7 +324,7 @@ func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -373,7 +373,7 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -424,7 +424,7 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 // Cluster
 
 func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -473,7 +473,7 @@ func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -522,7 +522,7 @@ func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -571,7 +571,7 @@ func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -622,7 +622,7 @@ func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
 // Security
 
 func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -671,7 +671,7 @@ func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -720,7 +720,7 @@ func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()
@@ -777,7 +777,7 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 // CI/CD
 
 func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
-	t.Parallel()
+	// t.Parallel()
 
 	// Arrange
 	ctx := context.TODO()

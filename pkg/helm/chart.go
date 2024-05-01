@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/file"
+	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
 
 	"github.com/coreos/go-semver/semver"
@@ -35,7 +35,7 @@ type Chart struct {
 func (c Chart) AddToHelmRepositoryFile() error {
 	config := cli.New()
 	repoConfig := config.RepositoryConfig
-
+	
 	var f *repo.File = repo.NewFile()
 	if file.Exists(repoConfig) {
 		file, err := repo.LoadFile(repoConfig)
@@ -50,7 +50,7 @@ func (c Chart) AddToHelmRepositoryFile() error {
 			Name: c.RepoName,
 			URL:  c.URL,
 		})
-		return f.WriteFile(repoConfig, os.ModePerm)
+		return f.WriteFile(repoConfig, 0644)
 	}
 
 	return nil

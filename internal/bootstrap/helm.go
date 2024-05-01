@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	"github.com/ChristofferNissen/helmper/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/helm"
 )
 
 // Add Helm repos to user's local helm configuration file, Optionupdate all existing repos and pulls charts

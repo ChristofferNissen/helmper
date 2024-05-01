@@ -1,9 +1,9 @@
 package bootstrap
 
 import (
-	"github.com/ChristofferNissen/helmper/helmper/pkg/helm"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/registry"
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/state"
+	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/spf13/viper"
 	"golang.org/x/xerrors"
 )

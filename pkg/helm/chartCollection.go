@@ -3,7 +3,7 @@ package helm
 import (
 	"log"
 
-	"github.com/ChristofferNissen/helmper/helmper/pkg/util/terminal"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -17,7 +17,6 @@ func (collection ChartCollection) pull() error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -28,7 +27,6 @@ func (collection ChartCollection) addToHelmRepositoryConfig() error {
 			return err
 		}
 	}
-
 	return nil
 }
 

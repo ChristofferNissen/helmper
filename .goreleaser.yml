@@ -1,15 +1,18 @@
+
 builds:
-  - env:
+  - 
+    main: ./cmd/helmper
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
-      - "386"
     ldflags:
-      - "-s -w -X github.com/ChristofferNissen/helmper/cmd.version={{.Version}} -X github.com/ChristofferNissen/helmper/cmd.commit={{.Commit}}"
+      - "-s -w -X github.com/ChristofferNissen/helmper/internal.version={{ .Version }} -X github.com/ChristofferNissen/helmper/internal.commit={{ .Commit }} -X github.com/ChristofferNissen/helmper/internal.date={{ .CommitDate }}"
 
 archives:
   - id: archives

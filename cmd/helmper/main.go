@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/ChristofferNissen/helmper/helmper/internal"
+	"github.com/ChristofferNissen/helmper/internal"
 )
 
 func main() {
