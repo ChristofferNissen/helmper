@@ -2,14 +2,15 @@ package cosign
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
-	"github.com/sigstore/cosign/cmd/cosign/cli/options"
-	"github.com/sigstore/cosign/cmd/cosign/cli/sign"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
 )
 
 type SignOption struct {
@@ -24,6 +25,12 @@ type SignOption struct {
 
 // cosignAdapter wraps the cosign CLIs native code
 func (so SignOption) Run() error {
+
+	// Return early i no images to sign, or no registries to upload signature to
+	if !(len(so.Imgs) > 0) || !(len(so.Registries) >= 0) {
+		slog.Debug("No images or registries specified. Skipping signing images...")
+		return nil
+	}
 
 	bar := progressbar.NewOptions(len(so.Imgs), progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
@@ -55,7 +62,7 @@ func (so SignOption) Run() error {
 	}
 	signOpts := options.SignOptions{
 		Upload:           true,
-		NoTlogUpload:     false,
+		TlogUpload:       false,
 		SkipConfirmation: true,
 
 		Registry: options.RegistryOptions{
