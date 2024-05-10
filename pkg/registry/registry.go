@@ -14,8 +14,9 @@ import (
 )
 
 type Registry struct {
-	Name string
-	URL  string
+	Name      string
+	URL       string
+	PlainHTTP bool
 }
 
 type Exister interface {
@@ -51,9 +52,8 @@ func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag s
 		return v1.Descriptor{}, err
 	}
 
-	// todo: check if user specified auth
-	source.PlainHTTP = true
-
+	// Determine HTTP or HTTPS. Allow HTTP if local reference
+	source.PlainHTTP = strings.Contains(sourceURL, "localhost") || strings.Contains(sourceURL, "0.0.0.0")
 	// 3. Connect to our target repository
 	image := strings.Join([]string{r.URL, name}, "/")
 
@@ -74,7 +74,7 @@ func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag s
 	}
 
 	// todo: check if user specified auth
-	target.PlainHTTP = true
+	target.PlainHTTP = r.PlainHTTP
 	manifest, err := oras.Copy(ctx, source, tag, target, tag, oras.DefaultCopyOptions)
 	if err != nil {
 		return v1.Descriptor{}, err
@@ -94,7 +94,7 @@ func (r Registry) Pull(ctx context.Context, name string, tag string) (bool, erro
 		return false, err
 	}
 
-	repo.PlainHTTP = true
+	repo.PlainHTTP = r.PlainHTTP
 
 	// prepare authentication using Docker credentials
 	storeOpts := credentials.StoreOptions{}
@@ -118,7 +118,7 @@ func (r Registry) Pull(ctx context.Context, name string, tag string) (bool, erro
 }
 
 func (r Registry) Exist(ctx context.Context, name string, tag string) (bool, error) {
-	return Exist(ctx, strings.Join([]string{r.URL, name}, "/"), tag)
+	return Exist(ctx, strings.Join([]string{r.URL, name}, "/"), tag, r.PlainHTTP)
 }
 
 func Exists(ctx context.Context, img *Image, registries []Registry) (map[string]bool, error) {
@@ -146,7 +146,7 @@ func Exists(ctx context.Context, img *Image, registries []Registry) (map[string]
 	return m, nil
 }
 
-func Exist(ctx context.Context, reference string, tag string) (bool, error) {
+func Exist(ctx context.Context, reference string, tag string, plainHTTP bool) (bool, error) {
 
 	// 1. Connect to a remote repository
 	repo, err := remote.NewRepository(reference)
@@ -154,7 +154,7 @@ func Exist(ctx context.Context, reference string, tag string) (bool, error) {
 		return false, err
 	}
 
-	repo.PlainHTTP = true
+	repo.PlainHTTP = plainHTTP
 
 	// prepare authentication using Docker credentials
 	storeOpts := credentials.StoreOptions{}

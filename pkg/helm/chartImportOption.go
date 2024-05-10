@@ -98,7 +98,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 			_, err := r.Exist(ctx, "charts/"+c.Name, c.Version)
 			if err == nil {
-				slog.Info("Chart already present in registry", slog.String("chart", "charts/"+c.Name), slog.String("registry", "oci://"+r.URL))
+				slog.Info("Chart already present in registry. Skipping import", slog.String("chart", "charts/"+c.Name), slog.String("registry", "oci://"+r.URL))
 				continue
 			}
 

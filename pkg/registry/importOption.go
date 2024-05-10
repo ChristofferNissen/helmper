@@ -20,7 +20,7 @@ type ImportOption struct {
 
 func (io ImportOption) Run(ctx context.Context) error {
 
-	slog.Debug("pushing missing images to registries..")
+	slog.Debug("pushing images to registries..")
 
 	bar := progressbar.NewOptions(len(io.Imgs), progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),

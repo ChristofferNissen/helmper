@@ -152,9 +152,10 @@ func Program(args []string) error {
 			}))
 
 		so := trivy.ScanOption{
-			DockerHost:  importConfig.Import.Copacetic.Buildkitd.Addr,
-			TrivyServer: importConfig.Import.Copacetic.Trivy.Addr,
-			Insecure:    importConfig.Import.Copacetic.Trivy.Insecure,
+			DockerHost:    importConfig.Import.Copacetic.Buildkitd.Addr,
+			TrivyServer:   importConfig.Import.Copacetic.Trivy.Addr,
+			Insecure:      importConfig.Import.Copacetic.Trivy.Insecure,
+			IgnoreUnfixed: importConfig.Import.Copacetic.Trivy.IgnoreUnfixed,
 		}
 
 		for _, i := range imgs {
@@ -234,7 +235,7 @@ func Program(args []string) error {
 			}
 		}()
 
-		// import images without os-pkgs vulnerabilities
+		// Import images without os-pkgs vulnerabilities
 		iOpts := registry.ImportOption{
 			Registries: registries,
 			Imgs:       push,
@@ -245,7 +246,7 @@ func Program(args []string) error {
 			return err
 		}
 
-		// patch image and save to tar
+		// Patch image and save to tar
 		po := copa.PatchOption{
 			Imgs:       patch,
 			Registries: registries,
