@@ -5,7 +5,7 @@ all: true
 import:
   enabled: true
   copacetic:
-    enabled: true
+    enabled: false
     ignoreErrors: true
     buildkitd:
       addr: tcp://0.0.0.0:8888
@@ -56,5 +56,6 @@ charts:
 registries:
   - name: registry
     url: 0.0.0.0:5000
+    plainHTTP: true
   # - name: registry2
   #   url: 127.0.0.1:5001
