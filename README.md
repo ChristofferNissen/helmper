@@ -3,7 +3,7 @@
     <img src="docs/logo.png" alt="Helmper logo">
   </a>
 
-<p align="center">
+  <p align="center">
     A little helper that reads Helm Charts and pushes the images to your registries.
     <br>
     <a href="https://github.com/ChristofferNissen/helmper/issues/new?template=bug.md">Report bug</a>
@@ -14,17 +14,23 @@
     ·
     <a href="https://github.com/ChristofferNissen/helmper/releases/latest">Latest release</a>
   </p>
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/ChristofferNissen/helmper)](https://goreportcard.com/report/github.com/ChristofferNissen/helmper) 
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/ChristofferNissen/helmper/blob/main/LICENSE)
+
 </p>
 
 ## What is Helmper?
 
+_DISCLAIMER: helmper is in beta, so stuff may change._
+
 `helmper` is a go program that reads Helm Charts from remote OCI registries and pushes the charts container images to your registries.
 
-`helmper` demonstrates exceptional proficiency in operating within controlled environments that might require Change Management and/or air-gapped networks. This expertise is particularly beneficial in industries subject to stringent regulations, such as Medical and Banking. This is due to `helmper` ensures binary reproducibility of Helm Charts by storing all necessary artifacts in your registries.
-
-`helmper` is built with [Helm](<https://github.com/helm/helm>), [Oras](<https://github.com/oras-project/oras-go>), [Trivy](https://github.com/aquasecurity/trivy) and [Copacetic](https://github.com/project-copacetic/copacetic) ([Buildkitd](https://github.com/moby/buildkitd)).
+`helmper` is built with [Helm](<https://github.com/helm/helm>), [Oras](<https://github.com/oras-project/oras-go>), [Trivy](https://github.com/aquasecurity/trivy), [Copacetic](https://github.com/project-copacetic/copacetic) ([Buildkitd](https://github.com/moby/buildkitd)) and [Cosign](https://github.com/sigstore/cosign).
 
 Helmper connects via gRPC to Trivy and Buildkitd so you can run `helmper` without root privileges whereever you want. 
+
+`helmper` demonstrates exceptional proficiency in operating within controlled environments that might require Change Management and/or air-gapped networks. This expertise is particularly beneficial in industries subject to stringent regulations, such as Medical and Banking. This is due to `helmper` ensures binary reproducibility of Helm Charts by storing all necessary artifacts in your registries.
 
 ### how?
 
@@ -33,18 +39,21 @@ Helmper connects via gRPC to Trivy and Buildkitd so you can run `helmper` withou
 Simply tell `helmper` which charts to analyze and registries to use by creating a `helmper.yaml` file and run helmper from the same folder.
 
 ```yaml
-k8s_version: 1.27.7
+k8s_version: 1.27.9
 import:
   enabled: true
 charts:
 - name: prometheus
-  repoName: prometheus-community
-  url: https://prometheus-community.github.io/helm-charts/
   version: 25.8.0
   valuesFile: /workspace/in/values/prometheus/values.yaml # (Optional)
+  repo:
+    name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts/
 registries:
 - name: registry
   url: 0.0.0.0:5000
+  insecure: true
+  plainHTTP: true
 ```
 
 Helmper will then import the charts, the charts listed as dependencies including all images specified through the Helm `values.yaml` file.
@@ -53,7 +62,13 @@ Helmper will then import the charts, the charts listed as dependencies including
 
 **Note** Authentication
 
-Helmper utilizes the `~/.docker/config.json` file for picking up authentication credentials for all registries. If your registries requires authentication, simply login with the services own login command.
+Helmper utilizes well known configuration options to interact with registries. 
+
+When using the Helm SDK, Helmper will utilize the file defined by `HELM_REGISTRY_CONFIG` for picking up authentication credentials for registries.
+
+When Helmper is using Oras for interacting with OCI artifacts, Oras utilizes the [Docker credentials helper](https://pkg.go.dev/oras.land/oras-go/v2@v2.5.0/registry/remote/credentials), which will look in the system keychain, `$DOCKER_CONFIG/config.json` (if set) or `$HOME/.docker/config.json` file for picking up authentication credentials for all registries.
+
+If your registries requires authentication, simply login with the services own login command.
 
 fx for Docker:
 
@@ -61,7 +76,7 @@ fx for Docker:
 docker login -u user -p pass
 ```
 
-or for Azure:
+Azure:
 
 ```bash
 az acr login -n myregistry
@@ -72,16 +87,19 @@ az acr login -n myregistry
 In this example Helmper will also scan with Trivy, patch with Copacetic and sign with Cosign all identified images before pushing with Oras to all registries.
 
 ```yaml
-k8s_version: 1.27.7
+k8s_version: 1.27.9
 charts:
 - name: prometheus
-  repoName: prometheus-community
-  url: https://prometheus-community.github.io/helm-charts/
   version: 25.8.0
   valuesFile: /workspace/in/values/prometheus/values.yaml # (Optional)
+  repo:
+    name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts/
 registries:
 - name: registry # `Helmper` picks up authentication from the environment automatically.
   url: 0.0.0.0:5000
+  insecure: true
+  plainHTTP: true
 import:
   enabled: true
   copacetic:
@@ -89,9 +107,6 @@ import:
     ignoreErrors: true
     buildkitd:
       addr: tcp://0.0.0.0:8888
-      CACertPath: ""   # (Optional)
-      certPath: ""     # (Optional)
-      keyPath: ""      # (Optional)
     trivy:
       addr: http://0.0.0.0:8887
       insecure: true
@@ -111,13 +126,13 @@ import:
     allowHTTPRegistry: true
 ```
 
-<p align="center"><img src="/docs/gifs/full.gif?raw=true"/></p>
+<p align="center"><img src="docs/gifs/full.gif?raw=true"/></p>
 
-## Status
+### Flow diagram
 
-_DISCLAIMER: helmper is in beta, so stuff may change._
+To understand how the different configuration options works, please study the flow diagram below
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/ChristofferNissen/helmper)](https://goreportcard.com/report/github.com/ChristofferNissen/helmper)
+<p align="center"><img style="width: 400px;" src="docs/imgs/diagrams/flow.svg?raw=true"/></p>
 
 ## Install
 
