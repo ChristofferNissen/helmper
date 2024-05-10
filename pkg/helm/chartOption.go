@@ -76,25 +76,25 @@ type ChartOption struct {
 	ChartCollection *ChartCollection
 }
 
-func determineTag(ctx context.Context, k8sv string, img *registry.Image) bool {
+func determineTag(ctx context.Context, k8sv string, img *registry.Image, plainHTTP bool) bool {
 
 	reg, repo, name := img.Elements()
 	ref := fmt.Sprintf("%s/%s/%s", reg, repo, name)
 
 	tag, _ := img.TagOrDigest()
 
-	available, _ := registry.Exist(ctx, ref, tag)
+	available, _ := registry.Exist(ctx, ref, tag, plainHTTP)
 	if available {
 		return true
 	}
 
-	available, _ = registry.Exist(ctx, ref, "v"+img.Tag)
+	available, _ = registry.Exist(ctx, ref, "v"+img.Tag, plainHTTP)
 	if available {
 		img.Tag = "v" + img.Tag
 		return true
 	}
 
-	available, _ = registry.Exist(ctx, ref, k8sv)
+	available, _ = registry.Exist(ctx, ref, k8sv, plainHTTP)
 	if available {
 		img.Tag = k8sv
 		return true
@@ -276,7 +276,9 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 							i.Registry = reg
 							i.Repository = fmt.Sprintf("%s/%s", repo, name)
 
-							available := determineTag(egCtx, args.K8SVersion, i)
+							plainHTTP := strings.Contains(i.Registry, "localhost") || strings.Contains(i.Registry, "0.0.0.0")
+
+							available := determineTag(egCtx, args.K8SVersion, i, plainHTTP)
 
 							// send availability response
 							channel <- &imageInfo{available, c, i, &helmValuePaths}

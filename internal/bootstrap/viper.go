@@ -48,8 +48,9 @@ type ImportConfigSection struct {
 }
 
 type registryConfigSection struct {
-	Name string `yaml:"name"`
-	URL  string `yaml:"url"`
+	Name      string `yaml:"name"`
+	URL       string `yaml:"url"`
+	PlainHTTP bool   `yaml:"plainHTTP"`
 }
 
 type config struct {
@@ -155,8 +156,9 @@ copacetic:
 	for _, r := range regConf.Registries {
 		rs = append(rs,
 			registry.Registry{
-				Name: r.Name,
-				URL:  r.URL,
+				Name:      r.Name,
+				URL:       r.URL,
+				PlainHTTP: r.PlainHTTP,
 			})
 	}
 	state.SetValue(viper, "registries", rs)

@@ -37,11 +37,6 @@ type PatchOption struct {
 
 func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Image]string, outFilePaths map[*registry.Image]string) error {
 
-	// lout := log.Writer()
-	// null, _ := os.Open(os.DevNull)
-	// log.SetOutput(null)
-	// defer log.SetOutput(lout)
-
 	bar := progressbar.NewOptions(len(o.Imgs),
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
@@ -64,7 +59,6 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 
 	for _, i := range o.Imgs {
 		ref, _ := i.String()
-		name, _ := i.ImageName()
 
 		if err := Patch(ctx, 30*time.Minute, ref, reportFilePaths[i], i.Tag, "", "trivy", "openvex", "", o.IgnoreErrors, buildkit.Opts{
 			Addr:       o.Buildkit.Addr,
@@ -74,6 +68,34 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 		}, outFilePaths[i]); err != nil {
 			return err
 		}
+
+		_ = bar.Add(1)
+	}
+
+	_ = bar.Finish()
+
+	bar = progressbar.NewOptions(len(o.Imgs),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowCount(),
+		progressbar.OptionSetRenderBlankState(true),
+		progressbar.OptionOnCompletion(func() {
+			fmt.Fprint(os.Stderr, "\n")
+		}),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetElapsedTime(true),
+		progressbar.OptionSetDescription("Pushing images from tar...\r"),
+		progressbar.OptionShowDescriptionAtLineEnd(),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}))
+
+	for _, i := range o.Imgs {
+		name, _ := i.ImageName()
 
 		store, err := oci.NewFromTar(ctx, outFilePaths[i])
 		if err != nil {
@@ -92,7 +114,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 				return err
 			}
 
-			repo.PlainHTTP = true // localhost registries TODO revisit for regular registries
+			repo.PlainHTTP = r.PlainHTTP
 
 			// Prepare authentication using Docker credentials
 			storeOpts := credentials.StoreOptions{}
@@ -119,6 +141,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 		_ = bar.Add(1)
 	}
 
-	return bar.Finish()
+	_ = bar.Finish()
 
+	return nil
 }
