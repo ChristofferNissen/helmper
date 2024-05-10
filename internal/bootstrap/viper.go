@@ -50,6 +50,7 @@ type ImportConfigSection struct {
 type registryConfigSection struct {
 	Name      string `yaml:"name"`
 	URL       string `yaml:"url"`
+	Insecure  bool   `yaml:"insecure"`
 	PlainHTTP bool   `yaml:"plainHTTP"`
 }
 

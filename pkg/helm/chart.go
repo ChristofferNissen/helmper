@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -23,11 +24,10 @@ import (
 )
 
 type Chart struct {
-	Name           string `json:"name"`
-	RepoName       string `json:"repoName"`
-	URL            string `json:"url"`
-	Version        string `json:"version"`
-	ValuesFilePath string `json:"valuesFilePath"`
+	Name           string     `json:"name"`
+	Version        string     `json:"version"`
+	ValuesFilePath string     `json:"valuesFilePath"`
+	Repo           repo.Entry `json:"repo"`
 	Parent         *Chart
 }
 
@@ -45,11 +45,8 @@ func (c Chart) AddToHelmRepositoryFile() error {
 		f = file
 	}
 
-	if !f.Has(c.RepoName) {
-		f.Update(&repo.Entry{
-			Name: c.RepoName,
-			URL:  c.URL,
-		})
+	if !f.Has(c.Repo.Name) {
+		f.Update(&c.Repo)
 		return f.WriteFile(repoConfig, 0644)
 	}
 
@@ -68,7 +65,7 @@ func (c Chart) ResolveVersion() (string, error) {
 	major := s.Major
 	minor := s.Minor
 
-	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.RepoName)
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err
@@ -105,7 +102,7 @@ func (c Chart) ResolveVersion() (string, error) {
 func (c Chart) LatestVersion() (string, error) {
 	config := cli.New()
 
-	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.RepoName)
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err
@@ -135,41 +132,23 @@ func (c Chart) LatestVersion() (string, error) {
 	return res, nil
 }
 
-func (c Chart) Push(registry string) (string, error) {
+func (c Chart) pullTar() (string, error) {
 
-	settings := cli.New()
-
-	HelmDriver := "configmap"
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, slog.Info); err != nil {
-		slog.Error(fmt.Sprintf("%+v", err))
-		return "", err
-	}
-
-	path, err := c.pullTar()
+	u, err := url.Parse(c.Repo.URL)
 	if err != nil {
 		return "", err
 	}
 
-	defer os.Remove(path)
-
-	opts := []action.PushOpt{
-		action.WithPushConfig(actionConfig),
-		// action.WithInsecureSkipTLSVerify(true),
-		action.WithPlainHTTP(true),
-	}
-	push := action.NewPushWithOpts(opts...)
-	push.Settings = settings
-
-	return push.Run(path, registry)
-
-}
-
-func (c Chart) pullTar() (string, error) {
-
 	co := action.ChartPathOptions{
-		InsecureSkipTLSverify: false, // work with insecure chart registries
-		RepoURL:               c.URL,
+		CaFile:                c.Repo.CAFile,
+		CertFile:              c.Repo.CertFile,
+		KeyFile:               c.Repo.KeyFile,
+		InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+		PlainHTTP:             u.Scheme == "https",
+		Password:              c.Repo.Password,
+		PassCredentialsAll:    c.Repo.PassCredentialsAll,
+		RepoURL:               c.Repo.URL,
+		Username:              c.Repo.Username,
 		Version:               c.Version,
 	}
 	settings := cli.New()
@@ -189,17 +168,16 @@ func (c Chart) pullTar() (string, error) {
 	pull := action.NewPullWithOpts(opts...)
 	pull.ChartPathOptions = co
 	pull.Settings = settings
+	tmp := os.TempDir()
+	pull.DestDir = tmp
 
-	dir := os.TempDir()
-	pull.DestDir = dir
-
-	_, err := pull.Run(c.Name)
+	_, err = pull.Run(c.Name)
 	if err != nil {
 		return "", err
 	}
 
-	// resolve filepath (wildcards)
-	matches, err := filepath.Glob(fmt.Sprintf("%s/%s-%s.tgz", dir, c.Name, c.Version))
+	// Resolve filepath (wildcards) for dependency charts
+	matches, err := filepath.Glob(fmt.Sprintf("%s/%s-%s.tgz", tmp, c.Name, c.Version))
 	if err != nil {
 		return "", err
 	}
@@ -210,11 +188,53 @@ func (c Chart) pullTar() (string, error) {
 	return matches[0], nil
 }
 
+func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, error) {
+
+	settings := cli.New()
+
+	HelmDriver := "configmap"
+	actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, slog.Info); err != nil {
+		slog.Error(fmt.Sprintf("%+v", err))
+		return "", err
+	}
+
+	path, err := c.pullTar()
+	if err != nil {
+		return "", err
+	}
+
+	defer os.Remove(path)
+
+	opts := []action.PushOpt{
+		action.WithPushConfig(actionConfig),
+		action.WithInsecureSkipTLSVerify(insecure),
+		action.WithPlainHTTP(plainHTTP),
+	}
+	push := action.NewPushWithOpts(opts...)
+	push.Settings = settings
+
+	return push.Run(path, registry)
+
+}
+
 func (c Chart) Pull() (string, error) {
 
+	u, err := url.Parse(c.Repo.URL)
+	if err != nil {
+		return "", err
+	}
+
 	co := action.ChartPathOptions{
-		InsecureSkipTLSverify: false, // work with insecure chart registries
-		RepoURL:               c.URL,
+		CaFile:                c.Repo.CAFile,
+		CertFile:              c.Repo.CertFile,
+		KeyFile:               c.Repo.KeyFile,
+		InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+		PlainHTTP:             u.Scheme == "https",
+		Password:              c.Repo.Password,
+		PassCredentialsAll:    c.Repo.PassCredentialsAll,
+		RepoURL:               c.Repo.URL,
+		Username:              c.Repo.Username,
 		Version:               c.Version,
 	}
 	settings := cli.New()
@@ -247,7 +267,7 @@ func (c Chart) Pull() (string, error) {
 	pull.Untar = true
 	pull.DestDir = helmCacheHome
 
-	_, err := pull.Run(c.Name)
+	_, err = pull.Run(c.Name)
 	if err != nil {
 		return "", err
 	}
@@ -258,9 +278,21 @@ func (c Chart) Pull() (string, error) {
 func (c Chart) Locate() (string, error) {
 	config := cli.New()
 
+	u, err := url.Parse(c.Repo.URL)
+	if err != nil {
+		return "", err
+	}
+
 	co := action.ChartPathOptions{
-		InsecureSkipTLSverify: true, // zscaler
-		RepoURL:               c.URL,
+		CaFile:                c.Repo.CAFile,
+		CertFile:              c.Repo.CertFile,
+		KeyFile:               c.Repo.KeyFile,
+		InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+		PlainHTTP:             u.Scheme == "https",
+		Password:              c.Repo.Password,
+		PassCredentialsAll:    c.Repo.PassCredentialsAll,
+		RepoURL:               c.Repo.URL,
+		Username:              c.Repo.Username,
 		Version:               c.Version,
 	}
 
@@ -308,8 +340,8 @@ func (c Chart) Values() (map[string]any, error) {
 		return nil, err
 	}
 
+	// Check if file exists, or use default values
 	var values chartutil.Values
-	// check if file exists, or use default values
 	if file.Exists(c.ValuesFilePath) {
 		valuesFromFile, err := chartutil.ReadValuesFile(c.ValuesFilePath)
 		if err != nil {

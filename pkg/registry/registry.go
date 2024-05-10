@@ -16,6 +16,7 @@ import (
 type Registry struct {
 	Name      string
 	URL       string
+	Insecure  bool
 	PlainHTTP bool
 }
 

@@ -17,6 +17,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 type ChartData map[Chart]map[*registry.Image][]string
@@ -205,11 +206,13 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 
 					// Create chart for dependency
 					subChart := Chart{
-						Name:     d.Name,
-						RepoName: c.RepoName,
-						URL:      d.Repository,
-						Version:  d.Version,
-						Parent:   &c,
+						Name: d.Name,
+						Repo: repo.Entry{
+							Name: c.Repo.Name,
+							URL:  d.Repository,
+						},
+						Version: d.Version,
+						Parent:  &c,
 					}
 
 					// Determine path to subChart in filesystem
