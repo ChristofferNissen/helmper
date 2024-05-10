@@ -2,11 +2,11 @@ package helm
 
 import (
 	"bytes"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
+	"golang.org/x/exp/slog"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
@@ -33,8 +33,15 @@ func getManager(out *bytes.Buffer, verbose bool, update bool) downloader.Manager
 	}
 
 	cl := cli.New()
+
+	// TODO: Handle error
+	rClient, _ := registry.NewRegistryClientWithTLS(out, "", "", "", false, cl.RegistryConfig, false)
+	// if err != nil {
+
+	// }
 	return downloader.Manager{
 		Out:              out,
+		RegistryClient:   rClient,
 		RepositoryConfig: cl.RepositoryConfig,
 		RepositoryCache:  cl.RepositoryCache,
 		Verify:           downloader.VerifyIfPossible,
@@ -69,7 +76,7 @@ func updateRepository(path string, opts ...Option) error {
 	var out bytes.Buffer
 	ma := getManager(&out, args.Verbose, args.Update)
 	if args.Verbose {
-		log.Println(out)
+		slog.Info(out.String())
 	}
 	ma.ChartPath = path
 	return ma.Update()

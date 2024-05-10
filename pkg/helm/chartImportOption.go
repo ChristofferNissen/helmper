@@ -9,6 +9,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 type ChartImportOption struct {
@@ -53,9 +54,11 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			}
 
 			chart := Chart{
-				Name:           d.Name,
-				RepoName:       c.RepoName,
-				URL:            d.Repository,
+				Name: d.Name,
+				Repo: repo.Entry{
+					Name: c.Repo.Name,
+					URL:  d.Repository,
+				},
 				Version:        d.Version,
 				ValuesFilePath: c.ValuesFilePath,
 				Parent:         &c,
@@ -104,7 +107,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 			slog.Debug(err.Error())
 
-			res, err := c.Push("oci://" + r.URL + "/charts")
+			res, err := c.Push("oci://"+r.URL+"/charts", r.Insecure, r.PlainHTTP)
 			if err != nil {
 				return err
 			}

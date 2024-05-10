@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 // "Integration" tests below. Tests the expected result of parsing a Helm Chart (number of charts, images)
@@ -36,10 +37,12 @@ func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "prometheus",
-				RepoName: "prometheus-community",
-				URL:      "https://prometheus-community.github.io/helm-charts",
-				Version:  "25.8.0",
+				Name: "prometheus",
+				Repo: repo.Entry{
+					Name: "prometheus-community",
+					URL:  "https://prometheus-community.github.io/helm-charts",
+				},
+				Version: "25.8.0",
 				// ValuesFilePath: filepath.Join(home, "repos/helmper/helmper/cmd/helmper/values/prometheus/values.yaml"),
 			},
 		},
@@ -86,10 +89,12 @@ func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "promtail",
-				RepoName: "grafana",
-				URL:      "https://grafana.github.io/helm-charts",
-				Version:  "6.15.3",
+				Name: "promtail",
+				Repo: repo.Entry{
+					Name: "grafana",
+					URL:  "https://grafana.github.io/helm-charts",
+				},
+				Version: "6.15.3",
 			},
 		},
 	}
@@ -135,10 +140,12 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "loki",
-				RepoName: "grafana",
-				URL:      "https://grafana.github.io/helm-charts",
-				Version:  "5.38.0",
+				Name: "loki",
+				Repo: repo.Entry{
+					Name: "grafana",
+					URL:  "https://grafana.github.io/helm-charts",
+				},
+				Version: "5.38.0",
 			},
 		},
 	}
@@ -184,10 +191,12 @@ func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "mimir-distributed",
-				RepoName: "grafana",
-				URL:      "https://grafana.github.io/helm-charts",
-				Version:  "5.1.3",
+				Name: "mimir-distributed",
+				Repo: repo.Entry{
+					Name: "grafana",
+					URL:  "https://grafana.github.io/helm-charts",
+				},
+				Version: "5.1.3",
 			},
 		},
 	}
@@ -233,10 +242,12 @@ func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "grafana",
-				RepoName: "grafana",
-				URL:      "https://grafana.github.io/helm-charts",
-				Version:  "7.0.9",
+				Name: "grafana",
+				Repo: repo.Entry{
+					Name: "grafana",
+					URL:  "https://grafana.github.io/helm-charts",
+				},
+				Version: "7.0.9",
 			},
 		},
 	}
@@ -283,10 +294,12 @@ func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "cilium",
-				RepoName: "cilium",
-				URL:      "https://helm.cilium.io/",
-				Version:  "1.14.4",
+				Name: "cilium",
+				Repo: repo.Entry{
+					Name: "cilium",
+					URL:  "https://helm.cilium.io/",
+				},
+				Version: "1.14.4",
 			},
 		},
 	}
@@ -332,10 +345,12 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "cert-manager",
-				RepoName: "cert-manager",
-				URL:      "https://charts.jetstack.io",
-				Version:  "v1.13.2",
+				Name: "cert-manager",
+				Repo: repo.Entry{
+					Name: "cert-manager",
+					URL:  "https://charts.jetstack.io",
+				},
+				Version: "v1.13.2",
 			},
 		},
 	}
@@ -381,10 +396,12 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "ingress-nginx",
-				RepoName: "ingress-nginx",
-				URL:      "https://kubernetes.github.io/ingress-nginx",
-				Version:  "4.8.3",
+				Name: "ingress-nginx",
+				Repo: repo.Entry{
+					Name: "ingress-nginx",
+					URL:  "https://kubernetes.github.io/ingress-nginx",
+				},
+				Version: "4.8.3",
 			},
 		},
 	}
@@ -432,10 +449,12 @@ func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "reflector",
-				RepoName: "reflector",
-				URL:      "https://emberstack.github.io/helm-charts",
-				Version:  "7.1.216",
+				Name: "reflector",
+				Repo: repo.Entry{
+					Name: "reflector",
+					URL:  "https://emberstack.github.io/helm-charts",
+				},
+				Version: "7.1.216",
 			},
 		},
 	}
@@ -481,10 +500,12 @@ func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "velero",
-				RepoName: "vmware-tanzu",
-				URL:      "https://vmware-tanzu.github.io/helm-charts",
-				Version:  "5.1.4",
+				Name: "velero",
+				Repo: repo.Entry{
+					Name: "vmware-tanzu",
+					URL:  "https://vmware-tanzu.github.io/helm-charts",
+				},
+				Version: "5.1.4",
 			},
 		},
 	}
@@ -530,10 +551,12 @@ func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "kured",
-				RepoName: "kubereboot",
-				URL:      "https://kubereboot.github.io/charts",
-				Version:  "5.3.1",
+				Name: "kured",
+				Repo: repo.Entry{
+					Name: "kubereboot",
+					URL:  "https://kubereboot.github.io/charts",
+				},
+				Version: "5.3.1",
 			},
 		},
 	}
@@ -579,10 +602,12 @@ func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "keda",
-				RepoName: "kedacore",
-				URL:      "https://kedacore.github.io/charts",
-				Version:  "2.12.1",
+				Name: "keda",
+				Repo: repo.Entry{
+					Name: "kedacore",
+					URL:  "https://kedacore.github.io/charts",
+				},
+				Version: "2.12.1",
 			},
 		},
 	}
@@ -630,10 +655,12 @@ func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "trivy-operator",
-				RepoName: "aquasecurity",
-				URL:      "https://aquasecurity.github.io/helm-charts",
-				Version:  "0.19.0",
+				Name: "trivy-operator",
+				Repo: repo.Entry{
+					Name: "aquasecurity",
+					URL:  "https://aquasecurity.github.io/helm-charts",
+				},
+				Version: "0.19.0",
 			},
 		},
 	}
@@ -679,10 +706,12 @@ func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "kubescape-operator",
-				RepoName: "kubescape",
-				URL:      "https://kubescape.github.io/helm-charts",
-				Version:  "1.16.3",
+				Name: "kubescape-operator",
+				Repo: repo.Entry{
+					Name: "kubescape",
+					URL:  "https://kubescape.github.io/helm-charts",
+				},
+				Version: "1.16.3",
 			},
 		},
 	}
@@ -728,16 +757,20 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "kyverno",
-				RepoName: "kyverno",
-				URL:      "https://kyverno.github.io/kyverno",
-				Version:  "3.1.1",
+				Name: "kyverno",
+				Repo: repo.Entry{
+					Name: "kyverno",
+					URL:  "https://kyverno.github.io/kyverno",
+				},
+				Version: "3.1.1",
 			},
 			{
-				Name:     "kyverno-policies",
-				RepoName: "kyverno",
-				URL:      "https://kyverno.github.io/kyverno",
-				Version:  "3.1.1",
+				Name: "kyverno-policies",
+				Repo: repo.Entry{
+					Name: "kyverno",
+					URL:  "https://kyverno.github.io/kyverno",
+				},
+				Version: "3.1.1",
 			},
 		},
 	}
@@ -785,10 +818,12 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 	charts := helm.ChartCollection{
 		Charts: []helm.Chart{
 			{
-				Name:     "argo-cd",
-				RepoName: "argoproj",
-				URL:      "https://argoproj.github.io/argo-helm",
-				Version:  "5.51.4",
+				Name: "argo-cd",
+				Repo: repo.Entry{
+					Name: "argoproj",
+					URL:  "https://argoproj.github.io/argo-helm",
+				},
+				Version: "5.51.4",
 			},
 		},
 	}
