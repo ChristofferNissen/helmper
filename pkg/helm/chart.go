@@ -57,6 +57,7 @@ func (c Chart) AddToHelmRepositoryFile() error {
 }
 
 func (c Chart) ResolveVersion() (string, error) {
+	config := cli.New()
 
 	if !strings.Contains(c.Version, "*") {
 		return c.Version, nil
@@ -67,12 +68,7 @@ func (c Chart) ResolveVersion() (string, error) {
 	major := s.Major
 	minor := s.Minor
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	indexPath := fmt.Sprintf("%s/.cache/helm/repository/%s-index.yaml", home, c.RepoName)
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.RepoName)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err
@@ -107,12 +103,9 @@ func (c Chart) ResolveVersion() (string, error) {
 }
 
 func (c Chart) LatestVersion() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
+	config := cli.New()
 
-	indexPath := fmt.Sprintf("%s/.cache/helm/repository/%s-index.yaml", home, c.RepoName)
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.RepoName)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err
@@ -187,7 +180,6 @@ func (c Chart) pullTar() (string, error) {
 	HelmDriver := "configmap"
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, log.Printf); err != nil {
-		// slog.Error("%+v", err)
 		return "", err
 	}
 
@@ -227,9 +219,11 @@ func (c Chart) Pull() (string, error) {
 	}
 	settings := cli.New()
 
+	helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
+
 	// check if artifact already exists
-	tarPath := fmt.Sprintf("%s/%s-%s.tgz", settings.EnvVars()["HELM_CACHE_HOME"], c.Name, c.Version)
-	chartPath := fmt.Sprintf("%s/%s", settings.EnvVars()["HELM_CACHE_HOME"], c.Name)
+	tarPath := fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version)
+	chartPath := fmt.Sprintf("%s/%s", helmCacheHome, c.Name)
 	if file.Exists(chartPath) &&
 		file.Exists(tarPath) {
 		return chartPath, nil
@@ -241,7 +235,6 @@ func (c Chart) Pull() (string, error) {
 	HelmDriver := "configmap"
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, log.Printf); err != nil {
-		// slog.Error("%+v", err)
 		return "", err
 	}
 
@@ -252,7 +245,7 @@ func (c Chart) Pull() (string, error) {
 	pull.ChartPathOptions = co
 	pull.Settings = settings
 	pull.Untar = true
-	pull.DestDir = settings.EnvVars()["HELM_CACHE_HOME"]
+	pull.DestDir = helmCacheHome
 
 	_, err := pull.Run(c.Name)
 	if err != nil {
@@ -266,20 +259,21 @@ func (c Chart) Locate() (string, error) {
 	config := cli.New()
 
 	co := action.ChartPathOptions{
-		InsecureSkipTLSverify: false, // zscaler
+		InsecureSkipTLSverify: true, // zscaler
 		RepoURL:               c.URL,
 		Version:               c.Version,
 	}
+
+	helmCacheHome := config.EnvVars()["HELM_CACHE_HOME"]
 
 	chartPath, err := co.LocateChart(c.Name, config)
 	if err != nil {
 		// subcharts nested in parent charts source?
 		if c.Parent != nil {
-			path := strings.Join([]string{os.Getenv("HOME"), ".cache", "helm", c.Parent.Name, "charts", c.Name}, "/")
+			path := filepath.Join(helmCacheHome, c.Parent.Name, "charts", c.Name)
 			if file.Exists(path) {
 				return path, nil
 			}
-			// slog.Error(fmt.Sprintf("%+v", err))
 		}
 
 		ma := downloader.Manager{
