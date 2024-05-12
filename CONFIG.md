@@ -6,6 +6,10 @@ The configuration file `helmper.yaml` can be placed in:
 - `$HOME/.config/helmper/`
 - `/etc/helmper/`
 
+## Example configuration
+
+You can find an example configuration in [example/helmper.yaml](./example/helmper.yaml).
+
 ## Configuration options
 
 | Key | Type | Default | Description |
@@ -57,3 +61,4 @@ The configuration file `helmper.yaml` can be placed in:
 | `url`       | string | ""      | URL to registry                     |
 | `insecure`  | bool   | false   | Disable SSL certificate validation  |
 | `plainHTTP` | bool   | false   | Enable use of HTTP instead of HTTPS |
+
