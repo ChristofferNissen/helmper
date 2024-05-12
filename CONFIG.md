@@ -1,5 +1,23 @@
 # Configuration parameters overview
 
+- [Configuration parameters overview](#configuration-parameters-overview)
+  - [Location](#location)
+  - [Example configuration](#example-configuration)
+  - [Configuration options](#configuration-options)
+    - [root object](#root-object)
+    - [import object](#import-object)
+      - [copacetic object](#copacetic-object)
+        - [buildkitd object](#buildkitd-object)
+        - [trivy object](#trivy-object)
+        - [output object](#output-object)
+          - [tars | reports object](#tars--reports-object)
+      - [cosign object](#cosign-object)
+    - [charts object](#charts-object)
+      - [repo object](#repo-object)
+    - [registries object](#registries-object)
+
+## Location
+
 The configuration file `helmper.yaml` can be placed in: 
 
 - Current directory (`.`)
@@ -11,6 +29,8 @@ The configuration file `helmper.yaml` can be placed in:
 You can find an example configuration in [example/helmper.yaml](./example/helmper.yaml).
 
 ## Configuration options
+
+### root object
 
 | Key | Type | Default | Description |
 |-|-|-|-|
@@ -30,14 +50,65 @@ You can find an example configuration in [example/helmper.yaml](./example/helmpe
 | `copacetic` | object | nil     | Configuration parameters for Copacetic              |
 | `cosign`    | object | nil     | Configuration parameters for Cosign                 |
 
+#### copacetic object
+
+| Key            | Type   | Default | Description                                 |
+|----------------|--------|---------|---------------------------------------------|
+| `enabled`      | bool   | false   | Enable Copacetic                            |
+| `ignoreErrors` | bool   | true    | Ignore errors during Copacetic patching     |
+| `buildkitd`    | object | nil     | Define Buildkitd instance                   |
+| `trivy`        | object | nil     | Define Trivy instance                       |
+| `output`       | object | nil     | Define output paths for Trivy and Copacetic |
+
+##### buildkitd object
+
+| Key          | Type   | Default | Description                                           |
+|--------------|--------|---------|-------------------------------------------------------|
+| `addr`       | string |         | Address to Buildkit                                   |
+| `CACertPath` | string | ""      | Path to certificate authority used for authentication |
+| `certPath`   | string | ""      | Path to certificate used for authentication           |
+| `keyPath`    | string | ""      | Path to key used for authentication                   |
+
+##### trivy object
+
+| Key             | Type   | Default | Description                    |
+|-----------------|--------|---------|--------------------------------|
+| `addr`          | string |         | Address to Trivy               |
+| `insecure`      | bool   | false   | Disable TLS verification       |
+| `ignoreUnfixed` | bool   | false   | Ignore unfixed vulnerabilities |
+
+##### output object
+
+| Key       | Type   | Default | Description         |
+|-----------|--------|---------|---------------------|
+| `tars`    | object | nil     | Tar output          |
+| `reports` | object | nil     | Trivy report output |
+
+###### tars | reports object
+
+| Key      | Type   | Default | Description                            |
+|----------|--------|---------|----------------------------------------|
+| `folder` | string |         | Path to output folder                  |
+| `clean`  | bool   | true    | Remove artifacts after running Helmper |
+
+#### cosign object
+
+| Key                 | Type   | Default | Description                 |
+|---------------------|--------|---------|-----------------------------|
+| `enabled`           | bool   | false   | Enables signing with Cosign |
+| `keyRef`            | string |         | Path to Cosign private key  |
+| `keyRefPass`        | string |         | Cosign private key password |
+| `allowInsecure`     | bool   | false   | Disable TLS verification    |
+| `allowHTTPRegistry` | bool   | false   | Allow HTTP instead of HTTPS |
+
 ### charts object
 
 | Key              | Type   | Default | Description                                         |
 |------------------|--------|---------|-----------------------------------------------------|
-| `name`           | string | ""      | Chart name                                          |
-| `version`        | string | ""      | Semver version of chart                             |
+| `name`           | string |         | Chart name                                          |
+| `version`        | string |         | Semver version of chart                             |
 | `valuesFilePath` | string | ""      | Path to custom values.yaml to customize importing   |
-| `repo`           | object | nil     | Define repository according to Helm Repository Spec |
+| `repo`           | object |         | Define repository according to Helm Repository Spec |
 
 #### repo object
 
@@ -57,8 +128,8 @@ You can find an example configuration in [example/helmper.yaml](./example/helmpe
 
 | Key         | Type   | Default | Description                         |
 |-------------|--------|---------|-------------------------------------|
-| `name`      | string | ""      | Name of registry                    |
-| `url`       | string | ""      | URL to registry                     |
+| `name`      | string |         | Name of registry                    |
+| `url`       | string |         | URL to registry                     |
 | `insecure`  | bool   | false   | Disable SSL certificate validation  |
 | `plainHTTP` | bool   | false   | Enable use of HTTP instead of HTTPS |
 
