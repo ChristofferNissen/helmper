@@ -1,9 +1,12 @@
 package bootstrap
 
 import (
+	"log/slog"
+
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 	"golang.org/x/xerrors"
 )
@@ -63,7 +66,7 @@ type config struct {
 func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	viper := viper.New()
 
-	// configure Viper
+	// Configure Viper configuration paths
 	viper.SetConfigName("helmper")               // name of config file (without extension)
 	viper.SetConfigType("yaml")                  // REQUIRED if the config file does not have the extension in the name
 	viper.AddConfigPath("/etc/helmper/")         // path to look for the config file in
@@ -73,8 +76,6 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	if err != nil {                              // Handle errors reading the config file
 		return nil, err
 	}
-
-	viper.Set("configType", "viper")
 
 	// set default values
 	viper.SetDefault("all", false)
@@ -128,6 +129,10 @@ import:
 `
 			return nil, xerrors.Errorf("You have enabled copacetic patching but did not specify the path to the Trivy server. Please add the value and try again...\nExample config:\n%s", s)
 		}
+		viper.OnConfigChange(func(e fsnotify.Event) {
+			slog.Info("Config file changed. It will not take effect before next run.", slog.String("config", e.Name))
+		})
+		viper.WatchConfig()
 
 		if conf.Import.Copacetic.Output.Reports.Folder == "" {
 			s := `
@@ -163,6 +168,11 @@ copacetic:
 			})
 	}
 	state.SetValue(viper, "registries", rs)
+
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		slog.Info("Config file changed. It will not take effect before next run.", slog.String("config", e.Name))
+	})
+	viper.WatchConfig()
 
 	return viper, nil
 }

@@ -24,13 +24,22 @@
 
 _DISCLAIMER: helmper is in beta, so stuff may change._
 
-`helmper` is a go program that reads Helm Charts from remote OCI registries and pushes the charts container images to your registries.
+`helmper` is a go program that reads Helm Charts from remote OCI registries and pushes the charts container images to your registries, with optional OS level vulnerability patching.
 
 `helmper` is built with [Helm](<https://github.com/helm/helm>), [Oras](<https://github.com/oras-project/oras-go>), [Trivy](https://github.com/aquasecurity/trivy), [Copacetic](https://github.com/project-copacetic/copacetic) ([Buildkitd](https://github.com/moby/buildkitd)) and [Cosign](https://github.com/sigstore/cosign).
 
 Helmper connects via gRPC to Trivy and Buildkit so you can run `helmper` without root privileges whereever you want. 
 
 `helmper` demonstrates exceptional proficiency in operating within controlled environments that might require Change Management and/or air-gapped networks. This expertise is particularly beneficial in industries subject to stringent regulations, such as Medical and Banking. This is due to `helmper` ensures binary reproducibility of Helm Charts by storing all necessary artifacts in your registries.
+
+`helmper` provides an interface to reduce the maintenance burden associated with managing a large collection of Helm Charts by:
+
+- automatically detecting all enabled container images in charts
+- providing an easy way to stay up to date on new chart releases
+- providing option to only import new images, or all images
+- enabling quick patching(and re-patching) of all images
+- enabling signing of images was an integrated part of the process
+- providing a mechanism to check requirements/dependencies before deploying charts with fx GitOps
 
 ### how?
 
@@ -128,42 +137,6 @@ import:
 
 <p align="center"><img src="docs/gifs/full.gif?raw=true"/></p>
 
-### Configuration parameters overview
-
-To understand how the different configuration options works, please study the flow diagram below
-
-```mermaid
-flowchart TD
-    A[Process Input `helmper.yaml`] --> B(Fetch Charts From Remote) 
-    
-    B -->|helm pull| B1(Parse Artifacts)
-    B1 -->|read| B2(Validate Images exists publicly)
-    
-    B2 --> C{Import}
-    C -->|false| End
-    C -->|true| C1{All}
-
-    C1 --> |false| C2[Identity missing images in registries]
-    C1 --> |true| G{Patch Images}
-
-    C2 --> G
-
-    G -->|Yes| T1[Trivy Pre Scan]
-    G -->|No| T6    
-    T1 -->T4{Any `os-pkgs` vulnerabilities}
-    
-    T4 -->|Yes| T5[Copacetic]
-    T4 -->|No| T6[Push]
-    
-    T5 --> T7[Trivy Post Scan]
-
-    T7 --> T6
-    T6 --> H{Sign Images}
-    H --> End
-
-    End[End]
-```
-
 ## Compatibility
 
 Helmper utilizes the Helm SDK to maintain full compatibility with both Helm Repositories and OCI registries for storing Helm Charts.
@@ -214,6 +187,52 @@ sudo mv helmper-darwin-amd64 /usr/local/bin/helmper
 ### Windows
 
 Extract the tar and launch the exe file.
+
+## Configuration
+
+The configuration file `helmper.yaml` can be placed in: 
+
+- Current directory (`.`)
+- `$HOME/.config/helmper/`
+- `/etc/helmper/`
+
+Please see [Helmper configuration documentation](./CONFIG.md) for an detail overview of the different configuration options.
+
+### Configuration options visualization
+
+To understand how the different configuration options works, please study the flow diagram below
+
+```mermaid
+flowchart TD
+    A[Process Input `helmper.yaml`] --> B(Fetch Charts From Remote) 
+    
+    B -->|helm pull| B1(Parse Artifacts)
+    B1 -->|read| B2(Validate Images exists publicly)
+    
+    B2 --> C{Import}
+    C -->|false| End
+    C -->|true| C1{All}
+
+    C1 --> |false| C2[Identity missing images in registries]
+    C1 --> |true| G{Patch Images}
+
+    C2 --> G
+
+    G -->|Yes| T1[Trivy Pre Scan]
+    G -->|No| T6    
+    T1 -->T4{Any `os-pkgs` vulnerabilities}
+    
+    T4 -->|Yes| T5[Copacetic]
+    T4 -->|No| T6[Push]
+    
+    T5 --> T7[Trivy Post Scan]
+
+    T7 --> T6
+    T6 --> H{Sign Images}
+    H --> End
+
+    End[End]
+```
 
 ## Scope
 
