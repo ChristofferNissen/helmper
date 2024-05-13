@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/ChristofferNissen/helmper">
-    <img src="docs/logo.png" alt="Helmper logo">
+    <img src="docs/logo/helmper_banner.svg" alt="Helmper logo">
   </a>
 
   <p align="center">
@@ -24,9 +24,12 @@
 
 _DISCLAIMER: helmper is in beta, so stuff may change._
 
-`helmper` is a go program that reads Helm Charts from remote OCI registries and pushes the charts container images to your registries, with optional OS level vulnerability patching.
+<img align="right" width="30%" src="docs/logo/helmper.svg" alt="Helmper logo">
+
+`helmper` is a go program that reads Helm Charts from remote OCI registries and pushes the charts container images to your registries with optional OS level vulnerability patching.
 
 `helmper` is built with [Helm](<https://github.com/helm/helm>), [Oras](<https://github.com/oras-project/oras-go>), [Trivy](https://github.com/aquasecurity/trivy), [Copacetic](https://github.com/project-copacetic/copacetic) ([Buildkitd](https://github.com/moby/buildkitd)) and [Cosign](https://github.com/sigstore/cosign).
+
 
 Helmper connects via gRPC to Trivy and Buildkit so you can run `helmper` without root privileges whereever you want. 
 
@@ -334,6 +337,8 @@ Helmper parses Helm Charts from remote registries, identifies enabled dependency
 This project has adopted the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/master/code-of-conduct.md). See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for further details.
 
 ## Credits
+
+Helmper logo and banner have been kindly donated to the project by María Ruiz Garrido :heart:.
 
 The gopher's logo of Helmper is licensed under the Creative Commons 3.0 Attributions license.
 
