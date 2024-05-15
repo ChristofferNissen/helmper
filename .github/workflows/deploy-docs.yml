@@ -37,6 +37,9 @@ jobs:
   deploy:
     name: Deploy to GitHub Pages
     needs: build
+    defaults:
+      run:
+        working-directory: ./website
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
