@@ -18,7 +18,7 @@ const config: Config = {
   url: 'https://christoffernissen.github.io',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/helmper/website/',
+  baseUrl: '/helmper/',
 
   trailingSlash: false,
 
