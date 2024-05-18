@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'Development Environment'
-sidebar_position: 6
+sidebar_position: 8
 ---
 
 # Development Environment

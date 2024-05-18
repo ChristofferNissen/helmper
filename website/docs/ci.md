@@ -1,6 +1,6 @@
 ---
 sidebar_label: 'Pipeline Examples'
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Pipelines examples

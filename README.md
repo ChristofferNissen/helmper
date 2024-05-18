@@ -4,7 +4,7 @@
   </a>
 
   <p align="center">
-    A little helper that reads Helm Charts and pushes the images to your registries.
+    A little helper that pushes Helm Charts and images to your registries, easily configured with a declarative spec.
     <br>
     <a href="https://github.com/ChristofferNissen/helmper/issues/new?template=bug.md">Report bug</a>
     ·
@@ -33,7 +33,7 @@ _DISCLAIMER: helmper is in beta, so stuff may change._
 
 Helmper connects via gRPC to Trivy and Buildkit so you can run `helmper` without root privileges whereever you want. 
 
-`helmper` demonstrates exceptional proficiency in operating within controlled environments that might require Change Management and/or air-gapped networks. This expertise is particularly beneficial in industries subject to stringent regulations, such as Medical and Banking. This is due to `helmper` ensures binary reproducibility of Helm Charts by storing all necessary artifacts in your registries.
+`helmper` demonstrates exceptional proficiency in operating within controlled environments that might require Change Management and/or air-gapped networks. This expertise is particularly beneficial in industries subject to stringent regulations, such as Medical and Banking. `helmper` aims to ensure binary reproducibility of Helm Charts by storing all necessary artifacts in your registries.
 
 `helmper` provides an interface to reduce the maintenance burden associated with managing a large collection of Helm Charts by:
 
@@ -46,7 +46,7 @@ Helmper connects via gRPC to Trivy and Buildkit so you can run `helmper` without
 
 ### how?
 
-#### Simple
+#### Core
 
 Simply tell `helmper` which charts to analyze and registries to use by creating a `helmper.yaml` file and run helmper from the same folder.
 
@@ -94,7 +94,7 @@ Azure:
 az acr login -n myregistry
 ```
 
-#### Full
+#### Extended
 
 In this example Helmper will also scan with Trivy, patch with Copacetic and sign with Cosign all identified images before pushing with Oras to all registries.
 
@@ -139,6 +139,10 @@ import:
 ```
 
 <p align="center"><img src="docs/gifs/full.gif?raw=true"/></p>
+
+## Documentation
+
+Helmpers full documentation can be found at [christoffernissen.github.io/helmper](https://christoffernissen.github.io/helmper/).
 
 ## Compatibility
 
@@ -191,52 +195,6 @@ sudo mv helmper-darwin-amd64 /usr/local/bin/helmper
 
 Extract the tar and launch the exe file.
 
-## Configuration
-
-The configuration file `helmper.yaml` can be placed in: 
-
-- Current directory (`.`)
-- `$HOME/.config/helmper/`
-- `/etc/helmper/`
-
-Please see [Helmper configuration documentation](./CONFIG.md) for an detail overview of the different configuration options.
-
-### Configuration options visualization
-
-To understand how the different configuration options works, please study the flow diagram below
-
-```mermaid
-flowchart TD
-    A[Process Input `helmper.yaml`] --> B(Fetch Charts From Remote) 
-    
-    B -->|helm pull| B1(Parse Artifacts)
-    B1 -->|read| B2(Validate Images exists publicly)
-    
-    B2 --> C{Import}
-    C -->|false| End
-    C -->|true| C1{All}
-
-    C1 --> |false| C2[Identity missing images in registries]
-    C1 --> |true| G{Patch Images}
-
-    C2 --> G
-
-    G -->|Yes| T1[Trivy Pre Scan]
-    G -->|No| T6    
-    T1 -->T4{Any `os-pkgs` vulnerabilities}
-    
-    T4 -->|Yes| T5[Copacetic]
-    T4 -->|No| T6[Push]
-    
-    T5 --> T7[Trivy Post Scan]
-
-    T7 --> T6
-    T6 --> H{Sign Images}
-    H --> End
-
-    End[End]
-```
-
 ## Scope
 
 ### In scope
@@ -255,82 +213,6 @@ flowchart TD
 * Add option to import to registries via pipeline for compliance audit trail retention
 * SBOM
 * OpenTelemetry
-
-## Development Environment
-
-The project provides a devcontainer with a docker-compose.yml defining all required services.
-
-### Docker
-
-#### Registry
-
-```bash
-docker run -d -p 5000:5000 --restart=always --name registry registry:2
-```
-
-#### Buildkitd
-
-```bash
-export BUILDKIT_VERSION=v0.12.4
-export BUILDKIT_PORT=8888
-docker run --detach --rm --privileged \
--p 127.0.0.1:$BUILDKIT_PORT:$BUILDKIT_PORT/tcp \
---name buildkitd \
---entrypoint buildkitd \ 
-"moby/buildkit:$BUILDKIT_VERSION" --addr tcp://0.0.0.0:$BUILDKIT_PORT
-```
-
-#### Trivy
-
-
-```bash
-docker run -d -p 8887:8887 --name trivy \
-aquasec/trivy:0.50.4 server --listen=0.0.0.0:8887
-```
-
-## Diagrams
-
-### Deployment Diagram / External services
-
-```mermaid
-graph LR;
- service[helmper]--->|"<.registries[].url>"|pod3[OCI Registry];
- service[helmper]--->|"<.charts[].repo.url>"|pod4[Chart Repository];
- 
- service[helmper]-..->|<.import.copacetic.trivy.addr>|pod1[Trivy];
- service[helmper]-..->|<.import.copacetic.buildkitd.addr>|pod2[Buildkit];
-```
-
-This diagram illustrates the external services Helmper communicates with. Helmper will always be interacting with OCI registries and Chart repositories. If you have enabled Copacetic in the configuration, Helmper will also communicate with an external Trivy server and Buildkit daemon.
-
-### ER
-
-```mermaid
-erDiagram
-    REGISTRY ||--o{ "Helm Chart" : contains
-    REGISTRY ||--o{ "Container Image (OCI)" : contains
-    
-    "Helm Chart" ||--|{ "values.yaml" : has
-    "Helm Chart" ||--o{ "Dependency Helm Chart" : has
-    "Dependency Helm Chart" ||--|{ "values.yaml" : has
-    "values.yaml" ||--|{  "Container Image (OCI)" : references
-
-    "Container Image (OCI)"{
-        string Registry
-        string Repository
-        string Name
-        string Tag
-    }
-
-    "Container Image (OCI)" ||--o| "Signature" : has
-    "Container Image (OCI)" ||--o| "Digest" : has
-```
-
-In the diagram above it can be seen how the different OCI entities relate. This is the structure that Helmper parses and conceptually handles before considering distributing/patching/signing artifacts.
-
-Helmper parses Helm Charts from remote registries, identifies enabled dependency charts and analyses all values.yaml files for references to container images.
-
----
 
 ## Code of Conduct
 

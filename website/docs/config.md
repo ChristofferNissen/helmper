@@ -3,12 +3,7 @@ sidebar_label: 'Configuration Options'
 sidebar_position: 4
 ---
 
-# Configuration Options overview
-
-- [Configuration parameters overview](#configuration-parameters-overview)
-  - [Location](#location)
-  - [Example configuration](#example-configuration)
-  - [Configuration options](#configuration-options)
+# Configuration
 
 ## Location
 
