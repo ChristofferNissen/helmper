@@ -11,7 +11,7 @@ const config: Config = {
   ],
   
   title: 'Helmper Docs',
-  tagline: 'A little helper that helps import OCI artifacts and Helm Charts to registries',
+  tagline: 'A little helper that pushes Helm Charts and images to your registries, easily configured with a declarative spec.',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
@@ -81,8 +81,8 @@ const config: Config = {
         },
         // {to: '/blog', label: 'Blog', position: 'left'},
         {to: '/what', label: 'what', position: 'left'},
-        {to: '/how', label: 'how', position: 'left'},
         {to: '/why', label: 'why', position: 'left'},
+        {to: '/how', label: 'how', position: 'left'},
         {
           href: 'https://github.com/ChristofferNissen/helmper',
           label: 'GitHub',

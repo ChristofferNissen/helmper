@@ -14,7 +14,7 @@ const FeatureList: FeatureItem[] = [
     Svg: require('@site/static/img/timer.svg').default,
     description: (
       <>
-        Helmper was designed from the ground up to be easily installed,
+        Helmper was designed from the ground up to be easy to install,
         simple to use and robust enough to rely on.
       </>
     ),
@@ -25,9 +25,9 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Helmper is built using the same tools you would use on the command line.
-        Obviously for Helm, Helmper is using the Helm go library. For OCI artifact 
-        distribution Helmper relies on Oras go library <code>oras-go</code>, 
-        Copacetic is used for image patching and Trivy for vulnerability detection.
+        Helmper is using the Helm Go library. For OCI artifact 
+        distribution Helmper relies on Oras Go library <code>oras-go</code>.
+        Trivy is used  for vulnerability detection and Copacetic is used for vulnerability patching.
       </>
     ),
   },
@@ -37,7 +37,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Helmper uses Oras for registry interaction with has support for most registries.
-        ACR, ECR ,GCR, Harbor, Distribution. See more in the docs.
+        ACR, ECR, GCR, Harbor, Distribution. See more in the docs.
       </>
     ),
   },
