@@ -34,7 +34,7 @@ Read mere in the official [Helm Documentation](https://helm.sh/docs/helm/helm_re
 
 For authenticating against registries, `helmper` utilizes the authentication details present in `~/.docker/config.json`.
 
-Simply login with Docker or similiar commands from your cloud provider:
+Simply login with Docker or similar commands from your cloud provider:
 
 ```shell title="Example Docker login cmd"
 docker login -u USER -p PASS

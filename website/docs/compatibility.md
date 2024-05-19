@@ -1,9 +1,9 @@
 ---
-sidebar_label: 'Compatability'
+sidebar_label: 'Compatibility'
 sidebar_position: 5
 ---
 
-# Compatability
+# Compatibility
 
 Helmper utilizes the Helm SDK to maintain full compatibility with both Helm Repositories and OCI registries for storing Helm Charts.
 

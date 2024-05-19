@@ -8,11 +8,11 @@ title: Why
 
 ## Security
 
-`helmper` aims to provide a sane opt-in security process by scanning images for vulnerabilities and patching fixable OS level vulnerabilties in container images retrieved from public sources, before distribution to your registries.
+`helmper` aims to provide a sane opt-in security process by scanning images for vulnerabilities and patching fixable OS level vulnerabilities in container images retrieved from public sources, before distribution to your registries.
 
 ## Operations
 
-`helmper` aims to ensure binary reproducibility of Helm Charts by storing all necessary artifacts in your registries, reducing risk associated with disappearing outstream dependencies.
+`helmper` aims to ensure binary reproducibility of Helm Charts by storing all necessary artifacts in your registries, reducing risk associated with disappearing upstream dependencies.
 
 
 `helmper` aims to reduce maintenance efforts of onboarding new Helm Chart versions to use within an regulated organization by providing a robust engine for extracting images from charts, patching and distributing images in a fast, reliable and repeatable way. 

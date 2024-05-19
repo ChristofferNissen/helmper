@@ -6,13 +6,13 @@ sidebar_position: 2
 
 Let's try all features of **Helmper in less than 5 minutes**.
 
-In this torturial demonstrates the full functionality of Helmper, from identifying images 
+In this tutorial demonstrates the full functionality of Helmper, from identifying images 
 in the Helm Chart to patching and signing the images.
 
 ## Getting Started
 
 Get started by **setting up local services**. These services are required for scanning and patching the images.
-Then proceed by **creating the local filestructure**, populate one of the folders by **generating keys for cosign**. 
+Then proceed by **creating the local filesystem structure**, populate one of the folders by **generating keys for cosign**. 
 Finally **change the configuration** to included the newly created resources.
 
 ### Start local services
@@ -30,9 +30,7 @@ export BUILDKIT_VERSION=v0.12.4
 export BUILDKIT_PORT=8888
 docker run --detach --rm --privileged \
 -p 127.0.0.1:$BUILDKIT_PORT:$BUILDKIT_PORT/tcp \
---name buildkitd \
---entrypoint buildkitd \ 
-"moby/buildkit:$BUILDKIT_VERSION" --addr tcp://0.0.0.0:$BUILDKIT_PORT
+--name buildkitd --entrypoint buildkitd "moby/buildkit:$BUILDKIT_VERSION" --addr tcp://0.0.0.0:$BUILDKIT_PORT
 ```
 
 #### Trivy
