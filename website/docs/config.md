@@ -157,13 +157,13 @@ See more details in the [Copacetic Documentation](https://project-copacetic.gith
 
 ### mTLS
 
-Helmper supports setting required configuration options for enabling mTLS with an expose Buildkit instance over TCP, althrough the following configuration options:
+Helmper supports setting required configuration options for enabling mTLS with an expose Buildkit instance over TCP, although the following configuration options:
 
 * `import.copacetic.buildkitd.CACertPath`
 * `import.copacetic.buildkitd.certPath`
 * `import.copacetic.buildkitd.keyPath`
 
-Read more in the official docs by [mobdy/buildkit](https://github.com/moby/buildkit?tab=readme-ov-file#expose-buildkit-as-a-tcp-service).
+Read more in the official docs by [moby/buildkit](https://github.com/moby/buildkit?tab=readme-ov-file#expose-buildkit-as-a-tcp-service).
 
 ## Cosign
 

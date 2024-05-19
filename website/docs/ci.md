@@ -3,7 +3,7 @@ sidebar_label: 'Pipeline Examples'
 sidebar_position: 10
 ---
 
-# Pipelines examples
+# Pipeline examples
 
 In this section you can find example pipelines to quickly include Helmper in your pipelines.
 
@@ -67,25 +67,6 @@ steps:
     script: |
       /usr/local/bin/helmper
 ```
-
-<!-- </TabItem>
-<TabItem value="py" label="Python">
-
-```py
-def hello_world():
-  print("Hello, world!")
-```
-
-</TabItem>
-<TabItem value="java" label="Java">
-
-```java
-class HelloWorld {
-  public static void main(String args[]) {
-    System.out.println("Hello, World");
-  }
-}
-``` -->
 
 </TabItem>
 </Tabs>
