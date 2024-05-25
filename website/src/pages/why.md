@@ -14,9 +14,6 @@ title: Why
 
 `helmper` aims to ensure binary reproducibility of Helm Charts by storing all necessary artifacts in your registries, reducing risk associated with disappearing upstream dependencies.
 
-
 `helmper` aims to reduce maintenance efforts of onboarding new Helm Chart versions to use within an regulated organization by providing a robust engine for extracting images from charts, patching and distributing images in a fast, reliable and repeatable way. 
 
-
 *In most industries it might be acceptable to use registries as pull-through caches that will automatically find missing images and store them in your registries. For regulated industries this presents a challenge, as it is not worth the risk to start a deployment to production and wait for resources to be fetched.*
-
