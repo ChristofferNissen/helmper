@@ -30,7 +30,6 @@ The combined strings are parsed with [distribution/reference](https://github.com
 
 ## Supported sections in `values.yaml`
 
-
 ```yaml
 image: "reference:tag"
 ```
@@ -101,4 +100,4 @@ global:
 - Kubescape-Operator
 - ArgoCD
 
-See more in the [test file](/internal/program_test.go)
+See more in the [test file](https://github.com/ChristofferNissen/helmper/blob/main/internal/program_test.go)
