@@ -215,7 +215,6 @@ func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, err
 	push.Settings = settings
 
 	return push.Run(path, registry)
-
 }
 
 func (c Chart) Pull() (string, error) {

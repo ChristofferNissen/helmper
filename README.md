@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://github.com/ChristofferNissen/helmper">
-    <img src="docs/logo/helmper_banner.svg" alt="Helmper logo">
+    <img src="docs/logo/helmper_banner.png" alt="Helmper logo">
   </a>
 
   <p align="center">
@@ -24,7 +24,7 @@
 
 _DISCLAIMER: helmper is in beta, so stuff may change._
 
-<img align="right" width="30%" src="docs/logo/helmper.svg" alt="Helmper logo">
+<img align="right" width="10%" src="docs/logo/helmper.svg" alt="Helmper logo">
 
 `helmper` is a go program that reads Helm Charts from remote OCI registries and pushes the charts container images to your registries with optional OS level vulnerability patching.
 
