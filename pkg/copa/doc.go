@@ -1,5 +1,5 @@
 /*
-Package Copa is a local copy/mod of Copacetic Go SDKs patch function, adapted to OCI export and tar output. The package facilitates pacthing of operating system vulnerabilities of container images.
+Package copa is a local copy/mod of Copacetic Go SDKs patch function, adapted to OCI export and tar output. The package facilitates patching of operating system vulnerabilities of container images.
 
 Files:
 
