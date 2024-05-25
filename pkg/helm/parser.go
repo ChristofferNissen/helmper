@@ -34,7 +34,13 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, acc stri
 	i := registry.Image{}
 	for k, v := range data {
 		switch v := v.(type) {
-		// yaml value
+
+		// yaml key-value pair value type
+		case bool:
+			switch k {
+			case "useDigest":
+				i.UseDigest = v
+			}
 		case string:
 			found := true
 

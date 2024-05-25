@@ -24,7 +24,7 @@
 
 _DISCLAIMER: helmper is in beta, so stuff may change._
 
-<img align="right" width="10%" src="docs/logo/helmper.svg" alt="Helmper logo">
+<img align="right" width="20%" src="docs/logo/helmper.svg" alt="Helmper logo">
 
 `helmper` is a go program that reads Helm Charts from remote OCI registries and pushes the charts container images to your registries with optional OS level vulnerability patching.
 
@@ -205,7 +205,7 @@ Extract the tar and launch the exe file.
 ### Out of scope
 
 * Helmper does not work with other Kubernetes package formats
-* Helmper authenticates with registries with the docker config. There, Helmper will not have any proprietary libraries to facilitate authentication for any cloud providers. Simply use `docker login` or equivalent before running Helmper, and you should be authenticated for 3 hours for each registry.
+* Helmper authenticates with registries with the docker config. Therefore, Helmper will not have any proprietary libraries to facilitate authentication for any cloud providers. Simply use `docker login` or equivalent before running Helmper, and you should be authenticated for 3 hours for each registry.
 
 ## Roadmap
 

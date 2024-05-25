@@ -14,6 +14,7 @@ type Image struct {
 	Repository string
 	Tag        string
 	Digest     string
+	UseDigest  bool
 }
 
 func (i Image) TagOrDigest() (string, error) {
