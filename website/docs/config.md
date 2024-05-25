@@ -13,6 +13,10 @@ The configuration file `helmper.yaml` can be placed in:
 - `$HOME/.config/helmper/`
 - `/etc/helmper/`
 
+### Override configuration location with `--f` flag
+
+Helmper supports a single flag `--f` to specify the configuration file. When using the flag it takes precedence over the default location and name of the configuration file. The configuration file `--f` can be any format (JSON, TOML, YAML, HCL, envfile and Java properties config files, see [viper](https://github.com/spf13/viper?tab=readme-ov-file#what-is-viper)).
+
 ## Example configuration
 
 ```yaml title="Example config"
