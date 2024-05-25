@@ -7,6 +7,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/fsnotify/fsnotify"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"golang.org/x/xerrors"
 )
@@ -66,14 +67,26 @@ type config struct {
 func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	viper := viper.New()
 
+	pflag.String("f", "unused", "path to configuration file")
+
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
+
 	// Configure Viper configuration paths
-	viper.SetConfigName("helmper")               // name of config file (without extension)
-	viper.SetConfigType("yaml")                  // REQUIRED if the config file does not have the extension in the name
-	viper.AddConfigPath("/etc/helmper/")         // path to look for the config file in
-	viper.AddConfigPath("$HOME/.config/helmper") // call multiple times to add many search paths
-	viper.AddConfigPath(".")                     // optionally look for config in the working directory
-	err := viper.ReadInConfig()                  // Find and read the config file
-	if err != nil {                              // Handle errors reading the config file
+	viper.SetConfigName("helmper") // name of config file (without extension)
+	viper.SetConfigType("yaml")    // REQUIRED if the config file does not have the extension in the name
+
+	if viper.GetString("f") == "unused" {
+		viper.AddConfigPath("/etc/helmper/")         // path to look for the config file in
+		viper.AddConfigPath("$HOME/.config/helmper") // call multiple times to add many search paths
+		viper.AddConfigPath(".")                     // optionally look for config in the working directory
+	} else {
+		path := viper.GetString("f")
+		viper.SetConfigFile(path)
+	}
+
+	err := viper.ReadInConfig() // Find and read the config file
+	if err != nil {             // Handle errors reading the config file
 		return nil, err
 	}
 
