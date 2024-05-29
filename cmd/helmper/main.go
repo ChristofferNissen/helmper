@@ -12,5 +12,6 @@ func main() {
 	err := internal.Program(os.Args[1:])
 	if err != nil {
 		slog.Error(err.Error())
+		os.Exit(1)
 	}
 }
