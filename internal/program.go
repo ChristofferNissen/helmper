@@ -321,7 +321,7 @@ func Program(args []string) error {
 				Registries: registries,
 
 				KeyRef:            importConfig.Import.Cosign.KeyRef,
-				KeyRefPass:        importConfig.Import.Cosign.KeyRefPass,
+				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
 				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
 				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
 			}
@@ -352,7 +352,7 @@ func Program(args []string) error {
 				Registries: registries,
 
 				KeyRef:            importConfig.Import.Cosign.KeyRef,
-				KeyRefPass:        importConfig.Import.Cosign.KeyRefPass,
+				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
 				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
 				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
 			}

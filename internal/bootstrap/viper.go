@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"log/slog"
+	"os"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
@@ -42,11 +43,11 @@ type ImportConfigSection struct {
 			} `yaml:"output"`
 		} `yaml:"copacetic"`
 		Cosign struct {
-			Enabled           bool   `yaml:"enabled"`
-			KeyRef            string `yaml:"keyRef"`
-			KeyRefPass        string `yaml:"keyRefPass"`
-			AllowHTTPRegistry bool   `yaml:"allowHTTPRegistry"`
-			AllowInsecure     bool   `yaml:"allowInsecure"`
+			Enabled           bool    `yaml:"enabled"`
+			KeyRef            string  `yaml:"keyRef"`
+			KeyRefPass        *string `yaml:"keyRefPass"`
+			AllowHTTPRegistry bool    `yaml:"allowHTTPRegistry"`
+			AllowInsecure     bool    `yaml:"allowInsecure"`
 		} `yaml:"cosign"`
 	} `yaml:"import"`
 }
@@ -123,6 +124,12 @@ import:
     keyRef: ""     <---
 `
 		return nil, xerrors.Errorf("You have enabled cosign but did not specify any keyRef. Please specify a keyRef and try again..\nExample config:\n%s", s)
+	}
+
+	if conf.Import.Cosign.Enabled && conf.Import.Cosign.KeyRefPass == nil {
+		v := os.Getenv("COSIGN_PASSWORD")
+		slog.Info("KeyRefPass is nil, using value of COSIGN_PASSWORD environment variable")
+		conf.Import.Cosign.KeyRefPass = &v
 	}
 
 	if conf.Import.Copacetic.Enabled {

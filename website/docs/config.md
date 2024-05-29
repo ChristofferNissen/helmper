@@ -195,3 +195,9 @@ k8s://[NAMESPACE]/[KEY]
 ```text title="Azure Key vault"
 azurekms://[VAULT_NAME][VAULT_URI]/[KEY]
 ```
+
+### keyRefPass
+
+Helmper supports specifying the password directly in the helmper.yaml as `keyRefPass`. Alternatively you can use the `COSIGN_PASSWORD` environment variable to specify the password.
+
+If you use any of the remote options for `keyRef` you can leave the keyRefPass unspecified.
