@@ -114,7 +114,6 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	if err := viper.Unmarshal(&conf); err != nil {
 		return nil, err
 	}
-	viper.Set("importConfig", conf)
 
 	if conf.Import.Cosign.Enabled && conf.Import.Cosign.KeyRef == "" {
 		s := `
@@ -177,6 +176,8 @@ copacetic:
 		}
 
 	}
+
+	viper.Set("importConfig", conf)
 
 	rs := []registry.Registry{}
 	for _, r := range regConf.Registries {
