@@ -52,9 +52,9 @@ func (so SignOption) Run() error {
 		}))
 
 	// Sign with cosign
-
+	timeout := 2 * time.Minute
 	ro := options.RootOptions{
-		Timeout: 10 * time.Second,
+		Timeout: timeout,
 		Verbose: false,
 	}
 	ko := options.KeyOpts{
@@ -75,7 +75,7 @@ func (so SignOption) Run() error {
 					Jitter:   1.0,
 					Factor:   2.0,
 					Steps:    5,
-					Cap:      2 * time.Minute,
+					Cap:      timeout,
 				}),
 			},
 		},
