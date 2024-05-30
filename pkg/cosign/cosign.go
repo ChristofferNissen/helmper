@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
@@ -69,7 +70,9 @@ func (so SignOption) Run() error {
 		Registry: options.RegistryOptions{
 			AllowInsecure:     so.AllowInsecure,
 			AllowHTTPRegistry: so.AllowHTTPRegistry,
+
 			RegistryClientOpts: []remote.Option{
+				remote.WithAuthFromKeychain(authn.DefaultKeychain),
 				remote.WithRetryBackoff(remote.Backoff{
 					Duration: 1 * time.Second,
 					Jitter:   1.0,
