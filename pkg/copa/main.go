@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/aquasecurity/trivy/pkg/fanal/types"
 	"github.com/k0kubun/go-ansi"
 	"github.com/project-copacetic/copacetic/pkg/buildkit"
 	"github.com/schollz/progressbar/v3"
@@ -144,4 +145,17 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 	_ = bar.Finish()
 
 	return nil
+}
+
+func SupportedOS(os *types.OS) bool {
+	if os == nil {
+		return true
+	}
+
+	switch os.Family {
+	case "photon":
+		return false
+	default:
+		return true
+	}
 }

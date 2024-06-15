@@ -26,6 +26,7 @@ import (
 // Trivy-Operator
 // Kubescape-Operator
 // ArgoCD
+// Harbor
 
 func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 	// t.Parallel()
@@ -838,6 +839,57 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 
 	expectedChartCount := 1
 	expectedImageCount := 2
+
+	// Act
+	data, err := co.Run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Assert
+	if len(data) != expectedChartCount {
+		t.Fatalf("want '%d' number of charts, got '%d'\n", expectedChartCount, len(data))
+	}
+
+	imageCount := 0
+	for _, images := range data {
+		imageCount = imageCount + len(images)
+	}
+
+	if imageCount != expectedImageCount {
+		t.Fatalf("want '%d' number of images, got '%d'\n", expectedImageCount, imageCount)
+	}
+}
+
+func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
+	// t.Parallel()
+
+	// Arrange
+	ctx := context.TODO()
+
+	charts := helm.ChartCollection{
+		Charts: []helm.Chart{
+			{
+				Name: "harbor",
+				Repo: repo.Entry{
+					Name: "harbor",
+					URL:  "https://helm.goharbor.io",
+				},
+				Version: "1.14.1",
+			},
+		},
+	}
+
+	co := helm.ChartOption{
+		ChartCollection: &charts,
+	}
+	err := co.ChartCollection.SetupHelm()
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedChartCount := 1
+	expectedImageCount := 10
 
 	// Act
 	data, err := co.Run(ctx)

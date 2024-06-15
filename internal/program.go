@@ -165,14 +165,23 @@ func Program(args []string) error {
 				return err
 			}
 
-			// filter images with no os-pkgs as copa has nothing to do
-			switch trivy.ContainsOsPkgs(r.Results) {
+			switch copa.SupportedOS(r.Metadata.OS) {
 			case true:
-				slog.Debug("Image does contain os-pkgs vulnerabilities",
-					slog.String("image", ref))
-				patch = append(patch, &i)
+				// filter images with no os-pkgs as copa has nothing to do
+				switch trivy.ContainsOsPkgs(r.Results) {
+				case true:
+					slog.Debug("Image does contain os-pkgs vulnerabilities",
+						slog.String("image", ref))
+					patch = append(patch, &i)
+				case false:
+					slog.Warn("Image does not contain os-pkgs. The image will not be patched.",
+						slog.String("image", ref),
+					)
+					push = append(push, &i)
+				}
+
 			case false:
-				slog.Warn("Image does not contain os-pkgs. The image will not be patched...",
+				slog.Warn("Image contains an unsupported OS. The image will not be patched.",
 					slog.String("image", ref),
 				)
 				push = append(push, &i)

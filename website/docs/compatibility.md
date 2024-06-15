@@ -18,7 +18,7 @@ Oras and Helm state support all registries with OCI support, for example:
 - [Azure Container Registry](https://docs.microsoft.com/azure/container-registry/container-registry-helm-repos#push-chart-to-registry-as-oci-artifact)
 - [Google Artifact Registry](https://cloud.google.com/artifact-registry/docs/helm/manage-charts)
 - [Docker Hub](https://docs.docker.com/docker-hub/oci-artifacts/)
-- [Harbor](htInstalltps://goharbor.io/docs/main/administration/user-defined-oci-artifact/)
+- [Harbor](https://goharbor.io/docs/main/administration/user-defined-oci-artifact/)
 - [Zot Registry](https://zotregistry.dev/)
 - [GitHub Packages container registry](https://oras.land/docs/compatible_oci_registries#github-packages-container-registry-ghcr)
 - [IBM Cloud Container Registry](https://cloud.ibm.com/docs/Registry?topic=Registry-registry_helm_charts)
