@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	v1_spec "github.com/google/go-containerregistry/pkg/v1"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
@@ -35,7 +36,7 @@ var _ Puller = (*Registry)(nil)
 
 type Pusher interface {
 	Exister
-	Push(ctx context.Context, sourceURL string, img string, tag string) (v1.Descriptor, error)
+	Push(ctx context.Context, sourceURL string, img string, tag string, arch *string) (v1.Descriptor, error)
 }
 
 var _ Pusher = (*Registry)(nil)
@@ -44,7 +45,7 @@ func (r Registry) GetName() string {
 	return r.Name
 }
 
-func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag string) (v1.Descriptor, error) {
+func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag string, arch *string) (v1.Descriptor, error) {
 
 	// 1. Connect to a remote repository
 	ref := strings.Join([]string{sourceURL, name}, "/")
@@ -76,7 +77,25 @@ func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag s
 
 	// todo: check if user specified auth
 	target.PlainHTTP = r.PlainHTTP
-	manifest, err := oras.Copy(ctx, source, tag, target, tag, oras.DefaultCopyOptions)
+
+	opts := oras.DefaultCopyOptions
+	if arch != nil {
+		v, err := v1_spec.ParsePlatform(*arch)
+		if err != nil {
+			return v1.Descriptor{}, err
+		}
+		opts.WithTargetPlatform(
+			&v1.Platform{
+				Architecture: v.Architecture,
+				OS:           v.OS,
+				OSVersion:    v.OSVersion,
+				OSFeatures:   v.OSFeatures,
+				Variant:      v.Variant,
+			},
+		)
+	}
+
+	manifest, err := oras.Copy(ctx, source, tag, target, tag, opts)
 	if err != nil {
 		return v1.Descriptor{}, err
 	}

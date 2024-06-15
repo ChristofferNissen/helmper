@@ -156,6 +156,7 @@ func Program(args []string) error {
 			TrivyServer:   importConfig.Import.Copacetic.Trivy.Addr,
 			Insecure:      importConfig.Import.Copacetic.Trivy.Insecure,
 			IgnoreUnfixed: importConfig.Import.Copacetic.Trivy.IgnoreUnfixed,
+			Architecture:  importConfig.Import.Architecture,
 		}
 
 		for _, i := range imgs {
@@ -246,9 +247,10 @@ func Program(args []string) error {
 
 		// Import images without os-pkgs vulnerabilities
 		iOpts := registry.ImportOption{
-			Registries: registries,
-			Imgs:       push,
-			All:        all,
+			Registries:   registries,
+			Imgs:         push,
+			All:          all,
+			Architecture: importConfig.Import.Architecture,
 		}
 		err = iOpts.Run(ctx)
 		if err != nil {
@@ -271,6 +273,7 @@ func Program(args []string) error {
 				KeyPath:    importConfig.Import.Copacetic.Buildkitd.KeyPath,
 			},
 			IgnoreErrors: importConfig.Import.Copacetic.IgnoreErrors,
+			Architecture: importConfig.Import.Architecture,
 		}
 		err = po.Run(ctx, reportFilePaths, outFilePaths)
 		if err != nil {
@@ -347,9 +350,10 @@ func Program(args []string) error {
 		}
 
 		err := registry.ImportOption{
-			Registries: registries,
-			Imgs:       imgPs,
-			All:        all,
+			Registries:   registries,
+			Imgs:         imgPs,
+			All:          all,
+			Architecture: importConfig.Import.Architecture,
 		}.Run(ctx)
 		if err != nil {
 			return err

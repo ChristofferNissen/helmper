@@ -15,7 +15,8 @@ type ImportOption struct {
 	Imgs       []*Image
 	Registries []Registry
 
-	All bool
+	Architecture *string
+	All          bool
 }
 
 func (io ImportOption) Run(ctx context.Context) error {
@@ -51,7 +52,7 @@ func (io ImportOption) Run(ctx context.Context) error {
 						if err != nil {
 							return err
 						}
-						manifest, err := reg.Push(egCtx, i.Registry, name, i.Tag)
+						manifest, err := reg.Push(egCtx, i.Registry, name, i.Tag, io.Architecture)
 						if err != nil {
 							return err
 						}
