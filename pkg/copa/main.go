@@ -8,7 +8,9 @@ import (
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/aquasecurity/trivy/pkg/fanal/types"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/k0kubun/go-ansi"
+	v1_spec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/project-copacetic/copacetic/pkg/buildkit"
 	"github.com/schollz/progressbar/v3"
 	"oras.land/oras-go/v2"
@@ -34,6 +36,7 @@ type PatchOption struct {
 	}
 
 	IgnoreErrors bool
+	Architecture *string
 }
 
 func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Image]string, outFilePaths map[*registry.Image]string) error {
@@ -130,7 +133,23 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 			}
 
 			// Copy from the file store to the remote repository
-			manifest, err = oras.Copy(ctx, store, i.Tag, repo, i.Tag, oras.DefaultCopyOptions)
+			opts := oras.DefaultCopyOptions
+			if o.Architecture != nil {
+				v, err := v1.ParsePlatform(*o.Architecture)
+				if err != nil {
+					return err
+				}
+				opts.WithTargetPlatform(
+					&v1_spec.Platform{
+						Architecture: v.Architecture,
+						OS:           v.OS,
+						OSVersion:    v.OSVersion,
+						OSFeatures:   v.OSFeatures,
+						Variant:      v.Variant,
+					},
+				)
+			}
+			manifest, err = oras.Copy(ctx, store, i.Tag, repo, i.Tag, opts)
 			if err != nil {
 				return err
 			}

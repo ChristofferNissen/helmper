@@ -4,6 +4,7 @@ update: false
 all: false
 import:
   enabled: true
+  architecture: "linux/amd64"
   copacetic:
     enabled: true
     ignoreErrors: true

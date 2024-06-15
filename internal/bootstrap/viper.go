@@ -15,9 +15,9 @@ import (
 
 type ImportConfigSection struct {
 	Import struct {
-		Enabled bool `yaml:"enabled"`
-		// all     bool `yaml:"all"`
-		Copacetic struct {
+		Enabled      bool    `yaml:"enabled"`
+		Architecture *string `yaml:"architecture"`
+		Copacetic    struct {
 			Enabled      bool `yaml:"enabled"`
 			IgnoreErrors bool `yaml:"ignoreErrors"`
 			Buildkitd    struct {
