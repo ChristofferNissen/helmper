@@ -2,8 +2,10 @@ package helm
 
 import (
 	"log"
+	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
+	"golang.org/x/xerrors"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -41,6 +43,15 @@ func (collection ChartCollection) SetupHelm(setters ...Option) error {
 
 	for _, setter := range setters {
 		setter(args)
+	}
+
+	for _, c := range collection.Charts {
+		if !(strings.HasPrefix(c.Repo.URL, "http") || strings.HasPrefix(c.Repo.URL, "https")) {
+			if strings.HasPrefix(c.Repo.URL, "oci") {
+				return xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories. For oci protocol, see docs on the chart.oci configuration option in Helmper.")
+			}
+			return xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories")
+		}
 	}
 
 	// Add Helm Repos
