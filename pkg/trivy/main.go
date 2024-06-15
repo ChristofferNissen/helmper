@@ -73,8 +73,6 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	})
 	if err != nil {
 		slog.Error("NewArtifact failed: %v", err)
-	}
-	if err != nil {
 		return types.Report{}, err
 	}
 
@@ -90,7 +88,7 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		IncludeDevDeps: false,
 	})
 	if err != nil {
-		slog.Error("ScanArtifact failed: %v", err)
+		slog.Error("ScanArtifact failed: %v", err, slog.StringValue(report.Metadata.OS.Family))
 		return types.Report{}, err
 	}
 
@@ -106,22 +104,24 @@ func ignoreUnfixed(report *types.Report) {
 
 	// Homebrewed ignore unfixed
 	for _, r := range report.Results {
-		vulns := []types.DetectedVulnerability{}
-		for _, v := range r.Vulnerabilities {
-			if v.FixedVersion != "" {
-				// fixed
-				vulns = append(vulns, v)
+		switch r.Class {
+		case "ok-pkgs":
+			vulns := []types.DetectedVulnerability{}
+			for _, v := range r.Vulnerabilities {
+				if v.FixedVersion != "" {
+					// fixed
+					vulns = append(vulns, v)
+				}
 			}
-		}
 
-		count := len(r.Vulnerabilities) - len(vulns)
-		if count == 0 {
-			slog.Debug("removed unfixed vulnerabilities from result", slog.Int("count", count), slog.String("image", report.Metadata.ImageID))
-		} else {
-			slog.Info("removed unfixed vulnerabilities from result", slog.Int("count", count), slog.String("image", report.Metadata.ImageID))
-		}
+			count := len(r.Vulnerabilities) - len(vulns)
+			if count == 0 {
+				slog.Debug("removed unfixed vulnerabilities from result", slog.Int("count", count), slog.String("image", report.Metadata.ImageID))
+			} else {
+				slog.Info("removed unfixed vulnerabilities from result", slog.Int("count", count), slog.String("image", report.Metadata.ImageID))
+			}
 
-		r.Vulnerabilities = vulns
+			r.Vulnerabilities = vulns
+		}
 	}
-
 }
