@@ -13,7 +13,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/blang/semver/v4"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -51,7 +51,10 @@ func (c Chart) AddToHelmRepositoryFile() error {
 	}
 
 	return nil
-}
+}// func (c Chart) ResolveVersion() (string, error) {
+
+// 	return "", nil
+// }
 
 func (c Chart) ResolveVersion() (string, error) {
 	config := cli.New()
@@ -60,8 +63,13 @@ func (c Chart) ResolveVersion() (string, error) {
 		return c.Version, nil
 	}
 
-	v := strings.Replace(c.Version, "*", "0", 1)
-	s := semver.New(v)
+	// v := strings.Replace(c.Version, "*", "0", 1)
+
+	s, err := semver.Parse(c.Version)
+	if err != nil {
+		return "", err
+	}
+
 	major := s.Major
 	minor := s.Minor
 
@@ -76,14 +84,14 @@ func (c Chart) ResolveVersion() (string, error) {
 	versions := index.Entries[c.Name]
 	for _, v := range versions {
 
-		sv, err := semver.NewVersion(v.Version)
+		sv, err := semver.Parse(v.Version)
 		if err != nil {
 			// not semver
 			continue
 		}
 
 		switch {
-		case sv.PreRelease != "":
+		case len(sv.Pre) > 0:
 			continue
 		case sv.Major > major:
 			continue
@@ -114,14 +122,14 @@ func (c Chart) LatestVersion() (string, error) {
 	versions := index.Entries[c.Name]
 	for _, v := range versions {
 
-		sv, err := semver.NewVersion(v.Version)
+		sv, err := semver.Parse(v.Version)
 		if err != nil {
 			// not semver
 			res = v.Version
 			break
 		}
 
-		isNotPreRelease := sv.PreRelease == ""
+		isNotPreRelease := len(sv.Pre) == 0
 		if isNotPreRelease {
 			res = sv.String()
 			break
