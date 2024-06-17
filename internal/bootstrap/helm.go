@@ -5,7 +5,7 @@ import (
 )
 
 // Add Helm repos to user's local helm configuration file, Optionupdate all existing repos and pulls charts
-func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) error {
+func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) (helm.ChartCollection, error) {
 
 	// Default Options
 	args := &helm.Options{

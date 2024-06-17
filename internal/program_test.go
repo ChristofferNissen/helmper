@@ -52,7 +52,7 @@ func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -103,7 +103,7 @@ func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -154,7 +154,7 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -205,7 +205,7 @@ func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -256,7 +256,7 @@ func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -308,7 +308,7 @@ func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -359,7 +359,7 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -410,7 +410,7 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -463,7 +463,7 @@ func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -514,7 +514,7 @@ func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -565,7 +565,7 @@ func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -616,7 +616,7 @@ func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -669,7 +669,7 @@ func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -720,7 +720,7 @@ func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -779,7 +779,7 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -832,7 +832,7 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}
@@ -883,7 +883,7 @@ func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 	}
-	err := co.ChartCollection.SetupHelm()
+	_, err := co.ChartCollection.SetupHelm()
 	if err != nil {
 		t.Error(err)
 	}

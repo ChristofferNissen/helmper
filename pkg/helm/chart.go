@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
@@ -51,19 +50,49 @@ func (c Chart) AddToHelmRepositoryFile() error {
 	}
 
 	return nil
-}// func (c Chart) ResolveVersion() (string, error) {
+}
 
-// 	return "", nil
-// }
+func (c Chart) ResolveVersions() ([]string, error) {
 
-func (c Chart) ResolveVersion() (string, error) {
-	config := cli.New()
-
-	if !strings.Contains(c.Version, "*") {
-		return c.Version, nil
+	r, err := semver.ParseRange(c.Version)
+	if err != nil {
+		// not a semver range
+		return nil, err
 	}
 
-	// v := strings.Replace(c.Version, "*", "0", 1)
+	// Fetch versions from Helm Repository
+	config := cli.New()
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
+	index, err := repo.LoadIndexFile(indexPath)
+	if err != nil {
+		return nil, err
+	}
+	index.SortEntries()
+	versions := index.Entries[c.Name]
+
+	versionsInRange := []string{}
+	for _, v := range versions {
+
+		sv, err := semver.Parse(v.Version)
+		if err != nil {
+			continue
+		}
+
+		if len(sv.Pre) > 0 {
+			continue
+		}
+
+		if r(sv) {
+			//valid
+			versionsInRange = append(versionsInRange, sv.String())
+		}
+
+	}
+
+	return versionsInRange, nil
+}
+
+func (c Chart) ResolveVersion() (string, error) {
 
 	s, err := semver.Parse(c.Version)
 	if err != nil {
@@ -73,35 +102,27 @@ func (c Chart) ResolveVersion() (string, error) {
 	major := s.Major
 	minor := s.Minor
 
+	config := cli.New()
 	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err
 	}
-
 	index.SortEntries()
-
 	versions := index.Entries[c.Name]
-	for _, v := range versions {
 
+	for _, v := range versions {
 		sv, err := semver.Parse(v.Version)
-		if err != nil {
+		switch {
+		case err != nil:
 			// not semver
 			continue
-		}
-
-		switch {
 		case len(sv.Pre) > 0:
-			continue
-		case sv.Major > major:
-			continue
-		case sv.Minor > minor:
 			continue
 		case sv.Major == major && sv.Minor == minor:
 			slog.Debug("Resolved chart version", slog.String("chart", c.Name), slog.String("version", sv.String()))
 			return sv.String(), nil
 		}
-
 	}
 
 	return "", xerrors.New("Not Found")
