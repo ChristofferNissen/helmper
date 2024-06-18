@@ -32,12 +32,6 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 	charts := []Chart{}
 	for _, c := range opt.ChartCollection.Charts {
-		// Resolve Globs to latest patch
-		v, err := c.ResolveVersion()
-		if err != nil {
-			return err
-		}
-		c.Version = v
 		charts = append(charts, c)
 
 		_, chartRef, values, err := c.Read(args.Update)
