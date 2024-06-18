@@ -287,6 +287,13 @@ func (c Chart) Pull() (string, error) {
 		return "", err
 	}
 
+	// Make temporary folder for tar archives
+	f, err := os.MkdirTemp(os.TempDir(), "untar")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(f)
+
 	opts := []action.PullOpt{
 		action.WithConfig(actionConfig),
 	}
@@ -294,6 +301,7 @@ func (c Chart) Pull() (string, error) {
 	pull.ChartPathOptions = co
 	pull.Settings = settings
 	pull.Untar = true
+	pull.UntarDir = f
 	pull.DestDir = helmCacheHome
 
 	_, err = pull.Run(c.Name)

@@ -12,7 +12,8 @@ func TestResolveVersions(t *testing.T) {
 		Name:    "argo-cd",
 		Version: ">4.0.0 <5.0.0",
 		Repo: repo.Entry{
-			Name: "argo",
+			Name: "argoproj",
+			URL:  "https://argoproj.github.io/argo-helm",
 		},
 	}
 
@@ -36,7 +37,8 @@ func TestResolveVersions2(t *testing.T) {
 		Name:    "argo-cd",
 		Version: ">5.51.0 <6.0.0",
 		Repo: repo.Entry{
-			Name: "argo",
+			Name: "argoproj",
+			URL:  "https://argoproj.github.io/argo-helm",
 		},
 	}
 

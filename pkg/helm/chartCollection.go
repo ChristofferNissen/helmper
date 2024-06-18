@@ -99,7 +99,6 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 		}
 
 	}
-
 	collection.Charts = res
 
 	// Pull Helm Charts
