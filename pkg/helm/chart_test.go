@@ -21,6 +21,14 @@ func TestResolveVersions(t *testing.T) {
 		},
 	}
 
+	co := ChartOption{
+		ChartCollection: &c,
+	}
+	_, err := co.ChartCollection.SetupHelm()
+	if err != nil {
+		t.Error(err)
+	}
+
 	vs, err := c.Charts[0].ResolveVersions()
 	if err != nil {
 		t.Errorf("want '%s' goChartt '%s'", "nil", err.Error())
