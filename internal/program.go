@@ -46,6 +46,7 @@ func Program(args []string) error {
 		all          bool                          = state.GetValue[bool](viper, "all")
 		importConfig bootstrap.ImportConfigSection = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
 		registries   []registry.Registry           = state.GetValue[[]registry.Registry](viper, "registries")
+		images       []registry.Image              = state.GetValue[[]registry.Image](viper, "images")
 		charts       helm.ChartCollection          = state.GetValue[helm.ChartCollection](viper, "input")
 		opts         []helm.Option                 = []helm.Option{
 			helm.K8SVersion(k8sVersion),
@@ -90,6 +91,18 @@ func Program(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// Add in images from config
+	placeHolder := helm.Chart{
+		Name:    "images",
+		Version: "0.0.0",
+	}
+	m := map[*registry.Image][]string{}
+	for _, i := range images {
+		m[&i] = []string{}
+	}
+	chartImageHelmValuesMap[placeHolder] = m
+
 	// Output table of image to helm chart value path
 	output.RenderHelmValuePathToImageTable(chartImageHelmValuesMap)
 	slog.Debug("Parsing of user specified chart(s) completed")
