@@ -76,7 +76,7 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 		log.Printf("Updated all Helm repositories %s\n", terminal.GetCheckMarkEmoji())
 	}
 
-	// Expand collection
+	// Expand collection if semantic version range
 	res := []Chart{}
 	for _, c := range collection.Charts {
 
@@ -84,11 +84,10 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 		if err != nil {
 			v, err := c.ResolveVersion()
 			if err != nil {
-				log.Fatal("version is not semver", slog.String("version", c.Version))
+				log.Fatal("version is not semver. skipping this version", slog.String("version", c.Version))
+				continue
 			}
-
 			c.Version = v
-
 			res = append(res, c)
 		}
 
@@ -97,7 +96,6 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 			c.Version = v
 			res = append(res, c)
 		}
-
 	}
 	collection.Charts = res
 
