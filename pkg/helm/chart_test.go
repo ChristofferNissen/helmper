@@ -22,7 +22,7 @@ func TestResolveVersions(t *testing.T) {
 
 	vs, err := c.ResolveVersions()
 	if err != nil {
-		t.Errorf("want '%s' got '%s'", "err", "nil")
+		t.Errorf("want '%s' got '%s'", "nil", err.Error())
 	}
 
 	if len(vs) != 63 {
