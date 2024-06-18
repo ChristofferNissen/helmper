@@ -153,12 +153,15 @@ The `charts` configuration option defines which charts to import.
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
 | `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
 
+The `version` supports [Semantic Versioning 2.0.0](https://semver.org/) format versions as [Helm](https://helm.sh/docs/chart_best_practices/conventions/#version-numbers).
+
+[Semver cheatsheet](https://devhints.io/semver)
+
 ### Chart sources
 
 **Helm Repository**
 
 Helmper supports all configuration options for Helm Repositories available in the [Helm CLI](https://helm.sh/docs/helm/helm_repo/) `helm repo add`:
-
 
 | Key | Type  | Default | Required | Description |
 |-|-|-|-|-|
