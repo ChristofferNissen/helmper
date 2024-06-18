@@ -8,21 +8,22 @@ import (
 
 func TestResolveVersions(t *testing.T) {
 
-	c := Chart{
-		Name:    "argo-cd",
-		Version: ">4.0.0 <5.0.0",
-		Repo: repo.Entry{
-			Name: "argoproj",
-			URL:  "https://argoproj.github.io/argo-helm",
+	c := ChartCollection{
+		Charts: []Chart{
+			{
+				Name:    "argo-cd",
+				Version: ">4.0.0 <5.0.0",
+				Repo: repo.Entry{
+					Name: "argoproj",
+					URL:  "https://argoproj.github.io/argo-helm",
+				},
+			},
 		},
 	}
 
-	c.AddToHelmRepositoryFile()
-	c.Pull()
-
-	vs, err := c.ResolveVersions()
+	vs, err := c.Charts[0].ResolveVersions()
 	if err != nil {
-		t.Errorf("want '%s' got '%s'", "nil", err.Error())
+		t.Errorf("want '%s' goChartt '%s'", "nil", err.Error())
 	}
 
 	if len(vs) != 63 {
@@ -33,19 +34,28 @@ func TestResolveVersions(t *testing.T) {
 
 func TestResolveVersions2(t *testing.T) {
 
-	c := Chart{
-		Name:    "argo-cd",
-		Version: ">5.51.0 <6.0.0",
-		Repo: repo.Entry{
-			Name: "argoproj",
-			URL:  "https://argoproj.github.io/argo-helm",
+	c := ChartCollection{
+		Charts: []Chart{
+			{
+				Name:    "argo-cd",
+				Version: ">5.51.0 <6.0.0",
+				Repo: repo.Entry{
+					Name: "argoproj",
+					URL:  "https://argoproj.github.io/argo-helm",
+				},
+			},
 		},
 	}
 
-	c.AddToHelmRepositoryFile()
-	c.Pull()
+	co := ChartOption{
+		ChartCollection: &c,
+	}
+	_, err := co.ChartCollection.SetupHelm()
+	if err != nil {
+		t.Error(err)
+	}
 
-	vs, err := c.ResolveVersions()
+	vs, err := c.Charts[0].ResolveVersions()
 	if err != nil {
 		t.Errorf("want '%s' got '%s'", "err", "nil")
 	}
