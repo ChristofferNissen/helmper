@@ -78,7 +78,7 @@ charts:
       name: kedacore
       url: https://kedacore.github.io/charts/
   - name: argo-cd
-    version: 5.51.4
+    version: ">5.0.0 <7.0.0"
     repo:
       name: argo
       url: https://argoproj.github.io/argo-helm/
@@ -126,7 +126,7 @@ registries:
 | `import.cosign.allowHTTPRegistry` | bool   | false   | false | Allow HTTP instead of HTTPS |
 | `charts`      | list(object) | | true | Defines which charts to target |
 | `charts[].name`           | string |         | true | Chart name                                          |
-| `charts[].version`        | string |         | true | Semver version of chart                             |
+| `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
 | `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
 | `charts[].repo.name`                     | string |         | true | Name of the repository                             |
 | `charts[].repo.url`                      | string |         | true | URL to the repository                              |
@@ -142,6 +142,42 @@ registries:
 | `registries[].url`       | string |         | true | URL to registry                     |
 | `registries[].insecure`  | bool   | false   | false | Disable SSL certificate validation  |
 | `registries[].plainHTTP` | bool   | false   | false | Enable use of HTTP instead of HTTPS |
+
+## Charts
+
+The `charts` configuration option defines which charts to import.
+
+| Key | Type  | Default | Required | Description |
+|-|-|-|-|-|
+| `charts[].name`           | string |         | true | Chart name                                          |
+| `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
+| `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
+
+The `version` supports [Semantic Versioning 2.0.0](https://semver.org/) format versions as [Helm](https://helm.sh/docs/chart_best_practices/conventions/#version-numbers).
+
+[Semver cheatsheet](https://devhints.io/semver)
+
+### Chart sources
+
+**Helm Repository**
+
+Helmper supports all configuration options for Helm Repositories available in the [Helm CLI](https://helm.sh/docs/helm/helm_repo/) `helm repo add`:
+
+| Key | Type  | Default | Required | Description |
+|-|-|-|-|-|
+| `charts[].repo.name`                     | string |         | true | Name of the repository                             |
+| `charts[].repo.url`                      | string |         | true | URL to the repository                              |
+| `charts[].repo.username`                 | string | ""      | false | Username to repository for Basic Auth              |
+| `charts[].repo.password`                 | string | ""      | false | Password to Username for Basic Auth                |
+| `charts[].repo.certFile`                 | string | ""      | false | Path to certificate file for Certificate Auth      |
+| `charts[].repo.keyFile`                  | string | ""      | false | Path to key file for Key Auth                      |
+| `charts[].repo.caFile`                   | string | ""      | false | Path to custom certificate authority               |
+| `charts[].repo.insecure_skip_tls_verify` | bool   | false   | false | Skip TLS verify / Disable SSL                      |
+| `charts[].repo.pass_credentials_all`     | bool   | false   | false | Pass credentials to dependency charts repositories |
+
+**OCI Registry**
+
+Not implemented yet. Coming soon.
 
 ## Buildkit
 

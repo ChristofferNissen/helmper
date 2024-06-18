@@ -65,7 +65,7 @@ func Program(args []string) error {
 	)
 
 	// STEP 1: Setup Helm
-	err = bootstrap.SetupHelm(
+	charts, err = bootstrap.SetupHelm(
 		&charts,
 		opts...,
 	)
@@ -95,7 +95,7 @@ func Program(args []string) error {
 	slog.Debug("Parsing of user specified chart(s) completed")
 
 	// STEP 3: Validate and correct image references from charts
-	slog.Debug("Checking precense of images from chart(s) in registries...")
+	slog.Debug("Checking presence of images from chart(s) in registries...")
 	imgs, err := helm.IdentifyImportCandidates(
 		ctx,
 		registries,

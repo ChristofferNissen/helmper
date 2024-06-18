@@ -51,7 +51,7 @@ steps:
       charts:
       - name: prometheus
         version: 25.8.0
-        valuesFile: /workspace/in/values/prometheus/values.yaml # (Optional)
+        valuesFilePath: /workspace/in/values/prometheus/values.yaml # (Optional)
         repo:
           name: prometheus-community
           url: https://prometheus-community.github.io/helm-charts/

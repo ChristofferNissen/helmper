@@ -13,7 +13,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
 
-	"github.com/coreos/go-semver/semver"
+	"github.com/blang/semver/v4"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -53,47 +53,77 @@ func (c Chart) AddToHelmRepositoryFile() error {
 	return nil
 }
 
-func (c Chart) ResolveVersion() (string, error) {
-	config := cli.New()
+func (c Chart) ResolveVersions() ([]string, error) {
 
-	if !strings.Contains(c.Version, "*") {
-		return c.Version, nil
+	r, err := semver.ParseRange(c.Version)
+	if err != nil {
+		// not a semver range
+		return nil, err
 	}
 
-	v := strings.Replace(c.Version, "*", "0", 1)
-	s := semver.New(v)
+	// Fetch versions from Helm Repository
+	config := cli.New()
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
+	index, err := repo.LoadIndexFile(indexPath)
+	if err != nil {
+		return nil, err
+	}
+	index.SortEntries()
+	versions := index.Entries[c.Name]
+
+	versionsInRange := []string{}
+	for _, v := range versions {
+
+		sv, err := semver.Parse(v.Version)
+		if err != nil {
+			continue
+		}
+
+		if len(sv.Pre) > 0 {
+			continue
+		}
+
+		if r(sv) {
+			//valid
+			versionsInRange = append(versionsInRange, sv.String())
+		}
+
+	}
+
+	return versionsInRange, nil
+}
+
+func (c Chart) ResolveVersion() (string, error) {
+
+	s, err := semver.Parse(strings.TrimPrefix(c.Version, "v"))
+	if err != nil {
+		return "", err
+	}
+
 	major := s.Major
 	minor := s.Minor
 
+	config := cli.New()
 	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err
 	}
-
 	index.SortEntries()
-
 	versions := index.Entries[c.Name]
-	for _, v := range versions {
 
-		sv, err := semver.NewVersion(v.Version)
-		if err != nil {
+	for _, v := range versions {
+		sv, err := semver.Parse(v.Version)
+		switch {
+		case err != nil:
 			// not semver
 			continue
-		}
-
-		switch {
-		case sv.PreRelease != "":
-			continue
-		case sv.Major > major:
-			continue
-		case sv.Minor > minor:
+		case len(sv.Pre) > 0:
 			continue
 		case sv.Major == major && sv.Minor == minor:
 			slog.Debug("Resolved chart version", slog.String("chart", c.Name), slog.String("version", sv.String()))
 			return sv.String(), nil
 		}
-
 	}
 
 	return "", xerrors.New("Not Found")
@@ -114,14 +144,14 @@ func (c Chart) LatestVersion() (string, error) {
 	versions := index.Entries[c.Name]
 	for _, v := range versions {
 
-		sv, err := semver.NewVersion(v.Version)
+		sv, err := semver.Parse(v.Version)
 		if err != nil {
 			// not semver
 			res = v.Version
 			break
 		}
 
-		isNotPreRelease := sv.PreRelease == ""
+		isNotPreRelease := len(sv.Pre) == 0
 		if isNotPreRelease {
 			res = sv.String()
 			break
@@ -257,6 +287,13 @@ func (c Chart) Pull() (string, error) {
 		return "", err
 	}
 
+	// Make temporary folder for tar archives
+	f, err := os.MkdirTemp(os.TempDir(), "untar")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(f)
+
 	opts := []action.PullOpt{
 		action.WithConfig(actionConfig),
 	}
@@ -264,6 +301,7 @@ func (c Chart) Pull() (string, error) {
 	pull.ChartPathOptions = co
 	pull.Settings = settings
 	pull.Untar = true
+	pull.UntarDir = f
 	pull.DestDir = helmCacheHome
 
 	_, err = pull.Run(c.Name)

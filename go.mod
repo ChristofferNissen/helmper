@@ -6,8 +6,8 @@ toolchain go1.22.1
 
 require (
 	github.com/aquasecurity/trivy v0.45.1
+	github.com/blang/semver/v4 v4.0.0
 	github.com/containerd/console v1.0.4
-	github.com/coreos/go-semver v0.3.1
 	github.com/distribution/reference v0.5.0
 	github.com/docker/buildx v0.11.2
 	github.com/enescakir/emoji v1.0.0
