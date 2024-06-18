@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
@@ -94,7 +95,7 @@ func (c Chart) ResolveVersions() ([]string, error) {
 
 func (c Chart) ResolveVersion() (string, error) {
 
-	s, err := semver.Parse(c.Version)
+	s, err := semver.Parse(strings.TrimPrefix(c.Version, "v"))
 	if err != nil {
 		return "", err
 	}

@@ -351,7 +351,7 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 					Name: "cert-manager",
 					URL:  "https://charts.jetstack.io",
 				},
-				Version: "v1.13.2",
+				Version: "1.13.2",
 			},
 		},
 	}
