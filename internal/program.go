@@ -173,6 +173,20 @@ func Program(args []string) error {
 		}
 
 		for _, i := range imgs {
+
+			if i.Patch != nil {
+				if !*i.Patch {
+					ref, err := i.String()
+					if err != nil {
+						return err
+					}
+					slog.Debug("User defined image should not be patched",
+						slog.String("image", ref))
+					push = append(push, &i)
+					continue
+				}
+			}
+
 			ref, _ := i.String()
 			r, err := so.Scan(ref)
 			if err != nil {

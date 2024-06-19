@@ -54,7 +54,8 @@ type ImportConfigSection struct {
 }
 
 type imageConfigSection struct {
-	Ref string `yaml:"ref"`
+	Ref   string `yaml:"ref"`
+	Patch *bool  `yaml:"patch"`
 }
 
 type registryConfigSection struct {
@@ -204,7 +205,9 @@ copacetic:
 			return viper, err
 		}
 
-		img := registry.Image{}
+		img := registry.Image{
+			Patch: i.Patch,
+		}
 		switch r := ref.(type) {
 		case reference.Canonical:
 			d := reference.Domain(r)

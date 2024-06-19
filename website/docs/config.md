@@ -90,6 +90,7 @@ charts:
       url: https://prometheus-community.github.io/helm-charts/
 images:
 - ref: docker.io/library/busybox:latest@sha256:7cc4b5aefd1d0cadf8d97d4350462ba51c694ebca145b08d7d41b41acc8db5aa
+  patch: false
 registries:
   - name: registry
     url: 0.0.0.0:5000
@@ -141,6 +142,7 @@ registries:
 | `charts[].repo.pass_credentials_all`     | bool   | false   | false | Pass credentials to dependency charts repositories |
 | `images`     | list(object)   | [] | false | Additional container images to include in import |
 | `images.ref` | string  | | true | Container image reference |
+| `images.patch` | *bool  | nil | false | Define if container image should be patched with Trivy/Copacetic |
 | `registries`  | list(object) | [] | false | Defines which registries to import to |
 | `registries[].name`      | string |         | true | Name of registry                    |
 | `registries[].url`       | string |         | true | URL to registry                     |
