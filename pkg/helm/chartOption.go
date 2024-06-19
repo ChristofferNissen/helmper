@@ -159,6 +159,11 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 		eg.Go(func() error {
 			defer close(channel)
 
+			if len(charts.Charts) == 0 {
+				// nothing to process
+				return nil
+			}
+
 			bar := progressbar.NewOptions(len(charts.Charts),
 				progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 				progressbar.OptionEnableColorCodes(true),

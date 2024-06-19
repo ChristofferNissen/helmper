@@ -130,7 +130,7 @@ func Program(args []string) error {
 
 	// Import charts to registries
 	switch {
-	case importConfig.Import.Enabled:
+	case importConfig.Import.Enabled && len(charts.Charts) > 0:
 		err := helm.ChartImportOption{
 			Registries:      registries,
 			ChartCollection: &charts,
@@ -187,7 +187,10 @@ func Program(args []string) error {
 				}
 			}
 
-			ref, _ := i.String()
+			ref, err := i.String()
+			if err != nil {
+				return err
+			}
 			r, err := so.Scan(ref)
 			if err != nil {
 				return err
