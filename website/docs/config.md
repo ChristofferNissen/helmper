@@ -157,8 +157,7 @@ registries:
 
 The `charts` configuration option defines which charts to import.
 
-| Key | Type  | Default | R| `images.patch`     | bool  |  | true | Container image reference |
-equired | Description |
+| Key | Type  | Default | Required | Description |
 |-|-|-|-|-|
 | `charts[].name`           | string |         | true | Chart name                                          |
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
