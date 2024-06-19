@@ -65,7 +65,12 @@ type registryConfigSection struct {
 	PlainHTTP bool   `yaml:"plainHTTP"`
 }
 
+type ParserConfigSection struct {
+	UseCustomValues bool `yaml:"useCustomValues"`
+}
+
 type config struct {
+	Parser       ParserConfigSection     `yaml:"parser"`
 	ImportConfig ImportConfigSection     `yaml:"import"`
 	Images       []imageConfigSection    `yaml:"images"`
 	Registries   []registryConfigSection `yaml:"registries"`
@@ -116,6 +121,7 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 		return nil, err
 	}
 	viper.Set("config", conf)
+	viper.Set("parserConfig", conf.Parser)
 
 	importConf := ImportConfigSection{}
 	if err := viper.Unmarshal(&importConf); err != nil {

@@ -75,6 +75,7 @@ type imageInfo struct {
 
 type ChartOption struct {
 	ChartCollection *ChartCollection
+	UseCustomValues bool
 }
 
 func determineTag(ctx context.Context, k8sv string, img *registry.Image, plainHTTP bool) bool {
@@ -262,7 +263,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 				}
 
 				// find images and validate according to values
-				imageMap := findImageReferences(chart.Values, values)
+				imageMap := findImageReferences(chart.Values, values, co.UseCustomValues)
 
 				// check that images are available from registries
 				if imageMap == nil {

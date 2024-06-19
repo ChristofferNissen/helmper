@@ -44,6 +44,7 @@ func Program(args []string) error {
 		verbose      bool                          = state.GetValue[bool](viper, "verbose")
 		update       bool                          = state.GetValue[bool](viper, "update")
 		all          bool                          = state.GetValue[bool](viper, "all")
+		parserConfig bootstrap.ParserConfigSection = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
 		importConfig bootstrap.ImportConfigSection = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
 		registries   []registry.Registry           = state.GetValue[[]registry.Registry](viper, "registries")
 		images       []registry.Image              = state.GetValue[[]registry.Image](viper, "images")
@@ -83,6 +84,7 @@ func Program(args []string) error {
 	slog.Debug("Starting parsing user specified chart(s) for images..")
 	co := helm.ChartOption{
 		ChartCollection: &charts,
+		UseCustomValues: parserConfig.UseCustomValues,
 	}
 	chartImageHelmValuesMap, err := co.Run(
 		ctx,

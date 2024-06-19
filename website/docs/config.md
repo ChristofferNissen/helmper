@@ -24,6 +24,8 @@ k8s_version: 1.27.9
 verbose: true
 update: false
 all: false
+parser:
+  useCustomValues: false
 import:
   enabled: true
   architecture: "linux/amd64"
@@ -106,6 +108,8 @@ registries:
 | `verbose`     | bool         | false    |  false | Toggle verbose output |
 | `update`      | bool         | false    |  false | Toggle update to latest chart version for each specified chart in `charts` |
 | `all`         | bool         | false    |  false | Toggle import of all images regardless if they exist in the registries defined in `registries` |
+| `parser`         | object         | nil    |  false | Adjust how Helmper parses charts |
+| `parser.useCustomValues`         | bool         | false    |  false | Use user defined values for image parsing |
 | `import`      | object       | nil      | false |  If import is enabled, images will be pushed to the defined registries. If copacetic is enabled, images will be patched if possible. Finally, in the import section Cosign can be configured to sign the images after pushing to the registries. See table blow for full configuration options. |
 | `import.enabled`   | bool   | false   | false | Enable import of charts and artifacts to registries |
 | `import.architecture`   | *string   | nil   | false | Specify desired container image architecture |

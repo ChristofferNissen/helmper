@@ -28,7 +28,7 @@ func ConditionMet(condition string, values map[string]any) bool {
 }
 
 // traverse helm chart values data structure
-func findImageReferencesAcc(data map[string]any, values map[string]any, acc string) map[*registry.Image][]string {
+func findImageReferencesAcc(data map[string]any, values map[string]any, useCustomValues bool, acc string) map[*registry.Image][]string {
 	res := make(map[*registry.Image][]string)
 
 	i := registry.Image{}
@@ -46,45 +46,75 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, acc stri
 
 			switch k {
 			case "registry":
-				s, ok := values[k].(string)
-				if ok {
-					i.Registry = s
-				} else {
+				switch useCustomValues {
+				case true:
+					s, ok := values[k].(string)
+					if ok {
+						i.Registry = s
+					} else {
+						i.Registry = v
+					}
+				case false:
 					i.Registry = v
 				}
 			case "repository":
-				s, ok := values[k].(string)
-				if ok {
-					i.Repository = s
-				} else {
+				switch useCustomValues {
+				case true:
+					s, ok := values[k].(string)
+					if ok {
+						i.Repository = s
+					} else {
+						i.Repository = v
+					}
+				case false:
 					i.Repository = v
 				}
 			case "image":
-				s, ok := values[k].(string)
-				if ok {
-					i.Repository = s
-				} else {
+				switch useCustomValues {
+				case true:
+					s, ok := values[k].(string)
+					if ok {
+						i.Repository = s
+					} else {
+						i.Repository = v
+					}
+				case false:
 					i.Repository = v
 				}
 			case "tag":
-				s, ok := values[k].(string)
-				if ok {
-					i.Tag = s
-				} else {
+				switch useCustomValues {
+				case true:
+					s, ok := values[k].(string)
+					if ok {
+						i.Tag = s
+					} else {
+						i.Tag = v
+					}
+				case false:
 					i.Tag = v
 				}
 			case "digest":
-				s, ok := values[k].(string)
-				if ok {
-					i.Digest = s
-				} else {
+				switch useCustomValues {
+				case true:
+					s, ok := values[k].(string)
+					if ok {
+						i.Digest = s
+					} else {
+						i.Digest = v
+					}
+				case false:
 					i.Digest = v
 				}
 			case "sha":
-				s, ok := values[k].(string)
-				if ok {
-					i.Digest = s
-				} else {
+				switch useCustomValues {
+				case true:
+					s, ok := values[k].(string)
+					if ok {
+						i.Digest = s
+					} else {
+						i.Digest = v
+					}
+				case false:
 					i.Digest = v
 				}
 			default:
@@ -115,7 +145,7 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, acc stri
 			// if enabled, parse nested section
 			if enabled {
 				path := ternary.Ternary(acc == "", k, fmt.Sprintf("%s.%s", acc, k))
-				nestedRes := findImageReferencesAcc(v, values[k].(map[string]any), path)
+				nestedRes := findImageReferencesAcc(v, values[k].(map[string]any), useCustomValues, path)
 				for k, v := range nestedRes {
 					res[k] = v
 				}
@@ -126,6 +156,6 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, acc stri
 	return res
 }
 
-func findImageReferences(data map[string]any, values map[string]any) map[*registry.Image][]string {
-	return findImageReferencesAcc(data, values, "")
+func findImageReferences(data map[string]any, values map[string]any, useCustomValues bool) map[*registry.Image][]string {
+	return findImageReferencesAcc(data, values, useCustomValues, "")
 }
