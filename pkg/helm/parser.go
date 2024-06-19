@@ -46,17 +46,47 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, acc stri
 
 			switch k {
 			case "registry":
-				i.Registry = v
+				s, ok := values[k].(string)
+				if ok {
+					i.Registry = s
+				} else {
+					i.Registry = v
+				}
 			case "repository":
-				i.Repository = v
+				s, ok := values[k].(string)
+				if ok {
+					i.Repository = s
+				} else {
+					i.Repository = v
+				}
 			case "image":
-				i.Repository = v
+				s, ok := values[k].(string)
+				if ok {
+					i.Repository = s
+				} else {
+					i.Repository = v
+				}
 			case "tag":
-				i.Tag = v
+				s, ok := values[k].(string)
+				if ok {
+					i.Tag = s
+				} else {
+					i.Tag = v
+				}
 			case "digest":
-				i.Digest = v
+				s, ok := values[k].(string)
+				if ok {
+					i.Digest = s
+				} else {
+					i.Digest = v
+				}
 			case "sha":
-				i.Digest = v
+				s, ok := values[k].(string)
+				if ok {
+					i.Digest = s
+				} else {
+					i.Digest = v
+				}
 			default:
 				found = false
 			}
