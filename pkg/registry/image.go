@@ -15,6 +15,7 @@ type Image struct {
 	Tag        string
 	Digest     string
 	UseDigest  bool
+	Patch      *bool
 }
 
 func (i Image) TagOrDigest() (string, error) {

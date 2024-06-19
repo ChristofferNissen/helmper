@@ -95,7 +95,9 @@ func (c Chart) ResolveVersions() ([]string, error) {
 
 func (c Chart) ResolveVersion() (string, error) {
 
-	s, err := semver.Parse(strings.TrimPrefix(c.Version, "v"))
+	v := strings.ReplaceAll(c.Version, "*", "0")
+
+	s, err := semver.Parse(strings.TrimPrefix(v, "v"))
 	if err != nil {
 		return "", err
 	}

@@ -2,6 +2,8 @@ k8s_version: 1.27.9
 verbose: true
 update: false
 all: false
+parser:
+  useCustomValues: false
 import:
   enabled: true
   architecture: "linux/amd64"
@@ -66,6 +68,10 @@ charts:
     repo:
       name: prometheus-community
       url: https://prometheus-community.github.io/helm-charts/
+images:
+  - ref: docker.io/library/helloworld:latest
+  - ref: docker.io/library/redis:latest
+    patch: false
 registries:
   - name: registry
     url: 0.0.0.0:5000

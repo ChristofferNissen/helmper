@@ -24,6 +24,8 @@ k8s_version: 1.27.9
 verbose: true
 update: false
 all: false
+parser:
+  useCustomValues: false
 import:
   enabled: true
   architecture: "linux/amd64"
@@ -88,6 +90,9 @@ charts:
     repo:
       name: prometheus-community
       url: https://prometheus-community.github.io/helm-charts/
+images:
+- ref: docker.io/library/busybox:latest@sha256:7cc4b5aefd1d0cadf8d97d4350462ba51c694ebca145b08d7d41b41acc8db5aa
+  patch: false
 registries:
   - name: registry
     url: 0.0.0.0:5000
@@ -103,6 +108,8 @@ registries:
 | `verbose`     | bool         | false    |  false | Toggle verbose output |
 | `update`      | bool         | false    |  false | Toggle update to latest chart version for each specified chart in `charts` |
 | `all`         | bool         | false    |  false | Toggle import of all images regardless if they exist in the registries defined in `registries` |
+| `parser`         | object         | nil    |  false | Adjust how Helmper parses charts |
+| `parser.useCustomValues`         | bool         | false    |  false | Use user defined values for image parsing |
 | `import`      | object       | nil      | false |  If import is enabled, images will be pushed to the defined registries. If copacetic is enabled, images will be patched if possible. Finally, in the import section Cosign can be configured to sign the images after pushing to the registries. See table blow for full configuration options. |
 | `import.enabled`   | bool   | false   | false | Enable import of charts and artifacts to registries |
 | `import.architecture`   | *string   | nil   | false | Specify desired container image architecture |
@@ -124,7 +131,7 @@ registries:
 | `import.cosign.keyRefPass`        | string |         | true | Cosign private key password |
 | `import.cosign.allowInsecure`     | bool   | false   | false | Disable TLS verification    |
 | `import.cosign.allowHTTPRegistry` | bool   | false   | false | Allow HTTP instead of HTTPS |
-| `charts`      | list(object) | | true | Defines which charts to target |
+| `charts`      | list(object) | [] | false | Defines which charts to target |
 | `charts[].name`           | string |         | true | Chart name                                          |
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
 | `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
@@ -137,6 +144,9 @@ registries:
 | `charts[].repo.caFile`                   | string | ""      | false | Path to custom certificate authority               |
 | `charts[].repo.insecure_skip_tls_verify` | bool   | false   | false | Skip TLS verify / Disable SSL                      |
 | `charts[].repo.pass_credentials_all`     | bool   | false   | false | Pass credentials to dependency charts repositories |
+| `images`     | list(object)   | [] | false | Additional container images to include in import |
+| `images.ref` | string  | | true | Container image reference |
+| `images.patch` | *bool  | nil | false | Define if container image should be patched with Trivy/Copacetic |
 | `registries`  | list(object) | [] | false | Defines which registries to import to |
 | `registries[].name`      | string |         | true | Name of registry                    |
 | `registries[].url`       | string |         | true | URL to registry                     |
@@ -147,7 +157,8 @@ registries:
 
 The `charts` configuration option defines which charts to import.
 
-| Key | Type  | Default | Required | Description |
+| Key | Type  | Default | R| `images.patch`     | bool  |  | true | Container image reference |
+equired | Description |
 |-|-|-|-|-|
 | `charts[].name`           | string |         | true | Chart name                                          |
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
@@ -178,6 +189,11 @@ Helmper supports all configuration options for Helm Repositories available in th
 **OCI Registry**
 
 Not implemented yet. Coming soon.
+
+## Images
+
+Helmper provides the option to include additional images in the import flow not extracted from one of the defined Helm Charts.
+Simply define the additional images in the `images` configuration option.
 
 ## Buildkit
 

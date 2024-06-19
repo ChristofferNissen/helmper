@@ -7,6 +7,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
+	"github.com/distribution/reference"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -52,6 +53,11 @@ type ImportConfigSection struct {
 	} `yaml:"import"`
 }
 
+type imageConfigSection struct {
+	Ref   string `yaml:"ref"`
+	Patch *bool  `yaml:"patch"`
+}
+
 type registryConfigSection struct {
 	Name      string `yaml:"name"`
 	URL       string `yaml:"url"`
@@ -59,8 +65,14 @@ type registryConfigSection struct {
 	PlainHTTP bool   `yaml:"plainHTTP"`
 }
 
+type ParserConfigSection struct {
+	UseCustomValues bool `yaml:"useCustomValues"`
+}
+
 type config struct {
+	Parser       ParserConfigSection     `yaml:"parser"`
 	ImportConfig ImportConfigSection     `yaml:"import"`
+	Images       []imageConfigSection    `yaml:"images"`
 	Registries   []registryConfigSection `yaml:"registries"`
 }
 
@@ -104,18 +116,19 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	viper.Set("input", inputConf)
 
 	// Unmarshal registries config section
-	regConf := config{}
-	if err := viper.Unmarshal(&regConf); err != nil {
-		return nil, err
-	}
-	viper.Set("config", regConf)
-
-	conf := ImportConfigSection{}
+	conf := config{}
 	if err := viper.Unmarshal(&conf); err != nil {
 		return nil, err
 	}
+	viper.Set("config", conf)
+	viper.Set("parserConfig", conf.Parser)
 
-	if conf.Import.Cosign.Enabled && conf.Import.Cosign.KeyRef == "" {
+	importConf := ImportConfigSection{}
+	if err := viper.Unmarshal(&importConf); err != nil {
+		return nil, err
+	}
+
+	if importConf.Import.Cosign.Enabled && importConf.Import.Cosign.KeyRef == "" {
 		s := `
 import:
   cosign:
@@ -125,20 +138,20 @@ import:
 		return nil, xerrors.Errorf("You have enabled cosign but did not specify any keyRef. Please specify a keyRef and try again..\nExample config:\n%s", s)
 	}
 
-	if conf.Import.Cosign.Enabled && conf.Import.Cosign.KeyRefPass == nil {
+	if importConf.Import.Cosign.Enabled && importConf.Import.Cosign.KeyRefPass == nil {
 		v := os.Getenv("COSIGN_PASSWORD")
 		slog.Info("KeyRefPass is nil, using value of COSIGN_PASSWORD environment variable")
-		conf.Import.Cosign.KeyRefPass = &v
+		importConf.Import.Cosign.KeyRefPass = &v
 	}
 
-	if conf.Import.Copacetic.Enabled {
+	if importConf.Import.Copacetic.Enabled {
 
-		if conf.Import.Copacetic.Buildkitd.Addr == "" {
+		if importConf.Import.Copacetic.Buildkitd.Addr == "" {
 			// use local socket by default
-			conf.Import.Copacetic.Buildkitd.Addr = "unix:///run/buildkit/buildkitd.sock"
+			importConf.Import.Copacetic.Buildkitd.Addr = "unix:///run/buildkit/buildkitd.sock"
 		}
 
-		if conf.Import.Copacetic.Trivy.Addr == "" {
+		if importConf.Import.Copacetic.Trivy.Addr == "" {
 			s := `
 import:
   copacetic:
@@ -153,7 +166,7 @@ import:
 		})
 		viper.WatchConfig()
 
-		if conf.Import.Copacetic.Output.Reports.Folder == "" {
+		if importConf.Import.Copacetic.Output.Reports.Folder == "" {
 			s := `
 copacetic:
   enabled: true
@@ -164,7 +177,7 @@ copacetic:
 			return nil, xerrors.Errorf("You have enabled copacetic patching but did not specify the path to the reports output folder'. Please add the value and try again\nExample:\n%s", s)
 		}
 
-		if conf.Import.Copacetic.Output.Tars.Folder == "" {
+		if importConf.Import.Copacetic.Output.Tars.Folder == "" {
 			s := `
 copacetic:
   enabled: true
@@ -177,10 +190,10 @@ copacetic:
 
 	}
 
-	viper.Set("importConfig", conf)
+	viper.Set("importConfig", importConf)
 
 	rs := []registry.Registry{}
-	for _, r := range regConf.Registries {
+	for _, r := range conf.Registries {
 		rs = append(rs,
 			registry.Registry{
 				Name:      r.Name,
@@ -189,6 +202,49 @@ copacetic:
 			})
 	}
 	state.SetValue(viper, "registries", rs)
+
+	// TODO. Concert config.Images to Image{}
+	is := []registry.Image{}
+	for _, i := range conf.Images {
+		ref, err := reference.ParseAnyReference(i.Ref)
+		if err != nil {
+			return viper, err
+		}
+
+		img := registry.Image{
+			Patch: i.Patch,
+		}
+		switch r := ref.(type) {
+		case reference.Canonical:
+			d := reference.Domain(r)
+			p := reference.Path(r)
+
+			img.Registry = d
+			img.Repository = p
+			img.Digest = r.Digest().String()
+			img.UseDigest = true
+
+			if t, ok := r.(reference.Tagged); ok {
+				img.Tag = t.Tag()
+			}
+
+			is = append(is, img)
+
+		case reference.NamedTagged:
+			d := reference.Domain(r)
+			p := reference.Path(r)
+
+			img.Registry = d
+			img.Repository = p
+			img.Tag = r.Tag()
+			img.UseDigest = false
+
+			is = append(is, img)
+
+		}
+
+	}
+	state.SetValue(viper, "images", is)
 
 	viper.OnConfigChange(func(e fsnotify.Event) {
 		slog.Info("Config file changed. It will not take effect before next run.", slog.String("config", e.Name))

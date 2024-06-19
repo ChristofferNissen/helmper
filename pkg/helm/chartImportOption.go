@@ -97,6 +97,10 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 	for _, c := range charts {
 
+		if c.Name == "images" {
+			continue
+		}
+
 		for _, r := range opt.Registries {
 
 			_, err := r.Exist(ctx, "charts/"+c.Name, c.Version)

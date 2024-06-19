@@ -44,8 +44,10 @@ func Program(args []string) error {
 		verbose      bool                          = state.GetValue[bool](viper, "verbose")
 		update       bool                          = state.GetValue[bool](viper, "update")
 		all          bool                          = state.GetValue[bool](viper, "all")
+		parserConfig bootstrap.ParserConfigSection = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
 		importConfig bootstrap.ImportConfigSection = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
 		registries   []registry.Registry           = state.GetValue[[]registry.Registry](viper, "registries")
+		images       []registry.Image              = state.GetValue[[]registry.Image](viper, "images")
 		charts       helm.ChartCollection          = state.GetValue[helm.ChartCollection](viper, "input")
 		opts         []helm.Option                 = []helm.Option{
 			helm.K8SVersion(k8sVersion),
@@ -82,6 +84,7 @@ func Program(args []string) error {
 	slog.Debug("Starting parsing user specified chart(s) for images..")
 	co := helm.ChartOption{
 		ChartCollection: &charts,
+		UseCustomValues: parserConfig.UseCustomValues,
 	}
 	chartImageHelmValuesMap, err := co.Run(
 		ctx,
@@ -90,6 +93,18 @@ func Program(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// Add in images from config
+	placeHolder := helm.Chart{
+		Name:    "images",
+		Version: "0.0.0",
+	}
+	m := map[*registry.Image][]string{}
+	for _, i := range images {
+		m[&i] = []string{}
+	}
+	chartImageHelmValuesMap[placeHolder] = m
+
 	// Output table of image to helm chart value path
 	output.RenderHelmValuePathToImageTable(chartImageHelmValuesMap)
 	slog.Debug("Parsing of user specified chart(s) completed")
@@ -117,7 +132,7 @@ func Program(args []string) error {
 
 	// Import charts to registries
 	switch {
-	case importConfig.Import.Enabled:
+	case importConfig.Import.Enabled && len(charts.Charts) > 0:
 		err := helm.ChartImportOption{
 			Registries:      registries,
 			ChartCollection: &charts,
@@ -160,7 +175,24 @@ func Program(args []string) error {
 		}
 
 		for _, i := range imgs {
-			ref, _ := i.String()
+
+			if i.Patch != nil {
+				if !*i.Patch {
+					ref, err := i.String()
+					if err != nil {
+						return err
+					}
+					slog.Debug("User defined image should not be patched",
+						slog.String("image", ref))
+					push = append(push, &i)
+					continue
+				}
+			}
+
+			ref, err := i.String()
+			if err != nil {
+				return err
+			}
 			r, err := so.Scan(ref)
 			if err != nil {
 				return err
