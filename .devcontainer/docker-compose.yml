@@ -25,7 +25,7 @@ services:
     image: registry:2
     restart: always
     ports:
-      - 5124:5000
+      - 5000:5000
     
   registry2:
     image: registry:2
@@ -61,7 +61,7 @@ services:
       - REGISTRY_TITLE=Docker Registry UI
       - DELETE_IMAGES=true
       - SHOW_CONTENT_DIGEST=true
-      - NGINX_PROXY_PASS_URL=http://localhost:5000
+      - NGINX_PROXY_PASS_URL=http://localhost:5001
       - SHOW_CATALOG_NB_TAGS=true
       - CATALOG_MIN_BRANCHES=1
       - CATALOG_MAX_BRANCHES=1
