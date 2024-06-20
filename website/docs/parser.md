@@ -68,7 +68,7 @@ image:
 
 **note** *some charts use sha instead of digest. Helmper consider those two to both refer to the digest of the image*
 
-### Ignored sections 
+<!-- ### Ignored sections 
 
 Helmper will ignore the following sections: 
 
@@ -80,7 +80,7 @@ global:
         repository: ""
         tag: ""
 ...
-```
+``` -->
 
 ## Tested against following Helm Charts
 
