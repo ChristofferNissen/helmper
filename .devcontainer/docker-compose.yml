@@ -21,14 +21,52 @@ services:
     ports:
       - 8887:8887
 
-  # registry:
-  #   image: registry:2
-  #   restart: always
-  #   ports:
-  #     - 5124:5000
+  registry:
+    image: registry:2
+    restart: always
+    ports:
+      - 5124:5000
     
-  # registry2:
-  #   image: registry:2
-  #   restart: always
-  #   ports:
-  #     - 5001:5000
+  registry2:
+    image: registry:2
+    restart: always
+    ports:
+      - 5001:5000
+
+  registry-ui:
+    image: joxit/docker-registry-ui:main
+    restart: always
+    network_mode: "host"
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - NGINX_PROXY_PASS_URL=http://localhost:5000
+      - SHOW_CATALOG_NB_TAGS=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - REGISTRY_SECURED=false
+      - CATALOG_ELEMENTS_LIMIT=1000
+      - NGINX_LISTEN_PORT=8080
+    container_name: registry-ui
+
+  registry2-ui:
+    image: joxit/docker-registry-ui:main
+    restart: always
+    network_mode: "host"
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - NGINX_PROXY_PASS_URL=http://localhost:5000
+      - SHOW_CATALOG_NB_TAGS=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - REGISTRY_SECURED=false
+      - CATALOG_ELEMENTS_LIMIT=1000
+      - NGINX_LISTEN_PORT=8081
+    container_name: registry2-ui
