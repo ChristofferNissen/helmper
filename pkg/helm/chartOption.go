@@ -13,6 +13,7 @@ import (
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/xerrors"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -138,6 +139,23 @@ func determineSubChartPath(d *chart.Dependency, subChart *Chart, c *Chart, path 
 	return subChartPath, nil
 }
 
+func replaceValue(elem []string, new string, m map[string]interface{}) error {
+	e, rest := elem[0], elem[1:]
+
+	vm, ok := m[e].(map[string]interface{})
+	if ok {
+		return replaceValue(rest, new, vm)
+	} else {
+		switch m[e].(type) {
+		case string:
+			m[e] = new
+			return nil
+		default:
+			return xerrors.New("could not replace value")
+		}
+	}
+}
+
 func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, error) {
 
 	// Default Options
@@ -260,6 +278,19 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 				values, err := c.Values()
 				if err != nil {
 					return err
+				}
+
+				// Perform user customization
+				if c.Images != nil {
+					for _, mod := range c.Images.Modify {
+						if mod.FromValuePath != "" {
+							slog.Info("modifying chart value", slog.String("HelmValuesPath", mod.FromValuePath), slog.String("new", mod.To))
+							err := replaceValue(strings.Split(mod.FromValuePath, "."), mod.To, chart.Values)
+							if err != nil {
+								return err
+							}
+						}
+					}
 				}
 
 				// find images and validate according to values

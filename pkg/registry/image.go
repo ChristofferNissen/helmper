@@ -9,6 +9,45 @@ import (
 	"golang.org/x/xerrors"
 )
 
+func RefToImage(r string) (Image, error) {
+	ref, err := reference.ParseAnyReference(r)
+	if err != nil {
+		return Image{}, err
+	}
+
+	img := Image{}
+	switch r := ref.(type) {
+	case reference.Canonical:
+		d := reference.Domain(r)
+		p := reference.Path(r)
+
+		img.Registry = d
+		img.Repository = p
+		img.Digest = r.Digest().String()
+		img.UseDigest = true
+
+		if t, ok := r.(reference.Tagged); ok {
+			img.Tag = t.Tag()
+		}
+
+		return img, nil
+
+	case reference.NamedTagged:
+		d := reference.Domain(r)
+		p := reference.Path(r)
+
+		img.Registry = d
+		img.Repository = p
+		img.Tag = r.Tag()
+		img.UseDigest = false
+
+		return img, nil
+
+	}
+
+	return img, xerrors.New("Image reference not understood")
+}
+
 type Image struct {
 	Registry   string
 	Repository string

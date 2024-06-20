@@ -33,47 +33,57 @@ import:
     allowInsecure: true
     allowHTTPRegistry: true
 charts:
-  - name: loki
-    version: 5.38.0
-    valuesFilePath: /workspace/.in/values/loki/values.yaml
-    repo:
-      name: grafana
-      url: https://grafana.github.io/helm-charts/
-      username: ""
-      password: ""
-      certFile: ""
-      keyFile: ""
-      caFile: ""
-      insecure_skip_tls_verify: false
-      pass_credentials_all: false
-  - name: kyverno
-    version: 3.1.1
-    valuesFilePath: /workspace/.in/values/kyverno/values.yaml
-    repo:
-      name: kyverno
-      url: https://kyverno.github.io/kyverno/
-  - name: keda
-    version: 2.11.2
-    repo:
-      name: kedacore
-      url: https://kedacore.github.io/charts/
-  - name: argo-cd
-    version: 5.51.4
-    repo:
-      name: argo
-      url: https://argoproj.github.io/argo-helm/
-  - name: prometheus
-    version: 25.8.0
-    valuesFilePath: /workspace/.in/values/prometheus/values.yaml
-    repo:
-      name: prometheus-community
-      url: https://prometheus-community.github.io/helm-charts/
+- name: loki
+  version: 5.38.0
+  valuesFilePath: /workspace/.in/values/loki/values.yaml
+  repo:
+    name: grafana
+    url: https://grafana.github.io/helm-charts/
+    username: ""
+    password: ""
+    certFile: ""
+    keyFile: ""
+    caFile: ""
+    insecure_skip_tls_verify: false
+    pass_credentials_all: false
+- name: kyverno
+  version: 3.1.1
+  valuesFilePath: /workspace/.in/values/kyverno/values.yaml
+  repo:
+    name: kyverno
+    url: https://kyverno.github.io/kyverno/
+- name: keda
+  version: 2.11.2
+  repo:
+    name: kedacore
+    url: https://kedacore.github.io/charts/
+- name: argo-cd
+  version: 5.51.4
+  repo:
+    name: argo
+    url: https://argoproj.github.io/argo-helm/
+  images:
+    exclude:
+    - ref: ghcr.io/dexidp/dex
+    excludeCopacetic:
+    - ref: quay.io/argoproj/argocd
+    modify: 
+    - from: quay.io/argoproj/argocd
+      to: quay.io/argoproj/argocd
+    - fromValuePath: global.image.repository
+      to: quay.io/argoproj/argocd
+- name: prometheus
+  version: 25.8.0
+  valuesFilePath: /workspace/.in/values/prometheus/values.yaml
+  repo:
+    name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts/
 images:
-  - ref: docker.io/library/helloworld:latest
-  - ref: docker.io/library/redis:latest
-    patch: false
+- ref: docker.io/library/helloworld:latest
+- ref: docker.io/library/redis:latest
+  patch: false
 registries:
-  - name: registry
-    url: 0.0.0.0:5000
-    insecure: true
-    plainHTTP: true
+- name: registry
+  url: 0.0.0.0:5000
+  insecure: true
+  plainHTTP: true
