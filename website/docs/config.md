@@ -135,6 +135,15 @@ registries:
 | `charts[].name`           | string |         | true | Chart name                                          |
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
 | `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
+| `charts[].images`                         | object        | nil    | false | Customization options for images in chart  |
+| `charts[].images.exclude`                 | list(object)  | []     | false | Defines which images to exclude from processing |
+| `charts[].images.exclude.ref`             | string        | ""     | false | Container Image reference |
+| `charts[].images.excludeCopacetic`        | list(object)  | []     | false | Defines which images to exclude from copacetic patching if copa is enabled |
+| `charts[].images.excludeCopacetic.ref`    | string        | ""     | false | Container Image reference |
+| `charts[].images.modify`                  | list(object)  | []     | false | Defines which image references to modify before import |
+| `charts[].images.modify[].from`           | string        | ""     | false | Defines which image reference should be replaced with `to` |
+| `charts[].images.modify[].fromValuesPath` | string        | ""     | false | Defines which path in the charts default Helm Values to override with `to`|
+| `charts[].images.modify[].to`             | string        | ""     | false | Defines new value to be inserted |
 | `charts[].repo.name`                     | string |         | true | Name of the repository                             |
 | `charts[].repo.url`                      | string |         | true | URL to the repository                              |
 | `charts[].repo.username`                 | string | ""      | false | Username to repository for Basic Auth              |
@@ -159,9 +168,18 @@ The `charts` configuration option defines which charts to import.
 
 | Key | Type  | Default | Required | Description |
 |-|-|-|-|-|
-| `charts[].name`           | string |         | true | Chart name                                          |
-| `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
-| `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
+| `charts[].name`                           | string        |        | true  | Chart name                                          |
+| `charts[].version`                        | string        |        | true  | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0)   |
+| `charts[].valuesFilePath`                 | string        | ""     | false | Path to custom values.yaml to customize importing   |
+| `charts[].images`                         | object        | nil    | false | Customization options for images in chart  |
+| `charts[].images.exclude`                 | list(object)  | []     | false | Defines which images to exclude from processing |
+| `charts[].images.exclude.ref`             | string        | ""     | false | Container Image reference |
+| `charts[].images.excludeCopacetic`        | list(object)  | []     | false | Defines which images to exclude from copacetic patching if copa is enabled |
+| `charts[].images.excludeCopacetic.ref`    | string        | ""     | false | Container Image reference |
+| `charts[].images.modify`                  | list(object)  | []     | false | Defines which image references to modify before import |
+| `charts[].images.modify[].from`           | string        | ""     | false | Defines which image reference should be replaced with `to` |
+| `charts[].images.modify[].fromValuesPath` | string        | ""     | false | Defines which path in the charts default Helm Values to override with `to`|
+| `charts[].images.modify[].to`             | string        | ""     | false | Defines new value to be inserted |
 
 The `version` supports [Semantic Versioning 2.0.0](https://semver.org/) format versions as [Helm](https://helm.sh/docs/chart_best_practices/conventions/#version-numbers).
 

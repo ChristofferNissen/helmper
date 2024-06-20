@@ -36,14 +36,6 @@ charts:
 - name: loki
   version: 5.38.0
   valuesFilePath: /workspace/.in/values/loki/values.yaml
-  images:
-    exclude:
-    - ref: docker.io/library/redis
-    modify: 
-    - from: quay.io/cilium/operator
-      to: quay.io/cilium/operator-generic
-    - fromValuePath: operator.image.repository
-    - to: quay.io/cilium/operator-generic
   repo:
     name: grafana
     url: https://grafana.github.io/helm-charts/
@@ -70,6 +62,16 @@ charts:
   repo:
     name: argo
     url: https://argoproj.github.io/argo-helm/
+  images:
+    exclude:
+    - ref: ghcr.io/dexidp/dex
+    excludeCopacetic:
+    - ref: quay.io/argoproj/argocd
+    modify: 
+    - from: quay.io/argoproj/argocd
+      to: quay.io/argoproj/argocd
+    - fromValuePath: global.image.repository
+      to: quay.io/argoproj/argocd
 - name: prometheus
   version: 25.8.0
   valuesFilePath: /workspace/.in/values/prometheus/values.yaml
