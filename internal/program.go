@@ -94,6 +94,62 @@ func Program(args []string) error {
 		return err
 	}
 
+	// modify images according to user specification
+	for c, m := range chartImageHelmValuesMap {
+		for i, vs := range m {
+			r, err := i.String()
+			if err != nil {
+				return err
+			}
+
+			if c.Images != nil {
+				for _, e := range c.Images.Exclude {
+					if strings.HasPrefix(r, e.Ref) {
+						delete(m, i)
+						slog.Info("excluded image", slog.String("image", r))
+						break
+					}
+				}
+				for _, ec := range c.Images.ExcludeCopacetic {
+					if strings.HasPrefix(r, ec.Ref) {
+						slog.Info("excluded image from copacetic patching", slog.String("image", r))
+						f := false
+						i.Patch = &f
+						break
+					}
+				}
+				for _, modify := range c.Images.Modify {
+					if modify.From != "" {
+
+						if strings.HasPrefix(r, modify.From) {
+							delete(m, i)
+
+							img, err := registry.RefToImage(
+								strings.Replace(r, modify.From, modify.To, 1),
+							)
+							if err != nil {
+								return err
+							}
+
+							img.Digest = i.Digest
+							img.UseDigest = i.UseDigest
+							img.Tag = i.Tag
+							img.Patch = i.Patch
+
+							m[&img] = vs
+
+							newR, err := img.String()
+							if err != nil {
+								return err
+							}
+							slog.Info("modified image reference", slog.String("old_image", r), slog.String("new_image", newR))
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// Add in images from config
 	placeHolder := helm.Chart{
 		Name:    "images",

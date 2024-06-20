@@ -7,7 +7,6 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
-	"github.com/distribution/reference"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -206,43 +205,11 @@ copacetic:
 	// TODO. Concert config.Images to Image{}
 	is := []registry.Image{}
 	for _, i := range conf.Images {
-		ref, err := reference.ParseAnyReference(i.Ref)
+		img, err := registry.RefToImage(i.Ref)
 		if err != nil {
 			return viper, err
 		}
-
-		img := registry.Image{
-			Patch: i.Patch,
-		}
-		switch r := ref.(type) {
-		case reference.Canonical:
-			d := reference.Domain(r)
-			p := reference.Path(r)
-
-			img.Registry = d
-			img.Repository = p
-			img.Digest = r.Digest().String()
-			img.UseDigest = true
-
-			if t, ok := r.(reference.Tagged); ok {
-				img.Tag = t.Tag()
-			}
-
-			is = append(is, img)
-
-		case reference.NamedTagged:
-			d := reference.Domain(r)
-			p := reference.Path(r)
-
-			img.Registry = d
-			img.Repository = p
-			img.Tag = r.Tag()
-			img.UseDigest = false
-
-			is = append(is, img)
-
-		}
-
+		is = append(is, img)
 	}
 	state.SetValue(viper, "images", is)
 

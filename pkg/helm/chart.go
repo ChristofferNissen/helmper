@@ -23,12 +23,27 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
+type Images struct {
+	Exclude []struct {
+		Ref string `json:"ref"`
+	} `json:"exclude"`
+	ExcludeCopacetic []struct {
+		Ref string `json:"ref"`
+	} `json:"excludeCopacetic"`
+	Modify []struct {
+		From          string `json:"from"`
+		FromValuePath string `json:"fromValuePath"`
+		To            string `json:"to"`
+	} `json:"modify"`
+}
+
 type Chart struct {
 	Name           string     `json:"name"`
 	Version        string     `json:"version"`
 	ValuesFilePath string     `json:"valuesFilePath"`
 	Repo           repo.Entry `json:"repo"`
 	Parent         *Chart
+	Images         *Images `json:"images"`
 }
 
 // AddChartRepositoryToHelmRepositoryFile adds repository to Helm repository.yml to enable querying/pull
