@@ -80,10 +80,23 @@ charts:
       name: kedacore
       url: https://kedacore.github.io/charts/
   - name: argo-cd
-    version: ">5.0.0 <7.0.0"
+    version: ">5.0.0 <7.0.0"https://argoproj.github.io/argo-helm/
     repo:
       name: argo
       url: https://argoproj.github.io/argo-helm/
+  - name: cilium
+    version: "1.15.6"
+    repo:
+      name: cilium
+      url: https://helm.cilium.io/
+    images:
+      exclude:
+      - ref: quay.io/cilium/cilium-envoy
+      excludeCopacetic:
+      - ref: quay.io/cilium/startup-script
+      modify: 
+      - fromValuePath: operator.image.repository
+        to: quay.io/cilium/operator-generic
   - name: prometheus
     version: 25.8.0
     valuesFilePath: /workspace/.in/values/prometheus/values.yaml
@@ -134,18 +147,19 @@ registries:
 | `charts`      | list(object) | [] | false | Defines which charts to target |
 | `charts[].name`           | string |         | true | Chart name                                          |
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
-| `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
+| `charts[Name of the repository].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
 | `charts[].images`                         | object        | nil    | false | Customization options for images in chart  |
 | `charts[].images.exclude`                 | list(object)  | []     | false | Defines which images to exclude from processing |
-| `charts[].images.exclude.ref`             | string        | ""     | false | Container Image reference |
+| `charts[].images.exclude[].ref`           | string        | ""     | false | Container Image reference |
 | `charts[].images.excludeCopacetic`        | list(object)  | []     | false | Defines which images to exclude from copacetic patching if copa is enabled |
-| `charts[].images.excludeCopacetic.ref`    | string        | ""     | false | Container Image reference |
+| `charts[].images.excludeCopacetic[].ref`  | string        | ""     | false | Container Image reference |
 | `charts[].images.modify`                  | list(object)  | []     | false | Defines which image references to modify before import |
 | `charts[].images.modify[].from`           | string        | ""     | false | Defines which image reference should be replaced with `to` |
 | `charts[].images.modify[].fromValuesPath` | string        | ""     | false | Defines which path in the charts default Helm Values to override with `to`|
-| `charts[].images.modify[].to`             | string        | ""     | false | Defines new value to be inserted |
-| `charts[].repo.name`                     | string |         | true | Name of the repository                             |
-| `charts[].repo.url`                      | string |         | true | URL to the repository                              |
+| `charts[].images.modify[].to`             | string  Name of the repository      | ""     | false | Defines new value to be inserted |
+| `charts[].repo`                          | object |         | true  | Helm Repository spec                             |
+| `charts[].repo.name`                     | string |         | true  | Name of the repository                             |
+| `charts[].repo.url`                      | string |         | true  | URL to the repository                              |
 | `charts[].repo.username`                 | string | ""      | false | Username to repository for Basic Auth              |
 | `charts[].repo.password`                 | string | ""      | false | Password to Username for Basic Auth                |
 | `charts[].repo.certFile`                 | string | ""      | false | Path to certificate file for Certificate Auth      |
