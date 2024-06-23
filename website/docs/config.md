@@ -80,7 +80,7 @@ charts:
       name: kedacore
       url: https://kedacore.github.io/charts/
   - name: argo-cd
-    version: ">5.0.0 <7.0.0"https://argoproj.github.io/argo-helm/
+    version: ">5.0.0 <7.0.0"
     repo:
       name: argo
       url: https://argoproj.github.io/argo-helm/
