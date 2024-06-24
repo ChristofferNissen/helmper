@@ -11,7 +11,7 @@ require (
 	github.com/distribution/reference v0.5.0
 	github.com/docker/buildx v0.11.2
 	github.com/enescakir/emoji v1.0.0
-	github.com/hashicorp/go-retryablehttp v0.7.5
+	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/moby/buildkit v0.12.5
