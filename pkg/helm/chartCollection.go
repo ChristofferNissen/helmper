@@ -51,15 +51,6 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 		setter(args)
 	}
 
-	// for _, c := range collection.Charts {
-	// 	if !(strings.HasPrefix(c.Repo.URL, "http") || strings.HasPrefix(c.Repo.URL, "https")) {
-	// 		if strings.HasPrefix(c.Repo.URL, "oci") {
-	// 			return ChartCollection{}, xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories. For oci protocol, see docs on the chart.oci configuration option in Helmper.")
-	// 		}
-	// 		return ChartCollection{}, xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories")
-	// 	}
-	// }
-
 	// Add Helm Repos
 	err := collection.addToHelmRepositoryConfig()
 	if err != nil {

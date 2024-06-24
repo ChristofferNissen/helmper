@@ -240,7 +240,7 @@ func (c Chart) pullTar() (string, error) {
 	settings := cli.New()
 
 	// You can pass an empty string instead of settings.Namespace() to list
-	// all namespacesargo-cd
+	// all namespaces
 	// HELM_DRIVER can be one of: [ configmap, secret, sql ]
 	HelmDriver := "configmap"
 	actionConfig := new(action.Configuration)
@@ -302,11 +302,6 @@ func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, err
 
 	return push.Run(path, registry)
 }
-
-// const (
-// 	helmChartMetaMediaType    = "application/vnd.cncf.helm.chart.meta.v1+json"
-// 	helmChartContentMediaType = "application/vnd.cncf.helm.chart.content.v1+tar"
-// )
 
 func (c Chart) Pull() (string, error) {
 
@@ -475,7 +470,6 @@ func (c Chart) Locate() (string, error) {
 			}
 		}
 
-		// "/home/cn/.cache/helm/repository/argo-cd-5.51.6.tgz"
 		return chartPath, nil
 	}
 }

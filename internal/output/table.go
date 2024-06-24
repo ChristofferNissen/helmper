@@ -2,7 +2,6 @@ package output
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"os"
 	"strings"
@@ -65,7 +64,7 @@ func RenderChartTable(charts *helm.ChartCollection, setters ...Option) {
 		// Check for latest version of chart
 		latest, err := c.LatestVersion()
 		if err != nil {
-			log.Fatal(err)
+			slog.Error(err.Error(), slog.String("chart", c.Name), slog.String("repo", c.Repo.URL), slog.String("version", c.Version))
 		}
 
 		_, chartRef, values, _ := c.Read(args.Update)
