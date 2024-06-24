@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
-	"golang.org/x/xerrors"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -16,6 +15,9 @@ type ChartCollection struct {
 
 func (collection ChartCollection) pull() error {
 	for _, chart := range collection.Charts {
+		if strings.HasPrefix(chart.Repo.URL, "oci://") {
+			continue
+		}
 		if _, err := chart.Pull(); err != nil {
 			return err
 		}
@@ -25,6 +27,9 @@ func (collection ChartCollection) pull() error {
 
 func (collection ChartCollection) addToHelmRepositoryConfig() error {
 	for _, c := range collection.Charts {
+		if strings.HasPrefix(c.Repo.URL, "oci://") {
+			continue
+		}
 		err := c.AddToHelmRepositoryFile()
 		if err != nil {
 			return err
@@ -46,14 +51,14 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 		setter(args)
 	}
 
-	for _, c := range collection.Charts {
-		if !(strings.HasPrefix(c.Repo.URL, "http") || strings.HasPrefix(c.Repo.URL, "https")) {
-			if strings.HasPrefix(c.Repo.URL, "oci") {
-				return ChartCollection{}, xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories. For oci protocol, see docs on the chart.oci configuration option in Helmper.")
-			}
-			return ChartCollection{}, xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories")
-		}
-	}
+	// for _, c := range collection.Charts {
+	// 	if !(strings.HasPrefix(c.Repo.URL, "http") || strings.HasPrefix(c.Repo.URL, "https")) {
+	// 		if strings.HasPrefix(c.Repo.URL, "oci") {
+	// 			return ChartCollection{}, xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories. For oci protocol, see docs on the chart.oci configuration option in Helmper.")
+	// 		}
+	// 		return ChartCollection{}, xerrors.New("Helm only supports 'http and 'https' protocol for Helm Repositories")
+	// 	}
+	// }
 
 	// Add Helm Repos
 	err := collection.addToHelmRepositoryConfig()
@@ -79,7 +84,6 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 	// Expand collection if semantic version range
 	res := []Chart{}
 	for _, c := range collection.Charts {
-
 		vs, err := c.ResolveVersions()
 		if err != nil {
 			v, err := c.ResolveVersion()

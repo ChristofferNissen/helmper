@@ -5,7 +5,8 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "cmd/helmper/main.go"
+            "program": "cmd/helmper/main.go",
+            "args": ["--f", "config.yaml"]
         }
     ]
 }

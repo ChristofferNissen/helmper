@@ -147,6 +147,7 @@ registries:
 | `charts`      | list(object) | [] | false | Defines which charts to target |
 | `charts[].name`           | string |         | true | Chart name                                          |
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
+| `charts[].plainHTTP`        | bool | false   | false | Use HTTP instead of HTTPS for repository protocol |
 | `charts[Name of the repository].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
 | `charts[].images`                         | object        | nil    | false | Customization options for images in chart  |
 | `charts[].images.exclude`                 | list(object)  | []     | false | Defines which images to exclude from processing |

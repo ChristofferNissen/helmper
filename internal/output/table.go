@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"os"
 	"strings"
@@ -62,7 +63,10 @@ func RenderChartTable(charts *helm.ChartCollection, setters ...Option) {
 	for _, c := range charts.Charts {
 
 		// Check for latest version of chart
-		latest, _ := c.LatestVersion()
+		latest, err := c.LatestVersion()
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		_, chartRef, values, _ := c.Read(args.Update)
 		valuesType := determinePathType(c.ValuesFilePath)
