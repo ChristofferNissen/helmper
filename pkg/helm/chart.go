@@ -14,6 +14,9 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
+	"oras.land/oras-go/v2/registry/remote/retry"
 
 	"github.com/blang/semver/v4"
 	"helm.sh/helm/v3/pkg/action"
@@ -162,6 +165,18 @@ func (c Chart) LatestVersion() (string, error) {
 		}
 
 		repo.PlainHTTP = c.PlainHTTP
+
+		// prepare authentication using Docker credentials
+		storeOpts := credentials.StoreOptions{}
+		credStore, err := credentials.NewStoreFromDocker(storeOpts)
+		if err != nil {
+			return "", err
+		}
+		repo.Client = &auth.Client{
+			Client:     retry.DefaultClient,
+			Cache:      auth.NewCache(),
+			Credential: credentials.Credential(credStore), // Use the credentials store
+		}
 
 		l := c.Version
 		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
