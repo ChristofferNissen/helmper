@@ -375,7 +375,7 @@ func (c Chart) Locate() (string, error) {
 	switch {
 	case strings.HasPrefix(c.Repo.URL, "oci://"):
 
-		ref := c.Repo.URL + c.Name
+		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name
 
 		co := action.ChartPathOptions{
 			CaFile:                c.Repo.CAFile,
