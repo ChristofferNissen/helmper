@@ -65,7 +65,8 @@ type registryConfigSection struct {
 }
 
 type ParserConfigSection struct {
-	UseCustomValues bool `yaml:"useCustomValues"`
+	DisableImageDetection bool `yaml:"disableImageDetection"`
+	UseCustomValues       bool `yaml:"useCustomValues"`
 }
 
 type config struct {

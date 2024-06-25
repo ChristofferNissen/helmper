@@ -76,6 +76,7 @@ type imageInfo struct {
 
 type ChartOption struct {
 	ChartCollection *ChartCollection
+	IdentifyImages  bool
 	UseCustomValues bool
 }
 
@@ -262,6 +263,16 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 		return channel
 	}
 
+	collector := func(charts <-chan *chartInfo) ChartData {
+		chartImageHelmValuesMap := make(ChartData)
+
+		for c := range charts {
+			chartImageHelmValuesMap[*c.Chart] = nil
+		}
+
+		return chartImageHelmValuesMap
+	}
+
 	// Parse charts for images
 	imageGenerator := func(charts <-chan *chartInfo) <-chan *imageInfo {
 		channel := make(chan *imageInfo)
@@ -341,7 +352,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 		return channel
 	}
 
-	collector := func(imgs <-chan *imageInfo) ChartData {
+	imageCollector := func(imgs <-chan *imageInfo) ChartData {
 		chartImageHelmValuesMap := make(ChartData)
 
 		for i := range imgs {
@@ -371,11 +382,21 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 		return chartImageHelmValuesMap
 	}
 
-	cd := collector(
-		imageGenerator(
-			chartGenerator(co.ChartCollection),
-		),
-	)
+	f := func(c *ChartCollection) ChartData {
+		return collector(chartGenerator(c))
+	}
+
+	if co.IdentifyImages {
+		f = func(c *ChartCollection) ChartData {
+			return imageCollector(
+				imageGenerator(
+					chartGenerator(c),
+				),
+			)
+		}
+	}
+
+	cd := f(co.ChartCollection)
 
 	if err := eg.Wait(); err != nil {
 		return ChartData{}, err

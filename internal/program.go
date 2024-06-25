@@ -84,6 +84,7 @@ func Program(args []string) error {
 	slog.Debug("Starting parsing user specified chart(s) for images..")
 	co := helm.ChartOption{
 		ChartCollection: &charts,
+		IdentifyImages:  !parserConfig.DisableImageDetection,
 		UseCustomValues: parserConfig.UseCustomValues,
 	}
 	chartImageHelmValuesMap, err := co.Run(
