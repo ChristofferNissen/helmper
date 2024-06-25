@@ -62,7 +62,10 @@ func RenderChartTable(charts *helm.ChartCollection, setters ...Option) {
 	for _, c := range charts.Charts {
 
 		// Check for latest version of chart
-		latest, _ := c.LatestVersion()
+		latest, err := c.LatestVersion()
+		if err != nil {
+			slog.Error(err.Error(), slog.String("chart", c.Name), slog.String("repo", c.Repo.URL), slog.String("version", c.Version))
+		}
 
 		_, chartRef, values, _ := c.Read(args.Update)
 		valuesType := determinePathType(c.ValuesFilePath)

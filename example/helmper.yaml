@@ -36,6 +36,7 @@ charts:
 - name: loki
   version: 5.38.0
   valuesFilePath: /workspace/.in/values/loki/values.yaml
+  plainHTTP: false
   repo:
     name: grafana
     url: https://grafana.github.io/helm-charts/

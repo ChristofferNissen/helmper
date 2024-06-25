@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -12,6 +13,10 @@ import (
 
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
+	"oras.land/oras-go/v2/registry/remote/retry"
 
 	"github.com/blang/semver/v4"
 	"helm.sh/helm/v3/pkg/action"
@@ -44,6 +49,7 @@ type Chart struct {
 	Repo           repo.Entry `json:"repo"`
 	Parent         *Chart
 	Images         *Images `json:"images"`
+	PlainHTTP      bool    `json:"plainHTTP"`
 }
 
 // AddChartRepositoryToHelmRepositoryFile adds repository to Helm repository.yml to enable querying/pull
@@ -149,6 +155,54 @@ func (c Chart) ResolveVersion() (string, error) {
 func (c Chart) LatestVersion() (string, error) {
 	config := cli.New()
 
+	if strings.HasPrefix(c.Repo.URL, "oci://") {
+
+		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
+
+		repo, err := remote.NewRepository(ref)
+		if err != nil {
+			return "", err
+		}
+
+		repo.PlainHTTP = c.PlainHTTP
+
+		// prepare authentication using Docker credentials
+		storeOpts := credentials.StoreOptions{}
+		credStore, err := credentials.NewStoreFromDocker(storeOpts)
+		if err != nil {
+			return "", err
+		}
+		repo.Client = &auth.Client{
+			Client:     retry.DefaultClient,
+			Cache:      auth.NewCache(),
+			Credential: credentials.Credential(credStore), // Use the credentials store
+		}
+
+		l := c.Version
+		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
+			vs := []semver.Version{}
+
+			for _, t := range tags {
+				s, err := semver.Parse(t)
+				if err != nil {
+					// non semver tag
+					continue
+				}
+				vs = append(vs, s)
+			}
+
+			semver.Sort(vs)
+			l = vs[len(vs)-1].String()
+
+			return nil
+		})
+		if err != nil {
+			return "", err
+		}
+
+		return l, nil
+	}
+
 	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
@@ -191,7 +245,7 @@ func (c Chart) pullTar() (string, error) {
 		CertFile:              c.Repo.CertFile,
 		KeyFile:               c.Repo.KeyFile,
 		InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
-		PlainHTTP:             u.Scheme == "https",
+		PlainHTTP:             c.PlainHTTP || u.Scheme == "https",
 		Password:              c.Repo.Password,
 		PassCredentialsAll:    c.Repo.PassCredentialsAll,
 		RepoURL:               c.Repo.URL,
@@ -331,53 +385,108 @@ func (c Chart) Pull() (string, error) {
 
 func (c Chart) Locate() (string, error) {
 	config := cli.New()
-
-	u, err := url.Parse(c.Repo.URL)
-	if err != nil {
-		return "", err
-	}
-
-	co := action.ChartPathOptions{
-		CaFile:                c.Repo.CAFile,
-		CertFile:              c.Repo.CertFile,
-		KeyFile:               c.Repo.KeyFile,
-		InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
-		PlainHTTP:             u.Scheme == "https",
-		Password:              c.Repo.Password,
-		PassCredentialsAll:    c.Repo.PassCredentialsAll,
-		RepoURL:               c.Repo.URL,
-		Username:              c.Repo.Username,
-		Version:               c.Version,
-	}
-
 	helmCacheHome := config.EnvVars()["HELM_CACHE_HOME"]
 
-	chartPath, err := co.LocateChart(c.Name, config)
-	if err != nil {
-		// subcharts nested in parent charts source?
-		if c.Parent != nil {
-			path := filepath.Join(helmCacheHome, c.Parent.Name, "charts", c.Name)
-			if file.Exists(path) {
-				return path, nil
-			}
+	switch {
+	case strings.HasPrefix(c.Repo.URL, "oci://"):
+
+		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name
+
+		co := action.ChartPathOptions{
+			CaFile:                c.Repo.CAFile,
+			CertFile:              c.Repo.CertFile,
+			KeyFile:               c.Repo.KeyFile,
+			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+			PassCredentialsAll:    c.Repo.PassCredentialsAll,
+			Username:              c.Repo.Username,
+			Password:              c.Repo.Password,
+			Version:               c.Version,
 		}
 
-		ma := downloader.Manager{
-			ChartPath:  chartPath,
-			SkipUpdate: false,
+		settings := cli.New()
+
+		// You can pass an empty string instead of settings.Namespace() to list
+		// all namespaces
+		// HELM_DRIVER can be one of: [ configmap, secret, sql ]
+		HelmDriver := "configmap"
+		actionConfig := new(action.Configuration)
+		if err := actionConfig.Init(
+			settings.RESTClientGetter(),
+			settings.Namespace(),
+			HelmDriver,
+			log.Printf,
+		); err != nil {
+			return "", err
 		}
-		err := ma.Update()
+
+		// Make temporary folder for tar archives
+		f, err := os.MkdirTemp(os.TempDir(), "untar")
+		if err != nil {
+			return "", err
+		}
+		defer os.RemoveAll(f)
+
+		opts := []action.PullOpt{
+			action.WithConfig(actionConfig),
+		}
+		pull := action.NewPullWithOpts(opts...)
+		pull.ChartPathOptions = co
+		pull.Settings = settings
+		pull.DestDir = helmCacheHome
+
+		_, err = pull.Run(ref)
 		if err != nil {
 			return "", err
 		}
 
-		chartPath, err := co.LocateChart(c.Name, config)
-		if err == nil {
-			return chartPath, nil
-		}
-	}
+		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
+	default:
 
-	return chartPath, nil
+		u, err := url.Parse(c.Repo.URL)
+		if err != nil {
+			return "", err
+		}
+
+		co := action.ChartPathOptions{
+			CaFile:                c.Repo.CAFile,
+			CertFile:              c.Repo.CertFile,
+			KeyFile:               c.Repo.KeyFile,
+			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+			PlainHTTP:             u.Scheme == "https",
+			Password:              c.Repo.Password,
+			PassCredentialsAll:    c.Repo.PassCredentialsAll,
+			RepoURL:               c.Repo.URL,
+			Username:              c.Repo.Username,
+			Version:               c.Version,
+		}
+
+		chartPath, err := co.LocateChart(c.Name, config)
+		if err != nil {
+			// subcharts nested in parent charts source?
+			if c.Parent != nil {
+				path := filepath.Join(helmCacheHome, c.Parent.Name, "charts", c.Name)
+				if file.Exists(path) {
+					return path, nil
+				}
+			}
+
+			ma := downloader.Manager{
+				ChartPath:  chartPath,
+				SkipUpdate: false,
+			}
+			err := ma.Update()
+			if err != nil {
+				return "", err
+			}
+
+			chartPath, err := co.LocateChart(c.Name, config)
+			if err == nil {
+				return chartPath, nil
+			}
+		}
+
+		return chartPath, nil
+	}
 }
 
 func (c Chart) Values() (map[string]any, error) {
