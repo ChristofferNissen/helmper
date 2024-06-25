@@ -121,8 +121,9 @@ registries:
 | `verbose`     | bool         | false    |  false | Toggle verbose output |
 | `update`      | bool         | false    |  false | Toggle update to latest chart version for each specified chart in `charts` |
 | `all`         | bool         | false    |  false | Toggle import of all images regardless if they exist in the registries defined in `registries` |
-| `parser`         | object         | nil    |  false | Adjust how Helmper parses charts |
-| `parser.useCustomValues`         | bool         | false    |  false | Use user defined values for image parsing |
+| `parser`                          | object       | nil    |  false | Adjust how Helmper parses charts |
+| `parser.disableImageDetection`    | bool         | false  |  false | Disable Image detection |
+| `parser.useCustomValues`          | bool         | false  |  false | Use user defined values for image parsing |
 | `import`      | object       | nil      | false |  If import is enabled, images will be pushed to the defined registries. If copacetic is enabled, images will be patched if possible. Finally, in the import section Cosign can be configured to sign the images after pushing to the registries. See table blow for full configuration options. |
 | `import.enabled`   | bool   | false   | false | Enable import of charts and artifacts to registries |
 | `import.architecture`   | *string   | nil   | false | Specify desired container image architecture |
@@ -148,7 +149,7 @@ registries:
 | `charts[].name`           | string |         | true | Chart name                                          |
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
 | `charts[].plainHTTP`        | bool | false   | false | Use HTTP instead of HTTPS for repository protocol |
-| `charts[Name of the repository].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
+| `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
 | `charts[].images`                         | object        | nil    | false | Customization options for images in chart  |
 | `charts[].images.exclude`                 | list(object)  | []     | false | Defines which images to exclude from processing |
 | `charts[].images.exclude[].ref`           | string        | ""     | false | Container Image reference |

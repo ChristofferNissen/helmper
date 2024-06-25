@@ -3,6 +3,7 @@ verbose: true
 update: false
 all: false
 parser:
+  disableImageDetection: false
   useCustomValues: false
 import:
   enabled: true
