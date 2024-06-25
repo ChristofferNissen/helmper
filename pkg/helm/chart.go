@@ -235,6 +235,63 @@ func (c Chart) LatestVersion() (string, error) {
 
 func (c Chart) pullTar() (string, error) {
 
+	if strings.HasPrefix(c.Repo.URL, "oci://") {
+
+		settings := cli.New()
+
+		helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
+
+		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name
+
+		co := action.ChartPathOptions{
+			CaFile:                c.Repo.CAFile,
+			CertFile:              c.Repo.CertFile,
+			KeyFile:               c.Repo.KeyFile,
+			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+			PassCredentialsAll:    c.Repo.PassCredentialsAll,
+			Username:              c.Repo.Username,
+			Password:              c.Repo.Password,
+			Version:               c.Version,
+		}
+
+		// You can pass an empty string instead of settings.Namespace() to list
+		// all namespaces
+		// HELM_DRIVER can be one of: [ configmap, secret, sql ]
+		HelmDriver := "configmap"
+		actionConfig := new(action.Configuration)
+		if err := actionConfig.Init(
+			settings.RESTClientGetter(),
+			settings.Namespace(),
+			HelmDriver,
+			log.Printf,
+		); err != nil {
+			return "", err
+		}
+
+		// Make temporary folder for tar archives
+		f, err := os.MkdirTemp(os.TempDir(), "untar")
+		if err != nil {
+			return "", err
+		}
+		defer os.RemoveAll(f)
+
+		opts := []action.PullOpt{
+			action.WithConfig(actionConfig),
+		}
+		pull := action.NewPullWithOpts(opts...)
+		pull.ChartPathOptions = co
+		pull.Settings = settings
+		pull.DestDir = helmCacheHome
+
+		_, err = pull.Run(ref)
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
+
+	}
+
 	u, err := url.Parse(c.Repo.URL)
 	if err != nil {
 		return "", err
@@ -304,7 +361,6 @@ func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, err
 	if err != nil {
 		return "", err
 	}
-
 	defer os.Remove(path)
 
 	opts := []action.PushOpt{
@@ -315,7 +371,8 @@ func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, err
 	push := action.NewPushWithOpts(opts...)
 	push.Settings = settings
 
-	return push.Run(path, registry)
+	out, res := push.Run(path, registry)
+	return out, res
 }
 
 func (c Chart) Pull() (string, error) {
