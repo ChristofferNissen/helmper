@@ -15,9 +15,10 @@ import (
 
 type ImportConfigSection struct {
 	Import struct {
-		Enabled      bool    `yaml:"enabled"`
-		Architecture *string `yaml:"architecture"`
-		Copacetic    struct {
+		Enabled                   bool    `yaml:"enabled"`
+		Architecture              *string `yaml:"architecture"`
+		ReplaceRegistryReferences bool    `yaml:"replaceRegistryReferences"`
+		Copacetic                 struct {
 			Enabled      bool `yaml:"enabled"`
 			IgnoreErrors bool `yaml:"ignoreErrors"`
 			Buildkitd    struct {

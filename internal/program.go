@@ -193,6 +193,8 @@ func Program(args []string) error {
 		err := helm.ChartImportOption{
 			Registries:      registries,
 			ChartCollection: &charts,
+			All:             all,
+			ModifyRegistry:  importConfig.Import.ReplaceRegistryReferences,
 		}.Run(ctx, opts...)
 		if err != nil {
 			return err

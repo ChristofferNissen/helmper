@@ -159,3 +159,43 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, useCusto
 func findImageReferences(data map[string]any, values map[string]any, useCustomValues bool) map[*registry.Image][]string {
 	return findImageReferencesAcc(data, values, useCustomValues, "")
 }
+
+// traverse helm chart values data structure
+func replaceImageReferences(data map[string]any, registry string) {
+
+	for k, v := range data {
+		switch v := v.(type) {
+
+		// yaml key-value pair value type
+		case string:
+
+			switch k {
+			case "registry":
+				registry, _ = strings.CutPrefix(registry, "oci://")
+				registry, _ = strings.CutSuffix(registry, "/charts")
+				data[k] = registry
+			case "image":
+				fallthrough
+			case "repository":
+				if v != "" {
+					registry, _ = strings.CutPrefix(registry, "oci://")
+					registry, _ = strings.CutSuffix(registry, "/charts")
+
+					s := strings.Split(v, "/")
+
+					if len(s) > 1 {
+						s[0] = registry
+					} else {
+						s = append([]string{registry}, s...)
+					}
+
+					data[k] = strings.Join(s, "/")
+				}
+			}
+
+		// nested yaml object
+		case map[string]any:
+			replaceImageReferences(data[k].(map[string]any), registry)
+		}
+	}
+}

@@ -8,6 +8,7 @@ parser:
 import:
   enabled: true
   architecture: "linux/amd64"
+  replaceRegistryReferences: true
   copacetic:
     enabled: true
     ignoreErrors: true
