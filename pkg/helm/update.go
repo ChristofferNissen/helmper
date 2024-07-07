@@ -26,10 +26,20 @@ func getManager(out *bytes.Buffer, verbose bool, update bool) downloader.Manager
 		// Set options
 		o1 := getter.WithTimeout(10 * time.Second)
 		o2 := getter.WithTransport(transport)
-		opts := append(options, []getter.Option{o1, o2}...)
+		// if plainHTTP and insecure set
+		o3 := getter.WithPlainHTTP(true)
+		o4 := getter.WithInsecureSkipVerifyTLS(true)
+		opts := append(options, []getter.Option{o1, o2, o3, o4}...)
 
 		// return curried function
 		return getter.NewHTTPGetter(opts...)
+	}
+
+	OCIGetter := func(options ...getter.Option) (getter.Getter, error) {
+		o3 := getter.WithPlainHTTP(true)
+		o4 := getter.WithInsecureSkipVerifyTLS(true)
+		opts := append(options, []getter.Option{o3, o4}...)
+		return getter.NewOCIGetter(opts...)
 	}
 
 	cl := cli.New()
@@ -50,7 +60,7 @@ func getManager(out *bytes.Buffer, verbose bool, update bool) downloader.Manager
 		Getters: []getter.Provider{
 			{
 				Schemes: []string{registry.OCIScheme},
-				New:     getter.NewOCIGetter,
+				New:     OCIGetter,
 			},
 			{
 				Schemes: []string{"http", "https"},

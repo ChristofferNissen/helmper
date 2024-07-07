@@ -36,7 +36,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 	charts := []Chart{}
 	for _, c := range opt.ChartCollection.Charts {
 
-		_, chartRef, values, err := c.Read(args.Update)
+		_, chartRef, _, err := c.Read(args.Update)
 		if err != nil {
 			return err
 		}
@@ -46,10 +46,10 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 		for _, d := range chartRef.Metadata.Dependencies {
 
-			if !ConditionMet(d.Condition, values) {
-				slog.Debug("Skipping disabled chart", slog.String("chart", d.Name), slog.String("condition", d.Condition))
-				continue
-			}
+			// if !ConditionMet(d.Condition, values) {
+			// 	slog.Debug("Skipping disabled chart", slog.String("chart", d.Name), slog.String("condition", d.Condition))
+			// 	continue
+			// }
 
 			// Only import enabled charts
 			if d.Repository == "" {
