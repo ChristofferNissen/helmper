@@ -129,6 +129,60 @@ func (c Chart) ResolveVersion() (string, error) {
 	major := s.Major
 	minor := s.Minor
 
+	if strings.HasPrefix(c.Repo.URL, "oci://") {
+		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
+
+		repo, err := remote.NewRepository(ref)
+		if err != nil {
+			return "", err
+		}
+
+		repo.PlainHTTP = c.PlainHTTP
+
+		// prepare authentication using Docker credentials
+		storeOpts := credentials.StoreOptions{}
+		credStore, err := credentials.NewStoreFromDocker(storeOpts)
+		if err != nil {
+			return "", err
+		}
+		repo.Client = &auth.Client{
+			Client:     retry.DefaultClient,
+			Cache:      auth.NewCache(),
+			Credential: credentials.Credential(credStore), // Use the credentials store
+		}
+
+		vs := []semver.Version{}
+		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
+			for _, t := range tags {
+				s, err := semver.Parse(t)
+				if err != nil {
+					// non semver tag
+					continue
+				}
+				vs = append(vs, s)
+			}
+
+			semver.Sort(vs)
+
+			return nil
+		})
+		if err != nil {
+			return "", err
+		}
+
+		for _, v := range vs {
+			switch {
+			case len(v.Pre) > 0:
+				continue
+			case v.Major == major && v.Minor == minor:
+				slog.Debug("Resolved chart version", slog.String("chart", c.Name), slog.String("version", v.String()))
+				return v.String(), nil
+			}
+		}
+
+		return "", xerrors.Errorf("Not found")
+	}
+
 	config := cli.New()
 	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
