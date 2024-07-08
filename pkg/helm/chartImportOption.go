@@ -62,6 +62,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 				Version:        d.Version,
 				ValuesFilePath: c.ValuesFilePath,
 				Parent:         &c,
+				PlainHTTP:      c.PlainHTTP,
 			}
 
 			// Resolve Globs to latest patch
