@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
+	"gopkg.in/yaml.v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
@@ -50,6 +52,7 @@ type Chart struct {
 	Parent         *Chart
 	Images         *Images `json:"images"`
 	PlainHTTP      bool    `json:"plainHTTP"`
+	DepsCount      int
 }
 
 // AddChartRepositoryToHelmRepositoryFile adds repository to Helm repository.yml to enable querying/pull
@@ -400,6 +403,31 @@ func (c Chart) pullTar() (string, error) {
 	return matches[0], nil
 }
 
+func (c Chart) CountDependencies() (int, error) {
+
+	settings := cli.New()
+
+	HelmDriver := "configmap"
+	actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, slog.Info); err != nil {
+		slog.Error(fmt.Sprintf("%+v", err))
+		return 0, err
+	}
+
+	path, err := c.pullTar()
+	if err != nil {
+		return 0, err
+	}
+	defer os.Remove(path)
+
+	chartRef, err := loader.Load(path)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(chartRef.Metadata.Dependencies), nil
+}
+
 func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, error) {
 
 	settings := cli.New()
@@ -417,6 +445,116 @@ func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, err
 	}
 	defer os.Remove(path)
 
+	opts := []action.PushOpt{
+		action.WithPushConfig(actionConfig),
+		action.WithInsecureSkipTLSVerify(insecure),
+		action.WithPlainHTTP(plainHTTP),
+	}
+	push := action.NewPushWithOpts(opts...)
+	push.Settings = settings
+
+	out, res := push.Run(path, registry)
+	return out, res
+}
+
+func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (string, error) {
+
+	settings := cli.New()
+
+	HelmDriver := "configmap"
+	actionConfig := new(action.Configuration)
+	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, slog.Info); err != nil {
+		slog.Error(fmt.Sprintf("%+v", err))
+		return "", err
+	}
+
+	path, err := c.pullTar()
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(path)
+
+	dname, err := os.MkdirTemp("", "sampledir")
+	if err != nil {
+		return "", err
+	}
+	// fmt.Println("Temp dir name:", dname)
+	defer os.RemoveAll(dname)
+
+	err = chartutil.ExpandFile(dname, path)
+	if err != nil {
+		return "", err
+	}
+
+	// modify chart contents here before pushing
+	chartRef, err := loader.Load(dname + "/" + c.Name)
+	if err != nil {
+		return "", err
+	}
+
+	// Dependencies (Chart.yaml)
+	for _, d := range chartRef.Metadata.Dependencies {
+		// Change dependency ref to registry being imported to
+		d.Repository = registry
+
+		if strings.Contains(d.Version, "*") {
+			chart := Chart{
+				Name: d.Name,
+				Repo: repo.Entry{
+					Name: c.Repo.Name,
+					URL:  d.Repository,
+				},
+				Version:        d.Version,
+				ValuesFilePath: c.ValuesFilePath,
+				Parent:         &c,
+			}
+
+			// OCI dependencies can not use globs in version
+			// Resolve Globs to latest patch
+			v, err := chart.ResolveVersion()
+			if err == nil {
+				d.Version = v
+			}
+		}
+	}
+
+	err = chartutil.SaveChartfile(dname+"/"+c.Name+"/Chart.yaml", chartRef.Metadata)
+	if err != nil {
+		return "", err
+	}
+
+	// Helm Dependency Update (helm dep up)
+	// https://github.com/helm/helm/blob/main/cmd/helm/dependency_update.go
+	var buf bytes.Buffer
+	ma := getManager(&buf, true, true)
+	ma.ChartPath = dname + "/" + c.Name
+	err = ma.Update()
+	if err != nil {
+		return "", err
+	}
+
+	// Reload Helm Chart from filesystem
+	chartRef, err = loader.Load(dname + "/" + c.Name)
+	if err != nil {
+		return "", err
+	}
+
+	// Image References in values.yaml
+	replaceImageReferences(chartRef.Values, registry)
+	for _, r := range chartRef.Raw {
+		if r.Name == "values.yaml" {
+			d, _ := yaml.Marshal(chartRef.Values)
+			r.Data = d
+		}
+	}
+
+	// Save Helm Chart to Filesystem before push
+	path, err = chartutil.Save(chartRef, "/tmp/")
+	if err != nil {
+		return "", err
+	}
+
+	// Push Modified Helm Chart
 	opts := []action.PushOpt{
 		action.WithPushConfig(actionConfig),
 		action.WithInsecureSkipTLSVerify(insecure),

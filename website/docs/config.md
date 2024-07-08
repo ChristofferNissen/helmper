@@ -126,6 +126,7 @@ registries:
 | `parser.useCustomValues`          | bool         | false  |  false | Use user defined values for image parsing |
 | `import`      | object       | nil      | false |  If import is enabled, images will be pushed to the defined registries. If copacetic is enabled, images will be patched if possible. Finally, in the import section Cosign can be configured to sign the images after pushing to the registries. See table blow for full configuration options. |
 | `import.enabled`   | bool   | false   | false | Enable import of charts and artifacts to registries |
+| `import.replaceRegistryReferences`   | bool   | false   | false | Replace occurrences of old registry with import target registry |
 | `import.architecture`   | *string   | nil   | false | Specify desired container image architecture |
 | `import.copacetic.enabled`      | bool   | false   |  false | Enable Copacetic                            |
 | `import.copacetic.ignoreErrors` | bool   | true    |  false | Ignore errors during Copacetic patching     |

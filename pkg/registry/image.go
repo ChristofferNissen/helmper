@@ -106,7 +106,14 @@ func (i Image) Elements() (string, string, string) {
 	switch r := res.(type) {
 	case reference.Named:
 		withoutDomain := strings.Replace(r.Name(), reference.Domain(r)+"/", "", 1)
-		repository, name := strings.Split(withoutDomain, "/")[0], strings.Split(withoutDomain, "/")[1]
+		s := strings.Split(withoutDomain, "/")
+		repository, name := func() (string, string) {
+			if len(s) == 1 {
+				return "library", s[0]
+			} else {
+				return s[0], s[1]
+			}
+		}()
 		return reference.Domain(r), repository, name
 	default:
 		return "", "", ""

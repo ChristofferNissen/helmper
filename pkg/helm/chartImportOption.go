@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sort"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
@@ -15,6 +16,8 @@ import (
 type ChartImportOption struct {
 	Registries      []registry.Registry
 	ChartCollection *ChartCollection
+	All             bool
+	ModifyRegistry  bool
 }
 
 func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
@@ -32,19 +35,21 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 	charts := []Chart{}
 	for _, c := range opt.ChartCollection.Charts {
-		charts = append(charts, c)
 
-		_, chartRef, values, err := c.Read(args.Update)
+		_, chartRef, _, err := c.Read(args.Update)
 		if err != nil {
 			return err
 		}
 
+		c.DepsCount = len(chartRef.Metadata.Dependencies)
+		charts = append(charts, c)
+
 		for _, d := range chartRef.Metadata.Dependencies {
 
-			if !ConditionMet(d.Condition, values) {
-				slog.Debug("Skipping disabled chart", slog.String("chart", d.Name), slog.String("condition", d.Condition))
-				continue
-			}
+			// if !ConditionMet(d.Condition, values) {
+			// 	slog.Debug("Skipping disabled chart", slog.String("chart", d.Name), slog.String("condition", d.Condition))
+			// 	continue
+			// }
 
 			// Only import enabled charts
 			if d.Repository == "" {
@@ -62,20 +67,22 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 				Version:        d.Version,
 				ValuesFilePath: c.ValuesFilePath,
 				Parent:         &c,
+				DepsCount:      0,
 				PlainHTTP:      c.PlainHTTP,
 			}
 
 			// Resolve Globs to latest patch
 			v, err := chart.ResolveVersion()
-			if err != nil {
-				return err
+			if err == nil {
+				chart.Version = v
 			}
-			chart.Version = v
 
 			charts = append(charts, chart)
 		}
-
 	}
+
+	// Sort charts according to least dependencies
+	sort.Slice(charts, func(i, j int) bool { return charts[i].DepsCount < charts[j].DepsCount })
 
 	bar := progressbar.NewOptions(len(charts),
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
@@ -104,19 +111,29 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 		for _, r := range opt.Registries {
 
-			_, err := r.Exist(ctx, "charts/"+c.Name, c.Version)
-			if err == nil {
-				slog.Info("Chart already present in registry. Skipping import", slog.String("chart", "charts/"+c.Name), slog.String("registry", "oci://"+r.URL), slog.String("version", c.Version))
-				continue
+			if !opt.All {
+				_, err := r.Exist(ctx, "charts/"+c.Name, c.Version)
+				if err == nil {
+					slog.Info("Chart already present in registry. Skipping import", slog.String("chart", "charts/"+c.Name), slog.String("registry", "oci://"+r.URL), slog.String("version", c.Version))
+					continue
+				}
+				slog.Debug(err.Error())
 			}
 
-			slog.Debug(err.Error())
+			if opt.ModifyRegistry {
+				res, err := c.PushAndModify("oci://"+r.URL+"/charts", r.Insecure, r.PlainHTTP)
+				if err != nil {
+					return err
+				}
+				slog.Debug(res)
+
+				continue
+			}
 
 			res, err := c.Push("oci://"+r.URL+"/charts", r.Insecure, r.PlainHTTP)
 			if err != nil {
 				return err
 			}
-
 			slog.Debug(res)
 
 		}
