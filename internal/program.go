@@ -198,17 +198,19 @@ func Program(args []string) error {
 			return err
 		}
 
-		signo := mySign.SignChartOption{
-			ChartCollection: &charts,
-			Registries:      registries,
+		if importConfig.Import.Cosign.Enabled {
+			signo := mySign.SignChartOption{
+				ChartCollection: &charts,
+				Registries:      registries,
 
-			KeyRef:            importConfig.Import.Cosign.KeyRef,
-			KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
-			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
-		}
-		if err := signo.Run(); err != nil {
-			return err
+				KeyRef:            importConfig.Import.Cosign.KeyRef,
+				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
+				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			}
+			if err := signo.Run(); err != nil {
+				return err
+			}
 		}
 	}
 
