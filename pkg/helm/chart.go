@@ -119,8 +119,6 @@ func (c Chart) ResolveVersions() ([]string, error) {
 
 func (c Chart) ResolveVersion() (string, error) {
 
-	// TODO: Add OCI
-
 	v := strings.ReplaceAll(c.Version, "*", "0")
 
 	s, err := semver.Parse(strings.TrimPrefix(v, "v"))
