@@ -29,7 +29,7 @@ type Exister interface {
 var _ Exister = (*Registry)(nil)
 
 type Puller interface {
-	Pull(context.Context, string, string) (bool, error)
+	Pull(context.Context, string, string) (*v1.Descriptor, error)
 }
 
 var _ Puller = (*Registry)(nil)
@@ -103,15 +103,12 @@ func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag s
 	return manifest, nil
 }
 
-func (r Registry) Pull(ctx context.Context, name string, tag string) (bool, error) {
-	// 0. Create an OCI layout store
-	store := memory.New()
-
+func (r Registry) Fetch(ctx context.Context, name string, tag string) (*v1.Descriptor, error) {
 	// 1. Connect to a remote repository
 	ref := strings.Join([]string{r.URL, name}, "/")
 	repo, err := remote.NewRepository(ref)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	repo.PlainHTTP = r.PlainHTTP
@@ -120,7 +117,7 @@ func (r Registry) Pull(ctx context.Context, name string, tag string) (bool, erro
 	storeOpts := credentials.StoreOptions{}
 	credStore, err := credentials.NewStoreFromDocker(storeOpts)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	repo.Client = &auth.Client{
 		Client:     retry.DefaultClient,
@@ -129,12 +126,46 @@ func (r Registry) Pull(ctx context.Context, name string, tag string) (bool, erro
 	}
 
 	// 2. Copy from the remote repository to the OCI layout store
-	_, err = oras.Copy(ctx, repo, tag, store, tag, oras.DefaultCopyOptions)
+	d, err := repo.Resolve(ctx, tag)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return true, nil
+	return &d, nil
+}
+
+func (r Registry) Pull(ctx context.Context, name string, tag string) (*v1.Descriptor, error) {
+	// 0. Create an OCI layout store
+	store := memory.New()
+
+	// 1. Connect to a remote repository
+	ref := strings.Join([]string{r.URL, name}, "/")
+	repo, err := remote.NewRepository(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.PlainHTTP = r.PlainHTTP
+
+	// prepare authentication using Docker credentials
+	storeOpts := credentials.StoreOptions{}
+	credStore, err := credentials.NewStoreFromDocker(storeOpts)
+	if err != nil {
+		return nil, err
+	}
+	repo.Client = &auth.Client{
+		Client:     retry.DefaultClient,
+		Cache:      auth.NewCache(),
+		Credential: credentials.Credential(credStore), // Use the credentials store
+	}
+
+	// 2. Copy from the remote repository to the OCI layout store
+	d, err := oras.Copy(ctx, repo, tag, store, tag, oras.DefaultCopyOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return &d, nil
 }
 
 func (r Registry) Exist(ctx context.Context, name string, tag string) (bool, error) {
