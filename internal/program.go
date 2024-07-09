@@ -17,6 +17,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
+	"github.com/bobg/go-generics/slices"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 )
@@ -40,16 +41,17 @@ func Program(args []string) error {
 		return err
 	}
 	var (
-		k8sVersion   string                        = state.GetValue[string](viper, "k8s_version")
-		verbose      bool                          = state.GetValue[bool](viper, "verbose")
-		update       bool                          = state.GetValue[bool](viper, "update")
-		all          bool                          = state.GetValue[bool](viper, "all")
-		parserConfig bootstrap.ParserConfigSection = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
-		importConfig bootstrap.ImportConfigSection = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
-		registries   []registry.Registry           = state.GetValue[[]registry.Registry](viper, "registries")
-		images       []registry.Image              = state.GetValue[[]registry.Image](viper, "images")
-		charts       helm.ChartCollection          = state.GetValue[helm.ChartCollection](viper, "input")
-		opts         []helm.Option                 = []helm.Option{
+		k8sVersion   string                          = state.GetValue[string](viper, "k8s_version")
+		verbose      bool                            = state.GetValue[bool](viper, "verbose")
+		update       bool                            = state.GetValue[bool](viper, "update")
+		all          bool                            = state.GetValue[bool](viper, "all")
+		parserConfig bootstrap.ParserConfigSection   = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
+		importConfig bootstrap.ImportConfigSection   = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+		mirrorConfig []bootstrap.MirrorConfigSection = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
+		registries   []registry.Registry             = state.GetValue[[]registry.Registry](viper, "registries")
+		images       []registry.Image                = state.GetValue[[]registry.Image](viper, "images")
+		charts       helm.ChartCollection            = state.GetValue[helm.ChartCollection](viper, "input")
+		opts         []helm.Option                   = []helm.Option{
 			helm.K8SVersion(k8sVersion),
 			helm.Verbose(verbose),
 			helm.Update(update),
@@ -147,6 +149,18 @@ func Program(args []string) error {
 						}
 					}
 				}
+			}
+
+			// Replace mirrors
+			ms, err := slices.Filter(mirrorConfig, func(m bootstrap.MirrorConfigSection) (bool, error) {
+				return m.Registry == i.Registry, nil
+			})
+			if err != nil {
+				return err
+			}
+
+			if len(ms) > 0 {
+				i.Registry = ms[0].Mirror
 			}
 		}
 	}

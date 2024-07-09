@@ -70,11 +70,17 @@ type ParserConfigSection struct {
 	UseCustomValues       bool `yaml:"useCustomValues"`
 }
 
+type MirrorConfigSection struct {
+	Registry  string `yaml:"registry"`
+	Mirror    string `yaml:"mirror"`
+}
+
 type config struct {
 	Parser       ParserConfigSection     `yaml:"parser"`
 	ImportConfig ImportConfigSection     `yaml:"import"`
 	Images       []imageConfigSection    `yaml:"images"`
 	Registries   []registryConfigSection `yaml:"registries"`
+	Mirrors      []MirrorConfigSection   `yaml:"mirrors"`
 }
 
 // Reads flags from user and sets state accordingly
@@ -123,6 +129,7 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	}
 	viper.Set("config", conf)
 	viper.Set("parserConfig", conf.Parser)
+	viper.Set("mirrorConfig", conf.Mirrors)
 
 	importConf := ImportConfigSection{}
 	if err := viper.Unmarshal(&importConf); err != nil {

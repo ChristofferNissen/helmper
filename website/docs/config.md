@@ -178,6 +178,9 @@ registries:
 | `registries[].url`       | string |         | true | URL to registry                     |
 | `registries[].insecure`  | bool   | false   | false | Disable SSL certificate validation  |
 | `registries[].plainHTTP` | bool   | false   | false | Enable use of HTTP instead of HTTPS |
+| `mirrors` | list(object)   | []   | false | Enable use of registry mirrors |
+| `mirrors.registry` | string   | "" | true | Registry to configure mirror for fx docker.io |
+| `mirrors.mirror` | string   | "" | true | Registry Mirror URL |
 
 ## Charts
 

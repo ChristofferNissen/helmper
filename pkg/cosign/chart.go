@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
@@ -115,22 +116,25 @@ func (so SignChartOption) Run() error {
 
 			for _, d := range chartRef.Metadata.Dependencies {
 
-				chart := helm.Chart{
-					Name: d.Name,
-					Repo: repo.Entry{
+				v := d.Version
+				if strings.Contains(v, "*") {
+					chart := helm.Chart{
 						Name: d.Name,
-						URL:  d.Repository,
-					},
-					Version:        d.Version,
-					ValuesFilePath: c.ValuesFilePath,
-					Parent:         &c,
-					PlainHTTP:      c.PlainHTTP,
-				}
+						Repo: repo.Entry{
+							Name: d.Name,
+							URL:  d.Repository,
+						},
+						Version:        d.Version,
+						ValuesFilePath: c.ValuesFilePath,
+						Parent:         &c,
+						PlainHTTP:      c.PlainHTTP,
+					}
 
-				// Resolve Globs to latest patch
-				v, err := chart.ResolveVersion()
-				if err != nil {
-					return err
+					// Resolve Globs to latest patch
+					v, err = chart.ResolveVersion()
+					if err != nil {
+						return err
+					}
 				}
 
 				name := fmt.Sprintf("charts/%s", d.Name)
@@ -145,7 +149,7 @@ func (so SignChartOption) Run() error {
 			}
 
 		}
-		bar.ChangeMax(bar.GetMax() + (len(refs) - 1))
+		bar.ChangeMax(len(refs))
 		if err := sign.SignCmd(&ro, ko, signOpts, refs); err != nil {
 			return err
 		}
