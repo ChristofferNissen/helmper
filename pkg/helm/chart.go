@@ -494,28 +494,32 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 
 	// Dependencies (Chart.yaml)
 	for _, d := range chartRef.Metadata.Dependencies {
-		// Change dependency ref to registry being imported to
-		d.Repository = registry
+		if d.Repository != "" {
 
-		if strings.Contains(d.Version, "*") {
-			chart := Chart{
-				Name: d.Name,
-				Repo: repo.Entry{
-					Name: c.Repo.Name,
-					URL:  d.Repository,
-				},
-				Version:        d.Version,
-				ValuesFilePath: c.ValuesFilePath,
-				Parent:         &c,
-			}
+			// Change dependency ref to registry being imported to
+			d.Repository = registry
 
-			// OCI dependencies can not use globs in version
-			// Resolve Globs to latest patch
-			v, err := chart.ResolveVersion()
-			if err == nil {
-				d.Version = v
+			if strings.Contains(d.Version, "*") {
+				chart := Chart{
+					Name: d.Name,
+					Repo: repo.Entry{
+						Name: c.Repo.Name,
+						URL:  d.Repository,
+					},
+					Version:        d.Version,
+					ValuesFilePath: c.ValuesFilePath,
+					Parent:         &c,
+				}
+
+				// OCI dependencies can not use globs in version
+				// Resolve Globs to latest patch
+				v, err := chart.ResolveVersion()
+				if err == nil {
+					d.Version = v
+				}
 			}
 		}
+
 	}
 
 	err = chartutil.SaveChartfile(dname+"/"+c.Name+"/Chart.yaml", chartRef.Metadata)
