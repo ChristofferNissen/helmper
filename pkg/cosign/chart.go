@@ -115,40 +115,40 @@ func (so SignChartOption) Run() error {
 			}
 
 			for _, d := range chartRef.Metadata.Dependencies {
-
-				v := d.Version
-				if strings.Contains(v, "*") {
-					chart := helm.Chart{
-						Name: d.Name,
-						Repo: repo.Entry{
+				if d.Repository != "" {
+					v := d.Version
+					if strings.Contains(v, "*") {
+						chart := helm.Chart{
 							Name: d.Name,
-							URL:  d.Repository,
-						},
-						Version:        d.Version,
-						ValuesFilePath: c.ValuesFilePath,
-						Parent:         &c,
-						PlainHTTP:      c.PlainHTTP,
+							Repo: repo.Entry{
+								Name: d.Name,
+								URL:  d.Repository,
+							},
+							Version:        d.Version,
+							ValuesFilePath: c.ValuesFilePath,
+							Parent:         &c,
+							PlainHTTP:      c.PlainHTTP,
+						}
+
+						// Resolve Globs to latest patch
+						v, err = chart.ResolveVersion()
+						if err != nil {
+							return err
+						}
 					}
 
-					// Resolve Globs to latest patch
-					v, err = chart.ResolveVersion()
+					name := fmt.Sprintf("charts/%s", d.Name)
+					d, err := r.Fetch(context.TODO(), name, v)
 					if err != nil {
 						return err
 					}
+
+					ref := fmt.Sprintf("%s/%s@%s", r.URL, name, d.Digest)
+					refs = append(refs, ref)
 				}
-
-				name := fmt.Sprintf("charts/%s", d.Name)
-				d, err := r.Fetch(context.TODO(), name, v)
-				if err != nil {
-					return err
-				}
-
-				ref := fmt.Sprintf("%s/%s@%s", r.URL, name, d.Digest)
-				refs = append(refs, ref)
-
 			}
-
 		}
+
 		bar.ChangeMax(len(refs))
 		if err := sign.SignCmd(&ro, ko, signOpts, refs); err != nil {
 			return err
