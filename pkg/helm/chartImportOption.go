@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
@@ -72,9 +73,11 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			}
 
 			// Resolve Globs to latest patch
-			v, err := chart.ResolveVersion()
-			if err == nil {
-				chart.Version = v
+			if strings.Contains(chart.Version, "*") {
+				v, err := chart.ResolveVersion()
+				if err == nil {
+					chart.Version = v
+				}
 			}
 
 			charts = append(charts, chart)
