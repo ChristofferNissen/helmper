@@ -47,6 +47,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 		for _, d := range chartRef.Metadata.Dependencies {
 
+			// We need all dependencies for the chart to be available in the registry to do 'helm dpt up'
 			// if !ConditionMet(d.Condition, values) {
 			// 	slog.Debug("Skipping disabled chart", slog.String("chart", d.Name), slog.String("condition", d.Condition))
 			// 	continue
