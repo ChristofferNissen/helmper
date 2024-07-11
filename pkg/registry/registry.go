@@ -47,34 +47,39 @@ func (r Registry) GetName() string {
 
 func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag string, arch *string) (v1.Descriptor, error) {
 
-	// 1. Connect to a remote repository
-	ref := strings.Join([]string{sourceURL, name}, "/")
-	source, err := remote.NewRepository(ref)
-	if err != nil {
-		return v1.Descriptor{}, err
-	}
-
-	// Determine HTTP or HTTPS. Allow HTTP if local reference
-	source.PlainHTTP = strings.Contains(sourceURL, "localhost") || strings.Contains(sourceURL, "0.0.0.0")
-	// 3. Connect to our target repository
-	image := strings.Join([]string{r.URL, name}, "/")
-
-	target, err := remote.NewRepository(image)
-	if err != nil {
-		return v1.Descriptor{}, err
-	}
 	// prepare authentication using Docker credentials
 	storeOpts := credentials.StoreOptions{}
 	credStore, err := credentials.NewStoreFromDocker(storeOpts)
 	if err != nil {
 		return v1.Descriptor{}, err
 	}
+
+	// 1. Connect to a remote repository
+	ref := strings.Join([]string{sourceURL, name}, "/")
+	source, err := remote.NewRepository(ref)
+	if err != nil {
+		return v1.Descriptor{}, err
+	}
+	source.Client = &auth.Client{
+		Client:     retry.DefaultClient,
+		Cache:      auth.NewCache(),
+		Credential: credentials.Credential(credStore), // Use the credentials store
+	}
+	// Determine HTTP or HTTPS. Allow HTTP if local reference
+	source.PlainHTTP = strings.Contains(sourceURL, "localhost") || strings.Contains(sourceURL, "0.0.0.0")
+
+	// 3. Connect to our target repository
+	image := strings.Join([]string{r.URL, name}, "/")
+	target, err := remote.NewRepository(image)
+	if err != nil {
+		return v1.Descriptor{}, err
+	}
+	// prepare authentication using Docker credentials
 	target.Client = &auth.Client{
 		Client:     retry.DefaultClient,
 		Cache:      auth.NewCache(),
 		Credential: credentials.Credential(credStore), // Use the credentials store
 	}
-
 	// todo: check if user specified auth
 	target.PlainHTTP = r.PlainHTTP
 
