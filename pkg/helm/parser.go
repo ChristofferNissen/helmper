@@ -163,36 +163,40 @@ func findImageReferences(data map[string]any, values map[string]any, useCustomVa
 // traverse helm chart values data structure
 func replaceImageReferences(data map[string]any, registry string) {
 
+	// For images we do not use the prefix and suffix of the registry
+	registry, _ = strings.CutPrefix(registry, "oci://")
+	registry, _ = strings.CutSuffix(registry, "/charts")
+
+	_, ok := data["registry"].(string)
+	if ok {
+		data["registry"] = registry
+		return
+	}
+
+	f := func(val string) string {
+		s := strings.Split(val, "/")
+		if len(s) > 1 {
+			s[0] = registry
+		} else {
+			s = append([]string{registry}, s...)
+		}
+		return strings.Join(s, "/")
+	}
+
+	image, ok := data["image"].(string)
+	if ok {
+		data["image"] = f(image)
+		return
+	}
+
+	repository, ok := data["repository"].(string)
+	if ok {
+		data["repository"] = f(repository)
+		return
+	}
+
 	for k, v := range data {
-		switch v := v.(type) {
-
-		// yaml key-value pair value type
-		case string:
-
-			switch k {
-			case "registry":
-				registry, _ = strings.CutPrefix(registry, "oci://")
-				registry, _ = strings.CutSuffix(registry, "/charts")
-				data[k] = registry
-			case "image":
-				fallthrough
-			case "repository":
-				if v != "" {
-					registry, _ = strings.CutPrefix(registry, "oci://")
-					registry, _ = strings.CutSuffix(registry, "/charts")
-
-					s := strings.Split(v, "/")
-
-					if len(s) > 1 {
-						s[0] = registry
-					} else {
-						s = append([]string{registry}, s...)
-					}
-
-					data[k] = strings.Join(s, "/")
-				}
-			}
-
+		switch v.(type) {
 		// nested yaml object
 		case map[string]any:
 			replaceImageReferences(data[k].(map[string]any), registry)
