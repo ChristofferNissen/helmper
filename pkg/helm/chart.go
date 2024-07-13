@@ -247,7 +247,10 @@ func (c Chart) LatestVersion() (string, error) {
 			vs := []semver.Version{}
 
 			for _, t := range tags {
-				s, err := semver.Parse(t)
+
+				v, _ := strings.CutPrefix(t, "v")
+
+				s, err := semver.Parse(v)
 				if err != nil {
 					// non semver tag
 					continue
