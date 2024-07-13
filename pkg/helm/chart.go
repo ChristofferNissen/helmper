@@ -79,7 +79,9 @@ func (c Chart) AddToHelmRepositoryFile() error {
 
 func (c Chart) ResolveVersions() ([]string, error) {
 
-	r, err := semver.ParseRange(c.Version)
+	version, _ := strings.CutPrefix(c.Version, "v")
+
+	r, err := semver.ParseRange(version)
 	if err != nil {
 		// not a semver range
 		return nil, err
@@ -98,7 +100,9 @@ func (c Chart) ResolveVersions() ([]string, error) {
 	versionsInRange := []string{}
 	for _, v := range versions {
 
-		sv, err := semver.Parse(v.Version)
+		version, _ := strings.CutPrefix(v.Version, "v")
+
+		sv, err := semver.Parse(version)
 		if err != nil {
 			continue
 		}
@@ -193,7 +197,10 @@ func (c Chart) ResolveVersion() (string, error) {
 	versions := index.Entries[c.Name]
 
 	for _, v := range versions {
-		sv, err := semver.Parse(v.Version)
+
+		version, _ := strings.CutPrefix(v.Version, "v")
+
+		sv, err := semver.Parse(version)
 		switch {
 		case err != nil:
 			// not semver
@@ -240,7 +247,10 @@ func (c Chart) LatestVersion() (string, error) {
 			vs := []semver.Version{}
 
 			for _, t := range tags {
-				s, err := semver.Parse(t)
+
+				v, _ := strings.CutPrefix(t, "v")
+
+				s, err := semver.Parse(v)
 				if err != nil {
 					// non semver tag
 					continue
@@ -392,7 +402,7 @@ func (c Chart) pullTar() (string, error) {
 	}
 
 	// Resolve filepath (wildcards) for dependency charts
-	matches, err := filepath.Glob(fmt.Sprintf("%s/%s-%s.tgz", tmp, c.Name, c.Version))
+	matches, err := filepath.Glob(fmt.Sprintf("%s/%s-*%s.tgz", tmp, c.Name, c.Version))
 	if err != nil {
 		return "", err
 	}
