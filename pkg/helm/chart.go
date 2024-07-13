@@ -79,7 +79,8 @@ func (c Chart) AddToHelmRepositoryFile() error {
 
 func (c Chart) ResolveVersions() ([]string, error) {
 
-	version, _ := strings.CutPrefix(c.Version, "v")
+	prefixV := strings.Contains(c.Version, "v")
+	version := strings.ReplaceAll(c.Version, "v", "")
 
 	r, err := semver.ParseRange(version)
 	if err != nil {
@@ -99,10 +100,7 @@ func (c Chart) ResolveVersions() ([]string, error) {
 
 	versionsInRange := []string{}
 	for _, v := range versions {
-
-		version, _ := strings.CutPrefix(v.Version, "v")
-
-		sv, err := semver.Parse(version)
+		sv, err := semver.ParseTolerant(v.Version)
 		if err != nil {
 			continue
 		}
@@ -113,7 +111,11 @@ func (c Chart) ResolveVersions() ([]string, error) {
 
 		if r(sv) {
 			//valid
-			versionsInRange = append(versionsInRange, sv.String())
+			s := sv.String()
+			if prefixV {
+				s = "v" + s
+			}
+			versionsInRange = append(versionsInRange, s)
 		}
 
 	}
