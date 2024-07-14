@@ -244,15 +244,13 @@ func (c Chart) LatestVersion() (string, error) {
 			Credential: credentials.Credential(credStore), // Use the credentials store
 		}
 
+		vPrefix := strings.Contains(c.Version, "v")
 		l := c.Version
 		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
 			vs := []semver.Version{}
 
 			for _, t := range tags {
-
-				v, _ := strings.CutPrefix(t, "v")
-
-				s, err := semver.Parse(v)
+				s, err := semver.ParseTolerant(t)
 				if err != nil {
 					// non semver tag
 					continue
@@ -262,6 +260,10 @@ func (c Chart) LatestVersion() (string, error) {
 
 			semver.Sort(vs)
 			l = vs[len(vs)-1].String()
+
+			if vPrefix {
+				l = "v" + l
+			}
 
 			return nil
 		})
