@@ -88,6 +88,67 @@ func (c Chart) ResolveVersions() ([]string, error) {
 		return nil, err
 	}
 
+	if strings.HasPrefix(c.Repo.URL, "oci://") {
+		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
+
+		repo, err := remote.NewRepository(ref)
+		if err != nil {
+			return []string{}, err
+		}
+
+		repo.PlainHTTP = c.PlainHTTP
+
+		// prepare authentication using Docker credentials
+		storeOpts := credentials.StoreOptions{}
+		credStore, err := credentials.NewStoreFromDocker(storeOpts)
+		if err != nil {
+			return []string{}, err
+		}
+		repo.Client = &auth.Client{
+			Client:     retry.DefaultClient,
+			Cache:      auth.NewCache(),
+			Credential: credentials.Credential(credStore), // Use the credentials store
+		}
+
+		vs := []semver.Version{}
+		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
+			for _, t := range tags {
+				s, err := semver.ParseTolerant(t)
+				if err != nil {
+					// non semver tag
+					continue
+				}
+				vs = append(vs, s)
+			}
+
+			semver.Sort(vs)
+
+			return nil
+		})
+		if err != nil {
+			return []string{}, err
+		}
+
+		versionsInRange := []string{}
+		for _, v := range vs {
+			if len(v.Pre) > 0 {
+				continue
+			}
+
+			if r(v) {
+				//valid
+				s := v.String()
+				if prefixV {
+					s = "v" + s
+				}
+				versionsInRange = append(versionsInRange, s)
+			}
+
+		}
+
+		return versionsInRange, nil
+	}
+
 	// Fetch versions from Helm Repository
 	config := cli.New()
 	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
@@ -127,7 +188,7 @@ func (c Chart) ResolveVersion() (string, error) {
 
 	v := strings.ReplaceAll(c.Version, "*", "0")
 
-	s, err := semver.Parse(strings.TrimPrefix(v, "v"))
+	s, err := semver.ParseTolerant(v)
 	if err != nil {
 		return "", err
 	}
@@ -160,7 +221,7 @@ func (c Chart) ResolveVersion() (string, error) {
 		vs := []semver.Version{}
 		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
 			for _, t := range tags {
-				s, err := semver.Parse(t)
+				s, err := semver.ParseTolerant(t)
 				if err != nil {
 					// non semver tag
 					continue
@@ -199,10 +260,7 @@ func (c Chart) ResolveVersion() (string, error) {
 	versions := index.Entries[c.Name]
 
 	for _, v := range versions {
-
-		version, _ := strings.CutPrefix(v.Version, "v")
-
-		sv, err := semver.Parse(version)
+		sv, err := semver.ParseTolerant(v.Version)
 		switch {
 		case err != nil:
 			// not semver
@@ -286,7 +344,7 @@ func (c Chart) LatestVersion() (string, error) {
 	versions := index.Entries[c.Name]
 	for _, v := range versions {
 
-		sv, err := semver.Parse(v.Version)
+		sv, err := semver.ParseTolerant(v.Version)
 		if err != nil {
 			// not semver
 			res = v.Version
