@@ -111,7 +111,7 @@ func (c Chart) ResolveVersions() ([]string, error) {
 		}
 
 		vs := []semver.Version{}
-		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
+		err = repo.Tags(context.TODO(), "", func(tags []string) error {
 			for _, t := range tags {
 				s, err := semver.ParseTolerant(t)
 				if err != nil {
@@ -304,7 +304,7 @@ func (c Chart) LatestVersion() (string, error) {
 
 		vPrefix := strings.Contains(c.Version, "v")
 		l := c.Version
-		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
+		err = repo.Tags(context.TODO(), "", func(tags []string) error {
 			vs := []semver.Version{}
 
 			for _, t := range tags {

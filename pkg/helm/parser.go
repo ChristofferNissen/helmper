@@ -6,6 +6,7 @@ import (
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/ternary"
+	"github.com/distribution/reference"
 )
 
 // traverse helm chart values to determine if condition is met
@@ -161,26 +162,32 @@ func findImageReferences(data map[string]any, values map[string]any, useCustomVa
 }
 
 // traverse helm chart values data structure
-func replaceImageReferences(data map[string]any, registry string) {
+func replaceImageReferences(data map[string]any, reg string) {
 
 	// For images we do not use the prefix and suffix of the registry
-	registry, _ = strings.CutPrefix(registry, "oci://")
-	registry, _ = strings.CutSuffix(registry, "/charts")
+	reg, _ = strings.CutPrefix(reg, "oci://")
+	reg, _ = strings.CutSuffix(reg, "/charts")
 
 	_, ok := data["registry"].(string)
 	if ok {
-		data["registry"] = registry
+		data["registry"] = reg
 		return
 	}
 
 	f := func(val string) string {
-		s := strings.Split(val, "/")
-		if len(s) > 1 {
-			s[0] = registry
-		} else {
-			s = append([]string{registry}, s...)
+		ref, err := reference.ParseAnyReference(val)
+		if err != nil {
+			return ""
 		}
-		return strings.Join(s, "/")
+		r := ref.(reference.Named)
+		dom := reference.Domain(r)
+
+		containsDomain := strings.Contains(val, dom)
+		if containsDomain {
+			return strings.Replace(val, dom, reg, 1)
+		} else {
+			return reg + "/" + val
+		}
 	}
 
 	image, ok := data["image"].(string)
@@ -199,7 +206,7 @@ func replaceImageReferences(data map[string]any, registry string) {
 		switch v.(type) {
 		// nested yaml object
 		case map[string]any:
-			replaceImageReferences(data[k].(map[string]any), registry)
+			replaceImageReferences(data[k].(map[string]any), reg)
 		}
 	}
 }

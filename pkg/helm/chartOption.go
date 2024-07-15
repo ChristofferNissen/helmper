@@ -85,7 +85,10 @@ func determineTag(ctx context.Context, k8sv string, img *registry.Image, plainHT
 	reg, repo, name := img.Elements()
 	ref := fmt.Sprintf("%s/%s/%s", reg, repo, name)
 
-	tag, _ := img.TagOrDigest()
+	tag := img.Tag
+	if img.Tag == "" {
+		tag = img.Digest
+	}
 
 	available, _ := registry.Exist(ctx, ref, tag, plainHTTP)
 	if available {
@@ -357,7 +360,8 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 
 		for i := range imgs {
 			if !i.available {
-				slog.Info("Image not available. will be excluded from import...", slog.Any("image", i))
+				str, _ := i.image.String()
+				slog.Info("Image not available. will be excluded from import...", slog.String("image", str))
 				continue
 			}
 

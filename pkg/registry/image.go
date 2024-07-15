@@ -78,9 +78,12 @@ func (i Image) String() (string, error) {
 		ref = fmt.Sprintf("%s:%s", ref, i.Tag)
 	}
 
-	// Append digest value
-	if i.Digest != "" {
-		ref = fmt.Sprintf("%s@%s", ref, i.Digest)
+	if i.UseDigest {
+
+		// Append digest value
+		if i.Digest != "" {
+			ref = fmt.Sprintf("%s@%s", ref, i.Digest)
+		}
 	}
 
 	res, err := reference.ParseAnyReference(ref)
