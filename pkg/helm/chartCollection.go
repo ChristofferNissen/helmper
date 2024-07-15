@@ -77,9 +77,10 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 	for _, c := range collection.Charts {
 		vs, err := c.ResolveVersions()
 		if err != nil {
+			// resolve Glob version
 			v, err := c.ResolveVersion()
 			if err != nil {
-				log.Fatal("version is not semver. skipping this version", slog.String("version", c.Version))
+				slog.Info("version is not semver. skipping this version", slog.String("version", c.Version))
 				continue
 			}
 			c.Version = v
