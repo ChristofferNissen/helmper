@@ -344,7 +344,7 @@ func (c Chart) LatestVersion() (string, error) {
 	versions := index.Entries[c.Name]
 	for _, v := range versions {
 
-		sv, err := semver.ParseTolerant(v.Version)
+		sv, err := semver.Parse(v.Version)
 		if err != nil {
 			// not semver
 			res = v.Version

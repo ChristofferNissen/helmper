@@ -80,7 +80,7 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 			// resolve Glob version
 			v, err := c.ResolveVersion()
 			if err != nil {
-				slog.Info("version is not semver. skipping this version", slog.String("version", c.Version))
+				slog.Info("version is not semver. skipping this version", slog.String("name", c.Name), slog.String("version", c.Version))
 				continue
 			}
 			c.Version = v
