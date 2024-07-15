@@ -88,11 +88,7 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 
 		for _, v := range vs {
 			c := c
-			if strings.HasPrefix(c.Version, "v") {
-				c.Version = "v" + v
-			} else {
-				c.Version = v
-			}
+			c.Version = v
 			res = append(res, c)
 		}
 	}
