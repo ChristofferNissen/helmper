@@ -67,7 +67,11 @@ func RenderChartTable(charts *helm.ChartCollection, setters ...Option) {
 			slog.Error(err.Error(), slog.String("chart", c.Name), slog.String("repo", c.Repo.URL), slog.String("version", c.Version))
 		}
 
-		_, chartRef, values, _ := c.Read(args.Update)
+		_, chartRef, values, err := c.Read(args.Update)
+		if err != nil {
+			slog.Error(err.Error(), slog.String("chart", c.Name), slog.String("version", c.Version))
+			continue
+		}
 		valuesType := determinePathType(c.ValuesFilePath)
 
 		rows = append(rows,
