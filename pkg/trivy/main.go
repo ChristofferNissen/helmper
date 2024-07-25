@@ -3,7 +3,6 @@ package trivy
 import (
 	"context"
 	"log/slog"
-	"net/http"
 
 	tcache "github.com/aquasecurity/trivy/pkg/cache"
 	"github.com/aquasecurity/trivy/pkg/fanal/analyzer"
@@ -57,18 +56,24 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		return types.Report{}, err
 	}
 	defer cleanup()
-	remoteCache := tcache.NewRemoteCache(opts.TrivyServer, http.Header{}, opts.Insecure)
-	cache := tcache.NopCache(remoteCache)
+
+	cache := tcache.NewRemoteCache(
+		tcache.RemoteOptions{
+			ServerAddr: opts.TrivyServer,
+			Insecure:   opts.Insecure,
+		})
+	// cache := tcache.NopCache(remoteCache)
+
 	artifactArtifact, err := image2.NewArtifact(typesImage, cache, artifact.Option{
 		DisabledAnalyzers: []analyzer.Type{},
 		DisabledHandlers:  nil,
-		SkipFiles:         nil,
-		SkipDirs:          nil,
-		FilePatterns:      nil,
-		NoProgress:        false,
-		Insecure:          opts.Insecure,
-		SBOMSources:       nil,
-		RekorURL:          "https://rekor.sigstore.dev",
+		// SkipFiles:         nil,
+		// SkipDirs:          nil,
+		FilePatterns: nil,
+		NoProgress:   false,
+		Insecure:     opts.Insecure,
+		SBOMSources:  nil,
+		RekorURL:     "https://rekor.sigstore.dev",
 		ImageOption: ftypes.ImageOptions{
 			RegistryOptions: ftypes.RegistryOptions{
 				Insecure: opts.Insecure,
@@ -87,16 +92,16 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 
 	scannerScanner := scanner.NewScanner(clientScanner, artifactArtifact)
 	report, err := scannerScanner.ScanArtifact(context.TODO(), types.ScanOptions{
-		VulnType:            []string{types.VulnTypeOS},
+		PkgTypes:            []string{types.PkgTypeOS},
 		Scanners:            types.AllScanners,
 		ImageConfigScanners: types.AllImageConfigScanners,
 		ScanRemovedPackages: false,
-		ListAllPackages:     false,
-		FilePatterns:        nil,
-		IncludeDevDeps:      false,
+		// ListAllPackages:     false,
+		FilePatterns:   nil,
+		IncludeDevDeps: false,
 	})
 	if err != nil {
-		slog.Error("ScanArtifact failed: %v", err, slog.StringValue(report.Metadata.OS.Family))
+		slog.Error("ScanArtifact failed: %v", err, slog.AnyValue(report.Metadata.OS.Family))
 		return types.Report{}, err
 	}
 

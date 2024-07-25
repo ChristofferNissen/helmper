@@ -10,11 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/containerd/console"
 	"github.com/docker/buildx/build"
 	"github.com/docker/cli/cli/config"
 	"github.com/quay/claircore/osrelease"
-	"github.com/quay/claircore/pkg/tmp"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
@@ -146,7 +144,7 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 
 	pipeR, pipeW := io.Pipe()
 	dockerConfig := config.LoadDefaultConfigFile(os.Stderr)
-	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(dockerConfig)}
+	attachable := []session.Attachable{authprovider.NewDockerAuthProvider(dockerConfig, nil)}
 	solveOpt := client.SolveOpt{
 		Exports: []client.ExportEntry{
 			{
@@ -172,7 +170,7 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 	eg.Go(func() error {
 		_, err := bkClient.Build(ctx, solveOpt, copaProduct, func(ctx context.Context, c gwclient.Client) (*gwclient.Result, error) {
 			// Configure buildctl/client for use by package manager
-			config, err := buildkit.InitializeBuildkitConfig(ctx, c, imageName.String(), updates)
+			config, err := buildkit.InitializeBuildkitConfig(ctx, c, imageName.String())
 			if err != nil {
 				ch <- err
 				return nil, err
@@ -194,8 +192,14 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 					return nil, err
 				}
 
+				osVersion, err := getOSVersion(ctx, fileBytes)
+				if err != nil {
+					ch <- err
+					return nil, err
+				}
+
 				// get package manager based on os family type
-				manager, err = pkgmgr.GetPackageManager(osType, config, workingFolder)
+				manager, err = pkgmgr.GetPackageManager(osType, osVersion, config, workingFolder)
 				if err != nil {
 					ch <- err
 					return nil, err
@@ -204,7 +208,7 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 				updates = nil
 			} else {
 				// get package manager based on os family type
-				manager, err = pkgmgr.GetPackageManager(updates.Metadata.OS.Type, config, workingFolder)
+				manager, err = pkgmgr.GetPackageManager(updates.Metadata.OS.Type, updates.Metadata.OS.Version, config, workingFolder)
 				if err != nil {
 					ch <- err
 					return nil, err
@@ -272,18 +276,17 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 	})
 
 	eg.Go(func() error {
-
-		f, _ := tmp.NewFile("", "")
-		var c console.Console
-		if cn, err := console.ConsoleFromFile(f); err == nil {
-			c = cn
-		}
-		f, _ = tmp.NewFile("", "")
-		// if debug os.Stdout
-
 		// not using shared context to not disrupt display but let us finish reporting errors
-		_, err = progressui.DisplaySolveStatus(context.TODO(), c, f.File, buildChannel)
+		mode := progressui.AutoMode
+		if log.GetLevel() >= log.DebugLevel {
+			mode = progressui.PlainMode
+		}
+		display, err := progressui.NewDisplay(os.Stderr, mode)
+		if err != nil {
+			return err
+		}
 
+		_, err = display.UpdateFrom(ctx, buildChannel)
 		return err
 	})
 
@@ -331,4 +334,14 @@ func getOSType(ctx context.Context, osreleaseBytes []byte) (string, error) {
 		log.Error("unsupported osType", osType)
 		return "", errors.ErrUnsupported
 	}
+}
+
+func getOSVersion(ctx context.Context, osreleaseBytes []byte) (string, error) {
+	r := bytes.NewReader(osreleaseBytes)
+	osData, err := osrelease.Parse(ctx, r)
+	if err != nil {
+		return "", fmt.Errorf("unable to parse os-release data %w", err)
+	}
+
+	return osData["VERSION_ID"], nil
 }
