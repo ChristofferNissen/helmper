@@ -14,7 +14,7 @@ import (
 
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"golang.org/x/xerrors"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
