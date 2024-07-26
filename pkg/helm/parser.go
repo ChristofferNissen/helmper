@@ -184,8 +184,11 @@ func replaceImageReferences(data map[string]any, reg string) {
 
 		containsDomain := strings.Contains(val, dom)
 		if containsDomain {
-			return strings.Replace(val, dom, reg, 1)
+			return strings.Replace(ref.String(), dom, reg, 1)
 		} else {
+			if strings.HasPrefix(ref.String(), "docker.io/library/") {
+				return reg + "/library/" + val
+			}
 			return reg + "/" + val
 		}
 	}
