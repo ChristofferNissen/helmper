@@ -186,15 +186,10 @@ func (c Chart) ResolveVersions() ([]string, error) {
 
 func (c Chart) ResolveVersion() (string, error) {
 
-	v := strings.ReplaceAll(c.Version, "*", "0")
-
-	s, err := semver.ParseTolerant(v)
+	r, err := semver.ParseRange(c.Version)
 	if err != nil {
 		return "", err
 	}
-
-	major := s.Major
-	minor := s.Minor
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
@@ -219,14 +214,17 @@ func (c Chart) ResolveVersion() (string, error) {
 		}
 
 		vs := []semver.Version{}
-		err = repo.Tags(context.TODO(), c.Version, func(tags []string) error {
+		err = repo.Tags(context.TODO(), "", func(tags []string) error {
 			for _, t := range tags {
 				s, err := semver.ParseTolerant(t)
 				if err != nil {
 					// non semver tag
 					continue
 				}
-				vs = append(vs, s)
+
+				if r(s) {
+					vs = append(vs, s)
+				}
 			}
 
 			semver.Sort(vs)
@@ -237,14 +235,8 @@ func (c Chart) ResolveVersion() (string, error) {
 			return "", err
 		}
 
-		for _, v := range vs {
-			switch {
-			case len(v.Pre) > 0:
-				continue
-			case v.Major == major && v.Minor == minor:
-				slog.Debug("Resolved chart version", slog.String("chart", c.Name), slog.String("version", v.String()))
-				return v.String(), nil
-			}
+		if len(vs) > 0 {
+			return vs[len(vs)-1].String(), nil
 		}
 
 		return "", xerrors.Errorf("Not found")
@@ -267,7 +259,7 @@ func (c Chart) ResolveVersion() (string, error) {
 			continue
 		case len(sv.Pre) > 0:
 			continue
-		case sv.Major == major && sv.Minor == minor:
+		case r(sv):
 			slog.Debug("Resolved chart version", slog.String("chart", c.Name), slog.String("version", sv.String()))
 			return sv.String(), nil
 		}
@@ -372,6 +364,11 @@ func (c Chart) pullTar() (string, error) {
 
 		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name
 
+		v, err := c.ResolveVersion()
+		if err != nil {
+			return "", err
+		}
+
 		co := action.ChartPathOptions{
 			CaFile:                c.Repo.CAFile,
 			CertFile:              c.Repo.CertFile,
@@ -380,7 +377,7 @@ func (c Chart) pullTar() (string, error) {
 			PassCredentialsAll:    c.Repo.PassCredentialsAll,
 			Username:              c.Repo.Username,
 			Password:              c.Repo.Password,
-			Version:               c.Version,
+			Version:               v,
 		}
 
 		// You can pass an empty string instead of settings.Namespace() to list
@@ -417,7 +414,7 @@ func (c Chart) pullTar() (string, error) {
 			return "", err
 		}
 
-		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
+		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, v), nil
 
 	}
 
