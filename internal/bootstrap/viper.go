@@ -71,8 +71,8 @@ type ParserConfigSection struct {
 }
 
 type MirrorConfigSection struct {
-	Registry  string `yaml:"registry"`
-	Mirror    string `yaml:"mirror"`
+	Registry string `yaml:"registry"`
+	Mirror   string `yaml:"mirror"`
 }
 
 type config struct {
@@ -207,6 +207,7 @@ copacetic:
 				Name:      r.Name,
 				URL:       r.URL,
 				PlainHTTP: r.PlainHTTP,
+				Insecure:  r.Insecure,
 			})
 	}
 	state.SetValue(viper, "registries", rs)

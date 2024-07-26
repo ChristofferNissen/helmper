@@ -618,6 +618,7 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 		if r.Name == "values.yaml" {
 			d, _ := yaml.Marshal(chartRef.Values)
 			r.Data = d
+			break
 		}
 	}
 
