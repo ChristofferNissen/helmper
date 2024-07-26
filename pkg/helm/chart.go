@@ -842,6 +842,18 @@ func (c Chart) Values() (map[string]any, error) {
 		return nil, err
 	}
 
+	if c.Parent != nil {
+		pv, err := c.Parent.Values()
+		if err != nil {
+			return nil, err
+		}
+
+		vs, err = chartutil.CoalesceValues(chartRef, pv[c.Name].(map[string]interface{}))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return vs.AsMap(), nil
 }
 
