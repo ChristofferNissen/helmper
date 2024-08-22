@@ -31,7 +31,11 @@ var (
 func Program(args []string) error {
 	ctx := context.TODO()
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slogHandlerOpts := &slog.HandlerOptions{}
+	if os.Getenv("HELMPER_LOG_LEVEL") == "DEBUG" {
+		slogHandlerOpts.Level = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, slogHandlerOpts))
 	slog.SetDefault(logger)
 
 	output.Header(version, commit, date)
@@ -211,10 +215,11 @@ func Program(args []string) error {
 			ModifyRegistry:  importConfig.Import.ReplaceRegistryReferences,
 		}.Run(ctx, opts...)
 		if err != nil {
-			return err
+			return fmt.Errorf("internal: error importing chart to registry: %w", err)
 		}
 
 		if importConfig.Import.Cosign.Enabled {
+			slog.Debug("Cosign enabled")
 			signo := mySign.SignChartOption{
 				ChartCollection: &charts,
 				Registries:      registries,
@@ -225,6 +230,7 @@ func Program(args []string) error {
 				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
 			}
 			if err := signo.Run(); err != nil {
+				slog.Error("Error signing with Cosign")
 				return err
 			}
 		}
@@ -232,7 +238,7 @@ func Program(args []string) error {
 
 	switch {
 	case importConfig.Import.Enabled && importConfig.Import.Copacetic.Enabled:
-
+		slog.Debug("Import enabled and Copacetic enabled")
 		patch := make([]*registry.Image, 0)
 		push := make([]*registry.Image, 0)
 
@@ -463,6 +469,7 @@ func Program(args []string) error {
 		}
 
 	case importConfig.Import.Enabled:
+		slog.Debug("Only import enabled")
 		// convert to pointer array to enable mutable values
 		imgPs := make([]*registry.Image, 0)
 		for _, i := range imgs {

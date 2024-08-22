@@ -114,7 +114,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 		}
 
 		for _, r := range opt.Registries {
-
+			registryURL := "oci://" + r.URL + "/charts"
 			if !opt.All {
 				_, err := r.Exist(ctx, "charts/"+c.Name, c.Version)
 				if err == nil {
@@ -125,18 +125,18 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			}
 
 			if opt.ModifyRegistry {
-				res, err := c.PushAndModify("oci://"+r.URL+"/charts", r.Insecure, r.PlainHTTP)
+				res, err := c.PushAndModify(registryURL, r.Insecure, r.PlainHTTP)
 				if err != nil {
-					return err
+					return fmt.Errorf("helm: error pushing and modifying chart %s to registry %s :: %w", c.Name, registryURL, err)
 				}
 				slog.Debug(res)
 
 				continue
 			}
 
-			res, err := c.Push("oci://"+r.URL+"/charts", r.Insecure, r.PlainHTTP)
+			res, err := c.Push(registryURL, r.Insecure, r.PlainHTTP)
 			if err != nil {
-				return err
+				return fmt.Errorf("helm: error pushing chart %s to registry %s :: %w", c.Name, registryURL, err)
 			}
 			slog.Debug(res)
 

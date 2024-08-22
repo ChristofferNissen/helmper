@@ -70,7 +70,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 			CertPath:   o.Buildkit.CertPath,
 			KeyPath:    o.Buildkit.KeyPath,
 		}, outFilePaths[i]); err != nil {
-			return err
+			return fmt.Errorf("error patching image %s :: %w ", ref, err)
 		}
 
 		_ = bar.Add(1)
