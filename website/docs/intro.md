@@ -35,7 +35,7 @@ sudo mv helmper-linux-amd64 /usr/local/bin/helmper
 Create the configuration file
 
 ```yaml title="$HOME/.config/helmper/helmper.yaml"
-k8s_version: 1.27.9
+k8s_version: 1.27.16
 import:
   enabled: true
 charts:

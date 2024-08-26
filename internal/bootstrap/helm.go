@@ -11,7 +11,7 @@ func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) (helm.Chart
 	args := &helm.Options{
 		Verbose:    false,
 		Update:     false,
-		K8SVersion: "1.27.7",
+		K8SVersion: "1.27.16",
 	}
 
 	for _, setter := range setters {

@@ -114,6 +114,7 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	viper.SetDefault("all", false)
 	viper.SetDefault("verbose", false)
 	viper.SetDefault("update", false)
+	viper.SetDefault("k8s_version", "1.27.16")
 
 	// Unmarshal charts config section
 	inputConf := helm.ChartCollection{}

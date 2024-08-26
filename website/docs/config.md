@@ -20,7 +20,7 @@ Helmper supports a single flag `--f` to specify the configuration file. When usi
 ## Example configuration
 
 ```yaml title="Example config"
-k8s_version: 1.27.9
+k8s_version: 1.27.16
 verbose: true
 update: false
 all: false
@@ -117,7 +117,7 @@ registries:
 
 | Key | Type  | Default | Required | Description |
 |-|-|-|-|-|
-| `k8s_version` | string       | "1.27.9" | false | Some charts use images eliciting their tag based on the kube-apiserver version. Therefore, tell Helmper which version you run to import the correct version. |
+| `k8s_version` | string       | "1.27.16" | false | Some charts use images eliciting their tag based on the kube-apiserver version. Therefore, tell Helmper which version you run to import the correct version. |
 | `verbose`     | bool         | false    |  false | Toggle verbose output |
 | `update`      | bool         | false    |  false | Toggle update to latest chart version for each specified chart in `charts` |
 | `all`         | bool         | false    |  false | Toggle import of all images regardless if they exist in the registries defined in `registries` |
