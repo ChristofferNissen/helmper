@@ -56,7 +56,10 @@ func Patch(ctx context.Context, timeout time.Duration, image, reportFile, patche
 
 	select {
 	case err := <-ch:
-		return err
+		if err == nil {
+			return nil
+		}
+		return fmt.Errorf("copa: error patching image :: %w", err)
 	case <-timeoutCtx.Done():
 		// add a grace period for long running deferred cleanup functions to complete
 		<-time.After(1 * time.Second)
@@ -131,14 +134,14 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 	if reportFile != "" {
 		updates, err = report.TryParseScanReport(reportFile, scanner)
 		if err != nil {
-			return err
+			return fmt.Errorf("copa: error parsing scan report %s :: %w", reportFile, err)
 		}
 		log.Debugf("updates to apply: %v", updates)
 	}
 
 	bkClient, err := buildkit.NewClient(ctx, bkOpts)
 	if err != nil {
-		return err
+		return fmt.Errorf("copa: error creating buildkit client :: %w", err)
 	}
 	defer bkClient.Close()
 
@@ -162,7 +165,7 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 	}
 	solveOpt.SourcePolicy, err = build.ReadSourcePolicy()
 	if err != nil {
-		return err
+		return fmt.Errorf("copa: error reading source policy :: %w", err)
 	}
 
 	buildChannel := make(chan *client.SolveStatus)
@@ -173,7 +176,7 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 			config, err := buildkit.InitializeBuildkitConfig(ctx, c, imageName.String())
 			if err != nil {
 				ch <- err
-				return nil, err
+				return nil, fmt.Errorf("copa: error initializing buildkit config for image %s :: %w", imageName.String(), err)
 			}
 
 			// Create package manager helper
@@ -189,20 +192,20 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 				osType, err := getOSType(ctx, fileBytes)
 				if err != nil {
 					ch <- err
-					return nil, err
+					return nil, fmt.Errorf("copa: error getting os type :: %w", err)
 				}
 
 				osVersion, err := getOSVersion(ctx, fileBytes)
 				if err != nil {
 					ch <- err
-					return nil, err
+					return nil, fmt.Errorf("copa: error getting os version :: %w", err)
 				}
 
 				// get package manager based on os family type
 				manager, err = pkgmgr.GetPackageManager(osType, osVersion, config, workingFolder)
 				if err != nil {
 					ch <- err
-					return nil, err
+					return nil, fmt.Errorf("copa: error getting package manager for ostype=%s, version=%s :: %w", osType, osVersion, err)
 				}
 				// do not specify updates, will update all
 				updates = nil
@@ -211,16 +214,22 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 				manager, err = pkgmgr.GetPackageManager(updates.Metadata.OS.Type, updates.Metadata.OS.Version, config, workingFolder)
 				if err != nil {
 					ch <- err
-					return nil, err
+					return nil, fmt.Errorf("copa: error getting package manager by family type: ostype=%s, osversion=%s :: %w", updates.Metadata.OS.Type, updates.Metadata.OS.Version, err)
 				}
 			}
 
 			// Export the patched image state to Docker
 			// TODO: Add support for other output modes as buildctl does.
+			log.Infof("Patching %d vulnerabilities", len(updates.Updates))
 			patchedImageState, errPkgs, err := manager.InstallUpdates(ctx, updates, ignoreError)
+			log.Infof("Error is: %v", err)
 			if err != nil {
-				ch <- err
-				return nil, err
+				// if there are no patchable vulnerabilities, return nil without error
+				if len(updates.Updates) != 0 {
+					ch <- err
+					return nil, fmt.Errorf("copa: error installing updates for %s to address %d vulnerabilities :: %w", image, len(updates.Updates), err)
+				}
+				return nil, nil
 			}
 
 			def, err := patchedImageState.Marshal(ctx)
