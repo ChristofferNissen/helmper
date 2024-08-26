@@ -65,7 +65,7 @@ Remember to change the user
 :::
 
 ```yaml title="$HOME/.config/helmper/helmper.yaml"
-k8s_version: 1.27.9
+k8s_version: 1.27.16
 charts:
 - name: prometheus
   version: 25.8.0

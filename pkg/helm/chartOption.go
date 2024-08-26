@@ -166,7 +166,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 	args := &Options{
 		Verbose:    false,
 		Update:     false,
-		K8SVersion: "1.27.7",
+		K8SVersion: "1.27.16",
 	}
 
 	for _, setter := range setters {

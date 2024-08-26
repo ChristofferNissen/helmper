@@ -51,7 +51,7 @@ Helmper connects via gRPC to Trivy and Buildkit so you can run `helmper` without
 Simply tell `helmper` which charts to analyze and registries to use by creating a `helmper.yaml` file and run helmper from the same folder.
 
 ```yaml
-k8s_version: 1.27.9
+k8s_version: 1.27.16
 import:
   enabled: true
 charts:
@@ -99,7 +99,7 @@ az acr login -n myregistry
 In this example Helmper will also scan with Trivy, patch with Copacetic and sign with Cosign all identified images before pushing with Oras to all registries.
 
 ```yaml
-k8s_version: 1.27.9
+k8s_version: 1.27.16
 charts:
 - name: prometheus
   version: 25.8.0
