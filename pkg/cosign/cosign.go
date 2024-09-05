@@ -13,6 +13,12 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
+
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/fake"
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/gcp"
+	_ "github.com/sigstore/sigstore/pkg/signature/kms/hashivault"
 )
 
 type SignOption struct {
@@ -58,11 +64,10 @@ func (so SignOption) Run() error {
 		Timeout: timeout,
 		Verbose: false,
 	}
-	ko := options.KeyOpts{
-		KeyRef:   so.KeyRef,
-		PassFunc: func(bool) ([]byte, error) { return []byte(so.KeyRefPass), nil },
-	}
+
 	signOpts := options.SignOptions{
+		Key: so.KeyRef,
+
 		Upload:           true,
 		TlogUpload:       false,
 		SkipConfirmation: true,
@@ -82,6 +87,34 @@ func (so SignOption) Run() error {
 				}),
 			},
 		},
+	}
+	oidcClientSecret, err := signOpts.OIDC.ClientSecret()
+	if err != nil {
+		return err
+	}
+	ko := options.KeyOpts{
+		KeyRef:                         signOpts.Key,
+		PassFunc:                       func(bool) ([]byte, error) { return []byte(so.KeyRefPass), nil },
+		Sk:                             signOpts.SecurityKey.Use,
+		Slot:                           signOpts.SecurityKey.Slot,
+		FulcioURL:                      signOpts.Fulcio.URL,
+		IDToken:                        signOpts.Fulcio.IdentityToken,
+		FulcioAuthFlow:                 signOpts.Fulcio.AuthFlow,
+		InsecureSkipFulcioVerify:       signOpts.Fulcio.InsecureSkipFulcioVerify,
+		RekorURL:                       signOpts.Rekor.URL,
+		OIDCIssuer:                     signOpts.OIDC.Issuer,
+		OIDCClientID:                   signOpts.OIDC.ClientID,
+		OIDCClientSecret:               oidcClientSecret,
+		OIDCRedirectURL:                signOpts.OIDC.RedirectURL,
+		OIDCDisableProviders:           signOpts.OIDC.DisableAmbientProviders,
+		OIDCProvider:                   signOpts.OIDC.Provider,
+		SkipConfirmation:               signOpts.SkipConfirmation,
+		TSAClientCACert:                signOpts.TSAClientCACert,
+		TSAClientCert:                  signOpts.TSAClientCert,
+		TSAClientKey:                   signOpts.TSAClientKey,
+		TSAServerName:                  signOpts.TSAServerName,
+		TSAServerURL:                   signOpts.TSAServerURL,
+		IssueCertificateForExistingKey: signOpts.IssueCertificate,
 	}
 
 	for _, r := range so.Registries {
