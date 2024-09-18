@@ -186,7 +186,8 @@ func (c Chart) ResolveVersions() ([]string, error) {
 
 func (c Chart) ResolveVersion() (string, error) {
 
-	r, err := semver.ParseRange(c.Version)
+	v := strings.ReplaceAll(c.Version, "*", "x")
+	r, err := semver.ParseRange(v)
 	if err != nil {
 		return "", err
 	}
