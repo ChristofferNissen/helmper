@@ -365,9 +365,18 @@ func (c Chart) pullTar() (string, error) {
 
 		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name
 
+		version, vPrefix := strings.CutPrefix(c.Version, "v")
+		if vPrefix {
+			c.Version = version
+		}
+
 		v, err := c.ResolveVersion()
 		if err != nil {
 			return "", err
+		}
+
+		if vPrefix {
+			c.Version = "v" + v
 		}
 
 		co := action.ChartPathOptions{
@@ -378,7 +387,7 @@ func (c Chart) pullTar() (string, error) {
 			PassCredentialsAll:    c.Repo.PassCredentialsAll,
 			Username:              c.Repo.Username,
 			Password:              c.Repo.Password,
-			Version:               v,
+			Version:               c.Version,
 		}
 
 		// You can pass an empty string instead of settings.Namespace() to list
@@ -415,7 +424,7 @@ func (c Chart) pullTar() (string, error) {
 			return "", err
 		}
 
-		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, v), nil
+		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
 
 	}
 
