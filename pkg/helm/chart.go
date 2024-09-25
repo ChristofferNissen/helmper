@@ -424,7 +424,7 @@ func (c Chart) pullTar() (string, error) {
 			return "", err
 		}
 
-		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, v), nil
+		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
 
 	}
 
