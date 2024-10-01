@@ -970,3 +970,107 @@ func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
 		t.Fatalf("want '%d' number of images, got '%d'\n", expectedImageCount, imageCount)
 	}
 }
+
+func TestFindImagesInHelmChartsOnExternalSecretsChart(t *testing.T) {
+	// t.Parallel()
+
+	// Arrange
+	ctx := context.TODO()
+
+	charts := helm.ChartCollection{
+		Charts: []helm.Chart{
+			{
+				Name: "external-secrets",
+				Repo: repo.Entry{
+					Name: "external-secrets",
+					URL:  "https://charts.external-secrets.io",
+				},
+				Version: "0.10.4",
+			},
+		},
+	}
+
+	co := helm.ChartOption{
+		ChartCollection: &charts,
+		IdentifyImages:  true,
+	}
+	_, err := co.ChartCollection.SetupHelm()
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedChartCount := 1
+	expectedImageCount := 3
+
+	// Act
+	data, err := co.Run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Assert
+	if len(data) != expectedChartCount {
+		t.Fatalf("want '%d' number of charts, got '%d'\n", expectedChartCount, len(data))
+	}
+
+	imageCount := 0
+	for _, images := range data {
+		imageCount = imageCount + len(images)
+	}
+
+	if imageCount != expectedImageCount {
+		t.Fatalf("want '%d' number of images, got '%d'\n", expectedImageCount, imageCount)
+	}
+}
+
+func TestFindImagesInHelmChartsOnKubePrometheusStackChart(t *testing.T) {
+	// t.Parallel()
+
+	// Arrange
+	ctx := context.TODO()
+
+	charts := helm.ChartCollection{
+		Charts: []helm.Chart{
+			{
+				Name: "kube-prometheus-stack",
+				Repo: repo.Entry{
+					Name: "prometheus-community",
+					URL:  "https://prometheus-community.github.io/helm-charts",
+				},
+				Version: "63.1.0",
+			},
+		},
+	}
+
+	co := helm.ChartOption{
+		ChartCollection: &charts,
+		IdentifyImages:  true,
+	}
+	_, err := co.ChartCollection.SetupHelm()
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedChartCount := 4
+	expectedImageCount := 13
+
+	// Act
+	data, err := co.Run(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Assert
+	if len(data) != expectedChartCount {
+		t.Fatalf("want '%d' number of charts, got '%d'\n", expectedChartCount, len(data))
+	}
+
+	imageCount := 0
+	for _, images := range data {
+		imageCount = imageCount + len(images)
+	}
+
+	if imageCount != expectedImageCount {
+		t.Fatalf("want '%d' number of images, got '%d'\n", expectedImageCount, imageCount)
+	}
+}
