@@ -154,7 +154,7 @@ func (so SignChartOption) Run() error {
 						chart := helm.Chart{
 							Name: d.Name,
 							Repo: repo.Entry{
-								Name: c.Repo.Name,
+								Name: c.Repo.Name + "/" + d.Name,
 								URL:  d.Repository,
 							},
 							Version:        d.Version,

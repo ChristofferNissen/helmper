@@ -63,7 +63,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			chart := Chart{
 				Name: d.Name,
 				Repo: repo.Entry{
-					Name: c.Repo.Name,
+					Name: c.Repo.Name + "/" + d.Name,
 					URL:  d.Repository,
 				},
 				Version:        d.Version,

@@ -77,6 +77,44 @@ func (c Chart) AddToHelmRepositoryFile() error {
 	return nil
 }
 
+func VersionsInRange(r semver.Range, c Chart) ([]string, error) {
+	prefixV := strings.Contains(c.Version, "v")
+
+	// Fetch versions from Helm Repository
+	config := cli.New()
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
+	index, err := repo.LoadIndexFile(indexPath)
+	if err != nil {
+		return nil, err
+	}
+	index.SortEntries()
+	versions := index.Entries[c.Name]
+
+	versionsInRange := []string{}
+	for _, v := range versions {
+		sv, err := semver.ParseTolerant(v.Version)
+		if err != nil {
+			continue
+		}
+
+		if len(sv.Pre) > 0 {
+			continue
+		}
+
+		if r(sv) {
+			//valid
+			s := sv.String()
+			if prefixV {
+				s = "v" + s
+			}
+			versionsInRange = append(versionsInRange, s)
+		}
+
+	}
+
+	return versionsInRange, nil
+}
+
 func (c Chart) ResolveVersions() ([]string, error) {
 
 	prefixV := strings.Contains(c.Version, "v")
@@ -149,39 +187,13 @@ func (c Chart) ResolveVersions() ([]string, error) {
 		return versionsInRange, nil
 	}
 
-	// Fetch versions from Helm Repository
-	config := cli.New()
-	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
-	index, err := repo.LoadIndexFile(indexPath)
+	c.AddToHelmRepositoryFile()
+	_, err = updateRepositories(false, false)
 	if err != nil {
 		return nil, err
 	}
-	index.SortEntries()
-	versions := index.Entries[c.Name]
 
-	versionsInRange := []string{}
-	for _, v := range versions {
-		sv, err := semver.ParseTolerant(v.Version)
-		if err != nil {
-			continue
-		}
-
-		if len(sv.Pre) > 0 {
-			continue
-		}
-
-		if r(sv) {
-			//valid
-			s := sv.String()
-			if prefixV {
-				s = "v" + s
-			}
-			versionsInRange = append(versionsInRange, s)
-		}
-
-	}
-
-	return versionsInRange, nil
+	return VersionsInRange(r, c)
 }
 
 func (c Chart) ResolveVersion() (string, error) {
@@ -241,6 +253,15 @@ func (c Chart) ResolveVersion() (string, error) {
 		}
 
 		return "", xerrors.Errorf("Not found")
+	}
+
+	err = c.AddToHelmRepositoryFile()
+	if err != nil {
+		return "", err
+	}
+	_, err = updateRepositories(false, false)
+	if err != nil {
+		return "", err
 	}
 
 	config := cli.New()
@@ -582,7 +603,7 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 				chart := Chart{
 					Name: d.Name,
 					Repo: repo.Entry{
-						Name: c.Repo.Name,
+						Name: c.Repo.Name + "/" + d.Name,
 						URL:  d.Repository,
 					},
 					Version:        d.Version,
