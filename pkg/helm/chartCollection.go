@@ -30,7 +30,7 @@ func (collection ChartCollection) addToHelmRepositoryConfig() error {
 		if strings.HasPrefix(c.Repo.URL, "oci://") {
 			continue
 		}
-		err := c.AddToHelmRepositoryFile()
+		_, err := c.AddToHelmRepositoryFile()
 		if err != nil {
 			return err
 		}
