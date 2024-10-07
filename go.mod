@@ -8,6 +8,7 @@ require (
 	github.com/aquasecurity/trivy v0.53.1-0.20240725155459-d76febaee107
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bobg/go-generics v1.7.2
+	github.com/containerd/platforms v0.2.1
 	github.com/distribution/reference v0.6.0
 	github.com/docker/buildx v0.16.0
 	github.com/enescakir/emoji v1.0.0
@@ -57,7 +58,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/containerd/containerd/api v1.7.19 // indirect
-	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
 	github.com/cpuguy83/go-docker v0.3.0 // indirect
 	github.com/csaf-poc/csaf_distribution/v3 v3.0.0 // indirect
