@@ -8,7 +8,9 @@ func ContainsOsPkgs(rs types.Results) bool {
 	for _, r := range rs {
 		switch r.Class {
 		case "os-pkgs":
-			return true
+			if !r.IsEmpty() {
+				return true
+			}
 		}
 	}
 	return false

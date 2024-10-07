@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/containerd/platforms"
 	"github.com/docker/buildx/build"
 	"github.com/docker/cli/cli/config"
 	"github.com/quay/claircore/osrelease"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/distribution/reference"
 	"github.com/moby/buildkit/client"
+	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/exporter/containerimage/exptypes"
 	gwclient "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/session"
@@ -224,15 +226,16 @@ func patchWithContext(ctx context.Context, ch chan error, image, reportFile, pat
 			patchedImageState, errPkgs, err := manager.InstallUpdates(ctx, updates, ignoreError)
 			log.Infof("Error is: %v", err)
 			if err != nil {
-				// if there are no patchable vulnerabilities, return nil without error
-				if len(updates.Updates) != 0 {
-					ch <- err
-					return nil, fmt.Errorf("copa: error installing updates for %s to address %d vulnerabilities :: %w", image, len(updates.Updates), err)
-				}
+				ch <- err
 				return nil, nil
 			}
 
-			def, err := patchedImageState.Marshal(ctx)
+			platform := platforms.Normalize(platforms.DefaultSpec())
+			if platform.OS != "linux" {
+				platform.OS = "linux"
+			}
+
+			def, err := patchedImageState.Marshal(ctx, llb.Platform(platform))
 			if err != nil {
 				ch <- err
 				return nil, err
