@@ -56,7 +56,7 @@ type Chart struct {
 }
 
 // AddChartRepositoryToHelmRepositoryFile adds repository to Helm repository.yml to enable querying/pull
-func (c Chart) AddToHelmRepositoryFile() error {
+func (c Chart) AddToHelmRepositoryFile() (bool, error) {
 	config := cli.New()
 	repoConfig := config.RepositoryConfig
 
@@ -64,17 +64,17 @@ func (c Chart) AddToHelmRepositoryFile() error {
 	if file.Exists(repoConfig) {
 		file, err := repo.LoadFile(repoConfig)
 		if err != nil {
-			return err
+			return false, err
 		}
 		f = file
 	}
 
 	if !f.Has(c.Repo.Name) {
 		f.Update(&c.Repo)
-		return f.WriteFile(repoConfig, 0644)
+		return true, f.WriteFile(repoConfig, 0644)
 	}
 
-	return nil
+	return false, nil
 }
 
 func VersionsInRange(r semver.Range, c Chart) ([]string, error) {
@@ -187,10 +187,15 @@ func (c Chart) ResolveVersions() ([]string, error) {
 		return versionsInRange, nil
 	}
 
-	c.AddToHelmRepositoryFile()
-	_, err = updateRepositories(false, false)
+	update, err := c.AddToHelmRepositoryFile()
 	if err != nil {
 		return nil, err
+	}
+	if update {
+		_, err = updateRepositories(false, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return VersionsInRange(r, c)
@@ -255,13 +260,15 @@ func (c Chart) ResolveVersion() (string, error) {
 		return "", xerrors.Errorf("Not found")
 	}
 
-	err = c.AddToHelmRepositoryFile()
+	update, err := c.AddToHelmRepositoryFile()
 	if err != nil {
 		return "", err
 	}
-	_, err = updateRepositories(false, false)
-	if err != nil {
-		return "", err
+	if update {
+		_, err = updateRepositories(false, false)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	config := cli.New()
