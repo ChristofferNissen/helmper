@@ -18,7 +18,7 @@ docker run -d -p 5000:5000 --restart=always --name registry registry:2
 #### Buildkitd
 
 ```shell title="bash"
-export BUILDKIT_VERSION=v0.12.4
+export BUILDKIT_VERSION=v0.15.1
 export BUILDKIT_PORT=8888
 docker run --detach --rm --privileged \
 -p 127.0.0.1:$BUILDKIT_PORT:$BUILDKIT_PORT/tcp \
