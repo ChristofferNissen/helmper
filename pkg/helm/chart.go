@@ -405,6 +405,8 @@ func (c Chart) pullTar() (string, error) {
 
 		if vPrefix {
 			c.Version = "v" + v
+		} else {
+			c.Version = v
 		}
 
 		co := action.ChartPathOptions{

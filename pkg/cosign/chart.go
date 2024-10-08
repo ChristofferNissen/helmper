@@ -150,7 +150,7 @@ func (so SignChartOption) Run() error {
 			for _, d := range chartRef.Metadata.Dependencies {
 				if d.Repository != "" {
 					v := d.Version
-					if strings.Contains(v, "*") {
+					if strings.Contains(v, "*") || strings.Contains(v, "x") {
 						chart := helm.Chart{
 							Name: d.Name,
 							Repo: repo.Entry{
