@@ -2,6 +2,7 @@ package trivy
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	tcache "github.com/aquasecurity/trivy/pkg/cache"
@@ -65,8 +66,13 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	// cache := tcache.NopCache(remoteCache)
 
 	artifactArtifact, err := image2.NewArtifact(typesImage, cache, artifact.Option{
-		DisabledAnalyzers: []analyzer.Type{},
-		DisabledHandlers:  nil,
+		DisabledAnalyzers: []analyzer.Type{
+			analyzer.TypeJar,
+			analyzer.TypePom,
+			analyzer.TypeGradleLock,
+			analyzer.TypeSbtLock,
+		},
+		DisabledHandlers: nil,
 		// SkipFiles:         nil,
 		// SkipDirs:          nil,
 		FilePatterns: nil,
@@ -101,7 +107,7 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		IncludeDevDeps: false,
 	})
 	if err != nil {
-		slog.Error("ScanArtifact failed: %v", err, slog.AnyValue(report.Metadata.OS.Family))
+		slog.Error(fmt.Sprintf("ScanArtifact failed: %v", err), slog.Any("report", report))
 		return types.Report{}, err
 	}
 
