@@ -18,7 +18,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/repo"
 )
 
 type ChartData map[Chart]map[*registry.Image][]string
@@ -105,19 +104,23 @@ func determineTag(ctx context.Context, img *registry.Image, plainHTTP bool) bool
 }
 
 func determineSubChartPath(d *chart.Dependency, subChart *Chart, c *Chart, path string, args *Options) (string, error) {
-	if d.Repository == "" {
-		p := path
+	p := path
 
-		// Check if path is archive e.g. contains '.tgz'
-		if strings.Contains(p, ".tgz") {
-			// Unpack tar
-			if err := chartutil.ExpandFile(cli.New().EnvVars()["HELM_CACHE_HOME"], p); err != nil {
-				return "", err
-			}
-			p = filepath.Join(cli.New().EnvVars()["HELM_CACHE_HOME"], c.Name)
+	// Check if path is archive e.g. contains '.tgz'
+	if strings.Contains(p, ".tgz") {
+		// Unpack tar
+		if err := chartutil.ExpandFile(cli.New().EnvVars()["HELM_CACHE_HOME"], p); err != nil {
+			return "", err
 		}
+		p = filepath.Join(cli.New().EnvVars()["HELM_CACHE_HOME"], c.Name)
+	}
 
-		return fmt.Sprintf("%s/charts/%s", p, subChart.Name), nil
+	switch {
+	case strings.HasPrefix(d.Repository, "file://"): //  Helm version >2.2.0
+		fallthrough
+	case d.Repository == "": // Embedded
+		s := fmt.Sprintf("%s/charts/%s", p, subChart.Name)
+		return s, nil
 	}
 
 	// Get Dependency Charts to local filesystem
@@ -227,15 +230,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 					}
 
 					// Create chart for dependency
-					subChart := Chart{
-						Name: d.Name,
-						Repo: repo.Entry{
-							Name: c.Repo.Name + "/" + d.Name,
-							URL:  d.Repository,
-						},
-						Version: d.Version,
-						Parent:  &c,
-					}
+					subChart := DependencyToChart(d, c)
 
 					// Determine path to subChart in filesystem
 					scPath, err := determineSubChartPath(d, &subChart, &c, path, args)
@@ -311,7 +306,6 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 
 				eg, egCtx := errgroup.WithContext(egCtx)
 				for i, helmValuePaths := range imageMap {
-
 					func(i *registry.Image, helmValuePaths []string) {
 						eg.Go(func() error {
 

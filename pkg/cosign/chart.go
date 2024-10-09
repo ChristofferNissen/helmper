@@ -17,7 +17,6 @@ import (
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/repo"
 
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"
@@ -148,20 +147,10 @@ func (so SignChartOption) Run() error {
 			}
 
 			for _, d := range chartRef.Metadata.Dependencies {
-				if d.Repository != "" {
+				if !(d.Repository == "" || strings.HasPrefix(d.Repository, "file://")) {
 					v := d.Version
 					if strings.Contains(v, "*") || strings.Contains(v, "x") {
-						chart := helm.Chart{
-							Name: d.Name,
-							Repo: repo.Entry{
-								Name: c.Repo.Name + "/" + d.Name,
-								URL:  d.Repository,
-							},
-							Version:        d.Version,
-							ValuesFilePath: c.ValuesFilePath,
-							Parent:         &c,
-							PlainHTTP:      c.PlainHTTP,
-						}
+						chart := helm.DependencyToChart(d, c)
 
 						// Resolve Globs to latest patch
 						v, err = chart.ResolveVersion()

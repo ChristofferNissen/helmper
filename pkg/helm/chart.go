@@ -55,6 +55,21 @@ type Chart struct {
 	DepsCount      int
 }
 
+func DependencyToChart(d *chart.Dependency, p Chart) Chart {
+	return Chart{
+		Name: d.Name,
+		Repo: repo.Entry{
+			Name: p.Repo.Name + "/" + d.Name,
+			URL:  d.Repository,
+		},
+		Version:        d.Version,
+		Parent:         &p,
+		ValuesFilePath: p.ValuesFilePath,
+		DepsCount:      0,
+		PlainHTTP:      p.PlainHTTP,
+	}
+}
+
 // AddChartRepositoryToHelmRepositoryFile adds repository to Helm repository.yml to enable querying/pull
 func (c Chart) AddToHelmRepositoryFile() (bool, error) {
 	config := cli.New()
@@ -603,22 +618,13 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 
 	// Dependencies (Chart.yaml)
 	for _, d := range chartRef.Metadata.Dependencies {
-		if d.Repository != "" {
+		if d.Repository != "" || strings.HasPrefix(d.Repository, "file://") {
 
 			// Change dependency ref to registry being imported to
 			d.Repository = registry
 
-			if strings.Contains(d.Version, "*") {
-				chart := Chart{
-					Name: d.Name,
-					Repo: repo.Entry{
-						Name: c.Repo.Name + "/" + d.Name,
-						URL:  d.Repository,
-					},
-					Version:        d.Version,
-					ValuesFilePath: c.ValuesFilePath,
-					Parent:         &c,
-				}
+			if strings.Contains(d.Version, "*") || strings.Contains(d.Version, "x") {
+				chart := DependencyToChart(d, c)
 
 				// OCI dependencies can not use globs in version
 				// Resolve Globs to latest patch
