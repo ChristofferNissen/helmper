@@ -80,7 +80,7 @@ type ChartOption struct {
 	UseCustomValues bool
 }
 
-func determineTag(ctx context.Context, k8sv string, img *registry.Image, plainHTTP bool) bool {
+func determineTag(ctx context.Context, img *registry.Image, plainHTTP bool) bool {
 
 	reg, repo, name := img.Elements()
 	ref := fmt.Sprintf("%s/%s/%s", reg, repo, name)
@@ -98,12 +98,6 @@ func determineTag(ctx context.Context, k8sv string, img *registry.Image, plainHT
 	available, _ = registry.Exist(ctx, ref, "v"+img.Tag, plainHTTP)
 	if available {
 		img.Tag = "v" + img.Tag
-		return true
-	}
-
-	available, _ = registry.Exist(ctx, ref, k8sv, plainHTTP)
-	if available {
-		img.Tag = k8sv
 		return true
 	}
 
@@ -317,10 +311,6 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 
 				eg, egCtx := errgroup.WithContext(egCtx)
 				for i, helmValuePaths := range imageMap {
-					if i.Tag == "" {
-						// If tag is empty in values.yaml, use App Version by convention
-						i.Tag = chart.Metadata.AppVersion
-					}
 
 					func(i *registry.Image, helmValuePaths []string) {
 						eg.Go(func() error {
@@ -330,9 +320,19 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 							i.Registry = reg
 							i.Repository = fmt.Sprintf("%s/%s", repo, name)
 
+							if i.Tag == "" {
+								switch name {
+								case "kubectl":
+									i.Tag = args.K8SVersion
+								default:
+									// If tag is empty in values.yaml, use App Version by convention
+									i.Tag = chart.Metadata.AppVersion
+								}
+							}
+
 							plainHTTP := strings.Contains(i.Registry, "localhost") || strings.Contains(i.Registry, "0.0.0.0")
 
-							available := determineTag(egCtx, args.K8SVersion, i, plainHTTP)
+							available := determineTag(egCtx, i, plainHTTP)
 
 							// send availability response
 							channel <- &imageInfo{available, c, i, &helmValuePaths}
