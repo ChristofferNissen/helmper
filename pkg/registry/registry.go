@@ -177,29 +177,26 @@ func (r Registry) Exist(ctx context.Context, name string, tag string) (bool, err
 	return Exist(ctx, strings.Join([]string{r.URL, name}, "/"), tag, r.PlainHTTP)
 }
 
-func Exists(ctx context.Context, img *Image, registries []Registry) (map[string]bool, error) {
+func Exists(ctx context.Context, img *Image, registries []Registry) map[string]bool {
 	m := make(map[string]bool, len(registries))
 
 	for _, r := range registries {
-		exists, err := func(img *Image, r Exister) (bool, error) {
+		exists := func(img *Image, r Exister) bool {
 			name, err := img.ImageName()
 			if err != nil {
-				return false, err
+				return false
 			}
 			exists, err := r.Exist(ctx, name, img.Tag)
 			if err != nil {
-				return false, err
+				return false
 			}
-			return exists, nil
+			return exists
 		}(img, r)
-		if err != nil {
-			return nil, err
-		}
 
 		m[r.GetName()] = exists
 	}
 
-	return m, nil
+	return m
 }
 
 func Exist(ctx context.Context, reference string, tag string, plainHTTP bool) (bool, error) {
