@@ -125,21 +125,20 @@ func RenderHelmValuePathToImageTable(chartImageHelmValuesMap map[helm.Chart]map[
 }
 
 func getImportTableRow(_ context.Context, viper *viper.Viper, c helm.Chart, image string, keys []string, m map[string]bool) table.Row {
-	importImage := true
-
 	row := table.Row{}
 	row = append(row, sc.Value("index_import"), c.Name, c.Version, image)
 
 	for _, key := range keys {
-		if key != "prd" {
-			row = append(row, terminal.StatusEmoji(m[key]))
-			importImage = importImage && !m[key]
-		}
-	}
+		row = append(row, terminal.StatusEmoji(m[key]))
 
-	ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
-	if ic.Import.Enabled {
-		row = append(row, terminal.StatusEmoji(state.GetValue[bool](viper, "all") || importImage))
+		ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+		if ic.Import.Enabled {
+			b := !m[key]
+			if b {
+				sc.Inc(key)
+			}
+			row = append(row, terminal.StatusEmoji(state.GetValue[bool](viper, "all") || b))
+		}
 	}
 
 	sc.Inc("index_import")
@@ -158,21 +157,19 @@ func getImportTableRows(ctx context.Context, viper *viper.Viper, registries []re
 	rows := make([]table.Row, 0)
 
 	for c, m := range chartImageValuesMap {
-
-		var seenImages []registry.Image = make([]registry.Image, 0)
+		seenImages := make([]registry.Image, 0)
 		for i := range m {
 			if !i.In(seenImages) {
 				// make sure we don't parse again
 				seenImages = append(seenImages, *i)
 
 				// check if image exists in registry
-				m, _ := registry.Exists(ctx, i, registries)
+				m := registry.Exists(ctx, i, registries)
 
 				// add row to overview table
 				ref, _ := i.String()
 				row := getImportTableRow(ctx, viper, c, ref, keys, m)
 				rows = append(rows, row)
-
 			}
 		}
 	}
@@ -194,18 +191,19 @@ func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 	header = append(header, "#", "Helm Chart", "Chart Version", "Image")
 	footer = append(footer, "", "", "", "")
 
+	ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+
 	// dynamic number of registries
 	for _, r := range registries {
 		name := r.GetName()
 		header = append(header, name)
 		footer = append(footer, "")
-	}
 
-	ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
-	if ic.Import.Enabled {
-		// second static part of header
-		header = append(header, "import")
-		footer = append(footer, missing)
+		if ic.Import.Enabled {
+			// second static part of header
+			header = append(header, "import")
+			footer = append(footer, sc.Value(r.GetName()))
+		}
 	}
 
 	// construct table
@@ -213,5 +211,6 @@ func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 	t.AppendRows(rows)
 	t.AppendFooter(footer)
 	t.Render()
+
 	return nil
 }

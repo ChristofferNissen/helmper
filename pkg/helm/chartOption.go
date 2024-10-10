@@ -43,7 +43,7 @@ func IdentifyImportCandidates(ctx context.Context, registries []registry.Registr
 			if all || func(rs []registry.Registry) bool {
 				importImage := false
 				// check if image exists in registry
-				registryImageStatusMap, _ := registry.Exists(ctx, i, rs)
+				registryImageStatusMap := registry.Exists(ctx, i, rs)
 				// loop over registries
 				for _, r := range rs {
 					imageExistsInRegistry := registryImageStatusMap[r.GetName()]
