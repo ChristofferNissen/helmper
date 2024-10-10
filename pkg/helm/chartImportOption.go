@@ -11,7 +11,6 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
-	"helm.sh/helm/v3/pkg/repo"
 )
 
 type ChartImportOption struct {
@@ -53,25 +52,14 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			// 	continue
 			// }
 
-			// Only import enabled charts
-			if d.Repository == "" {
+			// only import remote charts
+			if d.Repository == "" || strings.HasPrefix(d.Repository, "file://") {
 				// Embedded in parent chart
 				slog.Debug("Skipping embedded chart", slog.String("chart", d.Name), slog.String("parent", c.Name))
 				continue
 			}
 
-			chart := Chart{
-				Name: d.Name,
-				Repo: repo.Entry{
-					Name: c.Repo.Name + "/" + d.Name,
-					URL:  d.Repository,
-				},
-				Version:        d.Version,
-				ValuesFilePath: c.ValuesFilePath,
-				Parent:         &c,
-				DepsCount:      0,
-				PlainHTTP:      c.PlainHTTP,
-			}
+			chart := DependencyToChart(d, c)
 
 			// Resolve Globs to latest patch
 			if strings.Contains(chart.Version, "*") {
