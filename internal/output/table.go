@@ -133,11 +133,11 @@ func getImportTableRow(_ context.Context, viper *viper.Viper, c helm.Chart, imag
 
 		ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
 		if ic.Import.Enabled {
-			b := !m[key]
+			b := state.GetValue[bool](viper, "all") || !m[key]
 			if b {
 				sc.Inc(key)
 			}
-			row = append(row, terminal.StatusEmoji(state.GetValue[bool](viper, "all") || b))
+			row = append(row, terminal.StatusEmoji(b))
 		}
 	}
 
