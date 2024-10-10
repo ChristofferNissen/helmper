@@ -598,27 +598,29 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 	}
 	defer os.Remove(path)
 
-	dname, err := os.MkdirTemp("", "sampledir")
+	dir, err := os.MkdirTemp("", "sampledir")
 	if err != nil {
 		return "", err
 	}
-	// fmt.Println("Temp dir name:", dname)
-	defer os.RemoveAll(dname)
+	defer os.RemoveAll(dir)
 
-	err = chartutil.ExpandFile(dname, path)
+	err = chartutil.ExpandFile(dir, path)
 	if err != nil {
 		return "", err
 	}
 
 	// modify chart contents here before pushing
-	chartRef, err := loader.Load(dname + "/" + c.Name)
+	chartRef, err := loader.Load(dir + "/" + c.Name)
 	if err != nil {
 		return "", err
 	}
 
 	// Dependencies (Chart.yaml)
 	for _, d := range chartRef.Metadata.Dependencies {
-		if d.Repository != "" || strings.HasPrefix(d.Repository, "file://") {
+		switch {
+		case strings.HasPrefix(d.Repository, "file://"):
+			slog.Debug("Leaving embedded chart as is", slog.String("Chart", d.Name))
+		case d.Repository != "":
 
 			// Change dependency ref to registry being imported to
 			d.Repository = registry
@@ -637,7 +639,7 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 
 	}
 
-	err = chartutil.SaveChartfile(dname+"/"+c.Name+"/Chart.yaml", chartRef.Metadata)
+	err = chartutil.SaveChartfile(dir+"/"+c.Name+"/Chart.yaml", chartRef.Metadata)
 	if err != nil {
 		return "", err
 	}
@@ -646,14 +648,14 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 	// https://github.com/helm/helm/blob/main/cmd/helm/dependency_update.go
 	var buf bytes.Buffer
 	ma := getManager(&buf, true, true)
-	ma.ChartPath = dname + "/" + c.Name
+	ma.ChartPath = dir + "/" + c.Name
 	err = ma.Update()
 	if err != nil {
-		return "", err
+		slog.Debug("Error occurred trying to update Helm Chart on filesystem, skipping update of chart dependencies", slog.String("error", err.Error()))
 	}
 
 	// Reload Helm Chart from filesystem
-	chartRef, err = loader.Load(dname + "/" + c.Name)
+	chartRef, err = loader.Load(dir + "/" + c.Name)
 	if err != nil {
 		return "", err
 	}
@@ -808,8 +810,8 @@ func (c Chart) Locate() (string, error) {
 		}
 
 		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
-	default:
 
+	default:
 		u, err := url.Parse(c.Repo.URL)
 		if err != nil {
 			return "", err
