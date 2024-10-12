@@ -152,7 +152,7 @@ func getImportTableRows(ctx context.Context, viper *viper.Viper, registries []re
 	// Create collection of registry names as keys for iterating registries
 	keys := make([]string, 0)
 	for _, r := range registries {
-		keys = append(keys, r.GetName())
+		keys = append(keys, r.URL)
 	}
 
 	// Combine results
@@ -184,7 +184,6 @@ func getImportTableRows(ctx context.Context, viper *viper.Viper, registries []re
 }
 
 func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing int, registries []registry.Registry, chartImageValuesMap map[helm.Chart]map[*registry.Image][]string) error {
-
 	rows, err := getImportTableRows(ctx, viper, registries, chartImageValuesMap)
 	if err != nil {
 		return err
@@ -201,14 +200,13 @@ func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 
 	// dynamic number of registries
 	for _, r := range registries {
-		name := r.GetName()
-		header = append(header, name)
+		header = append(header, r.GetName())
 		footer = append(footer, "")
 
 		if ic.Import.Enabled {
 			// second static part of header
 			header = append(header, "import")
-			footer = append(footer, sc.Value(name))
+			footer = append(footer, sc.Value(r.URL))
 		}
 	}
 
@@ -226,7 +224,7 @@ func RenderChartOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 	// Create collection of registry names as keys for iterating registries
 	keys := make([]string, 0)
 	for _, r := range registries {
-		keys = append(keys, r.GetName())
+		keys = append(keys, r.URL)
 	}
 
 	// Combine results
@@ -270,18 +268,17 @@ func RenderChartOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 
 	// dynamic number of registries
 	for _, r := range registries {
-		name := r.GetName()
-		header = append(header, name)
+		header = append(header, r.GetName())
 		footer = append(footer, "")
 
 		if ic.Import.Enabled {
 			// second static part of header
 			header = append(header, "import")
-			footer = append(footer, sc.Value(name+"charts"))
+			footer = append(footer, sc.Value(r.URL+"charts"))
 		}
 	}
 
-	// construct tab"test"le
+	// construct table
 	t := newTable("Registry Import Overview For Images", header)
 	t.AppendRows(rows)
 	t.AppendFooter(footer)

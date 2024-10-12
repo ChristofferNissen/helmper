@@ -189,7 +189,7 @@ func Exists(ctx context.Context, ref string, tag string, registries []Registry) 
 			return exists
 		}(r)
 
-		m[r.GetName()] = exists
+		m[r.URL] = exists
 	}
 
 	return m

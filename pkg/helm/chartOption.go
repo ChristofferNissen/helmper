@@ -34,14 +34,12 @@ func IdentifyImportCandidates(ctx context.Context, registries []registry.Registr
 
 		if all || func(rs []registry.Registry) bool {
 			importChart := false
-
-			registryImageStatusMap := registry.Exists(ctx, fmt.Sprintf("charts/%s", c.Name), c.Version, rs)
+			registryChartStatusMap := registry.Exists(ctx, fmt.Sprintf("charts/%s", c.Name), c.Version, rs)
 			// loop over registries
 			for _, r := range rs {
-				existsInRegistry := registryImageStatusMap[r.GetName()]
+				existsInRegistry := registryChartStatusMap[r.URL]
 				importChart = importChart || !existsInRegistry
 			}
-
 			return importChart
 		}(registries) {
 			if c.Name != "images" {
@@ -69,7 +67,7 @@ func IdentifyImportCandidates(ctx context.Context, registries []registry.Registr
 				registryImageStatusMap := registry.Exists(ctx, name, i.Tag, rs)
 				// loop over registries
 				for _, r := range rs {
-					imageExistsInRegistry := registryImageStatusMap[r.GetName()]
+					imageExistsInRegistry := registryImageStatusMap[r.URL]
 					importImage = importImage || !imageExistsInRegistry
 				}
 				return importImage
