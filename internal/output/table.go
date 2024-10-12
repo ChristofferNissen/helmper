@@ -15,7 +15,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
-	"github.com/jedib0t/go-pretty/table"
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 var sc counter.SafeCounter = counter.NewSafeCounter()
