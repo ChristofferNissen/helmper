@@ -42,7 +42,11 @@ func (io ImportOption) Run(ctx context.Context) error {
 
 	eg, egCtx := errgroup.WithContext(ctx)
 	for _, i := range io.Imgs {
-		status := Exists(ctx, i, io.Registries)
+		name, err := i.ImageName()
+		if err != nil {
+			return err
+		}
+		status := Exists(ctx, name, i.Tag, io.Registries)
 
 		func(i *Image) {
 			eg.Go(func() error {

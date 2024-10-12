@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -15,21 +16,22 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
-	"github.com/jedib0t/go-pretty/table"
+	"github.com/jedib0t/go-pretty/v6/table"
 )
 
 var sc counter.SafeCounter = counter.NewSafeCounter()
 
 // create a new table.writer with header and os.Stdout output mirror
-func newTable(row table.Row) table.Writer {
+func newTable(title string, header table.Row) table.Writer {
 	t := table.NewWriter()
+	t.SetTitle(title)
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(row)
+	t.AppendHeader(header)
 	return t
 }
 
 func renderChartTable(rows []table.Row) {
-	t := newTable(table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
+	t := newTable("Charts", table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
 	t.AppendRows(rows)
 	t.SortBy([]table.SortBy{
 		{Number: 1, Mode: table.AscNumeric},
@@ -111,13 +113,13 @@ func RenderChartTable(charts *helm.ChartCollection, setters ...Option) {
 
 func RenderHelmValuePathToImageTable(chartImageHelmValuesMap map[helm.Chart]map[*registry.Image][]string) {
 	// Print Helm values to be set for each chart
-	t := newTable(table.Row{"#", "Helm Chart", "Chart Version", "Helm Value Path", "Image"})
+	t := newTable("Helm Values Paths Per Image", table.Row{"#", "Helm Chart", "Chart Version", "Image", "Helm Value Path(s)"})
 	id := 0
 	for c, v := range chartImageHelmValuesMap {
 		for i, paths := range v {
 			ref, _ := i.String()
 			noSHA := strings.SplitN(ref, "@", 2)[0]
-			t.AppendRow(table.Row{id, c.Name, c.Version, strings.Join(paths, "\n"), noSHA})
+			t.AppendRow(table.Row{id, c.Name, c.Version, noSHA, strings.Join(paths, "\n")})
 			id = id + 1
 		}
 	}
@@ -150,7 +152,7 @@ func getImportTableRows(ctx context.Context, viper *viper.Viper, registries []re
 	// Create collection of registry names as keys for iterating registries
 	keys := make([]string, 0)
 	for _, r := range registries {
-		keys = append(keys, r.GetName())
+		keys = append(keys, r.URL)
 	}
 
 	// Combine results
@@ -163,8 +165,12 @@ func getImportTableRows(ctx context.Context, viper *viper.Viper, registries []re
 				// make sure we don't parse again
 				seenImages = append(seenImages, *i)
 
+				name, err := i.ImageName()
+				if err != nil {
+					return []table.Row{}, err
+				}
 				// check if image exists in registry
-				m := registry.Exists(ctx, i, registries)
+				m := registry.Exists(ctx, name, i.Tag, registries)
 
 				// add row to overview table
 				ref, _ := i.String()
@@ -178,7 +184,6 @@ func getImportTableRows(ctx context.Context, viper *viper.Viper, registries []re
 }
 
 func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing int, registries []registry.Registry, chartImageValuesMap map[helm.Chart]map[*registry.Image][]string) error {
-
 	rows, err := getImportTableRows(ctx, viper, registries, chartImageValuesMap)
 	if err != nil {
 		return err
@@ -195,19 +200,86 @@ func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 
 	// dynamic number of registries
 	for _, r := range registries {
-		name := r.GetName()
-		header = append(header, name)
+		header = append(header, r.GetName())
 		footer = append(footer, "")
 
 		if ic.Import.Enabled {
 			// second static part of header
 			header = append(header, "import")
-			footer = append(footer, sc.Value(r.GetName()))
+			footer = append(footer, sc.Value(r.URL))
+		}
+	}
+
+	// construct tab"test"le
+	t := newTable("Registry Overview For Charts", header)
+	t.AppendRows(rows)
+	t.AppendFooter(footer)
+	t.Render()
+
+	return nil
+}
+
+func RenderChartOverviewTable(ctx context.Context, viper *viper.Viper, missing int, registries []registry.Registry, charts helm.ChartCollection) error {
+
+	// Create collection of registry names as keys for iterating registries
+	keys := make([]string, 0)
+	for _, r := range registries {
+		keys = append(keys, r.URL)
+	}
+
+	// Combine results
+	rows := make([]table.Row, 0)
+	for _, c := range charts.Charts {
+		// check if image exists in registry
+		m := registry.Exists(ctx, fmt.Sprintf("charts/%s", c.Name), c.Version, registries)
+
+		// add row to overview table
+		row := func() table.Row {
+			row := table.Row{}
+			row = append(row, sc.Value("index_import_charts"), c.Name, c.Version)
+
+			for _, key := range keys {
+				row = append(row, terminal.StatusEmoji(m[key]))
+				ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+				if ic.Import.Enabled {
+					b := state.GetValue[bool](viper, "all") || !m[key]
+					if b {
+						sc.Inc(key + "charts")
+					}
+					row = append(row, terminal.StatusEmoji(b))
+				}
+			}
+
+			sc.Inc("index_import_charts")
+			return row
+		}()
+
+		rows = append(rows, row)
+	}
+
+	header := table.Row{}
+	footer := table.Row{}
+
+	// first static part of header
+	header = append(header, "#", "Helm Chart", "Chart Version")
+	footer = append(footer, "", "", "")
+
+	ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+
+	// dynamic number of registries
+	for _, r := range registries {
+		header = append(header, r.GetName())
+		footer = append(footer, "")
+
+		if ic.Import.Enabled {
+			// second static part of header
+			header = append(header, "import")
+			footer = append(footer, sc.Value(r.URL+"charts"))
 		}
 	}
 
 	// construct table
-	t := newTable(header)
+	t := newTable("Registry Overview For Images", header)
 	t.AppendRows(rows)
 	t.AppendFooter(footer)
 	t.Render()
