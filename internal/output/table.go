@@ -21,15 +21,16 @@ import (
 var sc counter.SafeCounter = counter.NewSafeCounter()
 
 // create a new table.writer with header and os.Stdout output mirror
-func newTable(row table.Row) table.Writer {
+func newTable(title string, header table.Row) table.Writer {
 	t := table.NewWriter()
+	t.SetTitle(title)
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(row)
+	t.AppendHeader(header)
 	return t
 }
 
 func renderChartTable(rows []table.Row) {
-	t := newTable(table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
+	t := newTable("Charts", table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
 	t.AppendRows(rows)
 	t.SortBy([]table.SortBy{
 		{Number: 1, Mode: table.AscNumeric},
@@ -111,13 +112,13 @@ func RenderChartTable(charts *helm.ChartCollection, setters ...Option) {
 
 func RenderHelmValuePathToImageTable(chartImageHelmValuesMap map[helm.Chart]map[*registry.Image][]string) {
 	// Print Helm values to be set for each chart
-	t := newTable(table.Row{"#", "Helm Chart", "Chart Version", "Helm Value Path", "Image"})
+	t := newTable("Helm Values Paths Per Image", table.Row{"#", "Helm Chart", "Chart Version", "Image", "Helm Value Path(s)"})
 	id := 0
 	for c, v := range chartImageHelmValuesMap {
 		for i, paths := range v {
 			ref, _ := i.String()
 			noSHA := strings.SplitN(ref, "@", 2)[0]
-			t.AppendRow(table.Row{id, c.Name, c.Version, strings.Join(paths, "\n"), noSHA})
+			t.AppendRow(table.Row{id, c.Name, c.Version, noSHA, strings.Join(paths, "\n")})
 			id = id + 1
 		}
 	}
@@ -206,8 +207,8 @@ func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 		}
 	}
 
-	// construct table
-	t := newTable(header)
+	// construct tab"test"le
+	t := newTable("Registry Import Overview For Images", header)
 	t.AppendRows(rows)
 	t.AppendFooter(footer)
 	t.Render()
