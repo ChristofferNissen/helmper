@@ -211,7 +211,7 @@ func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 	}
 
 	// construct tab"test"le
-	t := newTable("Registry Import Overview For Images", header)
+	t := newTable("Registry Overview For Charts", header)
 	t.AppendRows(rows)
 	t.AppendFooter(footer)
 	t.Render()
@@ -279,7 +279,7 @@ func RenderChartOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 	}
 
 	// construct table
-	t := newTable("Registry Import Overview For Images", header)
+	t := newTable("Registry Overview For Images", header)
 	t.AppendRows(rows)
 	t.AppendFooter(footer)
 	t.Render()
