@@ -2,6 +2,7 @@ package output
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -164,8 +165,12 @@ func getImportTableRows(ctx context.Context, viper *viper.Viper, registries []re
 				// make sure we don't parse again
 				seenImages = append(seenImages, *i)
 
+				name, err := i.ImageName()
+				if err != nil {
+					return []table.Row{}, err
+				}
 				// check if image exists in registry
-				m := registry.Exists(ctx, i, registries)
+				m := registry.Exists(ctx, name, i.Tag, registries)
 
 				// add row to overview table
 				ref, _ := i.String()
@@ -203,7 +208,76 @@ func RenderImageOverviewTable(ctx context.Context, viper *viper.Viper, missing i
 		if ic.Import.Enabled {
 			// second static part of header
 			header = append(header, "import")
-			footer = append(footer, sc.Value(r.GetName()))
+			footer = append(footer, sc.Value(name))
+		}
+	}
+
+	// construct tab"test"le
+	t := newTable("Registry Import Overview For Images", header)
+	t.AppendRows(rows)
+	t.AppendFooter(footer)
+	t.Render()
+
+	return nil
+}
+
+func RenderChartOverviewTable(ctx context.Context, viper *viper.Viper, missing int, registries []registry.Registry, charts helm.ChartCollection) error {
+
+	// Create collection of registry names as keys for iterating registries
+	keys := make([]string, 0)
+	for _, r := range registries {
+		keys = append(keys, r.GetName())
+	}
+
+	// Combine results
+	rows := make([]table.Row, 0)
+	for _, c := range charts.Charts {
+		// check if image exists in registry
+		m := registry.Exists(ctx, fmt.Sprintf("charts/%s", c.Name), c.Version, registries)
+
+		// add row to overview table
+		row := func() table.Row {
+			row := table.Row{}
+			row = append(row, sc.Value("index_import_charts"), c.Name, c.Version)
+
+			for _, key := range keys {
+				row = append(row, terminal.StatusEmoji(m[key]))
+				ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+				if ic.Import.Enabled {
+					b := state.GetValue[bool](viper, "all") || !m[key]
+					if b {
+						sc.Inc(key + "charts")
+					}
+					row = append(row, terminal.StatusEmoji(b))
+				}
+			}
+
+			sc.Inc("index_import_charts")
+			return row
+		}()
+
+		rows = append(rows, row)
+	}
+
+	header := table.Row{}
+	footer := table.Row{}
+
+	// first static part of header
+	header = append(header, "#", "Helm Chart", "Chart Version")
+	footer = append(footer, "", "", "")
+
+	ic := state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+
+	// dynamic number of registries
+	for _, r := range registries {
+		name := r.GetName()
+		header = append(header, name)
+		footer = append(footer, "")
+
+		if ic.Import.Enabled {
+			// second static part of header
+			header = append(header, "import")
+			footer = append(footer, sc.Value(name+"charts"))
 		}
 	}
 
