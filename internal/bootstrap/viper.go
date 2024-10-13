@@ -3,7 +3,9 @@ package bootstrap
 import (
 	"log/slog"
 	"os"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
@@ -47,6 +49,7 @@ type ImportConfigSection struct {
 			Enabled           bool    `yaml:"enabled"`
 			KeyRef            string  `yaml:"keyRef"`
 			KeyRefPass        *string `yaml:"keyRefPass"`
+			PubKeyRef         *string `yaml:"pubKeyRef"`
 			AllowHTTPRegistry bool    `yaml:"allowHTTPRegistry"`
 			AllowInsecure     bool    `yaml:"allowInsecure"`
 		} `yaml:"cosign"`
@@ -151,6 +154,14 @@ import:
 		v := os.Getenv("COSIGN_PASSWORD")
 		slog.Info("KeyRefPass is nil, using value of COSIGN_PASSWORD environment variable")
 		importConf.Import.Cosign.KeyRefPass = &v
+	}
+
+	if importConf.Import.Cosign.Enabled && importConf.Import.Cosign.PubKeyRef == nil {
+		keyRef := importConf.Import.Cosign.KeyRef
+		if strings.HasSuffix(keyRef, ".key") {
+			keyRef = strings.Replace(keyRef, ".key", ".pub", 1)
+		}
+		importConf.Import.Cosign.PubKeyRef = to.Ptr(keyRef)
 	}
 
 	if importConf.Import.Copacetic.Enabled {

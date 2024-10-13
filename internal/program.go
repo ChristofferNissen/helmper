@@ -472,10 +472,22 @@ func Program(args []string) error {
 		_ = bar.Finish()
 
 		if importConfig.Import.Cosign.Enabled {
-			signo := mySign.SignOption{
-				Imgs:       append(patch, push...),
+
+			verifyo := mySign.VerifyOption{
+				Refs:       append(patch, push...),
 				Registries: registries,
 
+				KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
+				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			}
+			res, err := verifyo.Run()
+			if err != nil {
+				return err
+			}
+
+			signo := mySign.SignOption{
+				Data:              res,
 				KeyRef:            importConfig.Import.Cosign.KeyRef,
 				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
 				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
@@ -503,11 +515,21 @@ func Program(args []string) error {
 		if err != nil {
 			return err
 		}
-
 		if importConfig.Import.Cosign.Enabled {
-			signo := mySign.SignOption{
-				Imgs:       imgPs,
+			verifyo := mySign.VerifyOption{
+				Refs:       imgPs,
 				Registries: registries,
+
+				KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
+				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			}
+			res, err := verifyo.Run()
+			if err != nil {
+				return err
+			}
+			signo := mySign.SignOption{
+				Data: res,
 
 				KeyRef:            importConfig.Import.Cosign.KeyRef,
 				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
