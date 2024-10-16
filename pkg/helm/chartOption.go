@@ -23,30 +23,13 @@ import (
 type ChartData map[Chart]map[*registry.Image][]string
 
 // Converts data structure to pipeline parameters
-func IdentifyImportCandidates(ctx context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool) (ChartCollection, []registry.Image, error) {
+func IdentifyImportCandidates(ctx context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool) ([]registry.Image, error) {
 
 	// Combine results
 	imgs := make([]registry.Image, 0)
-	cs := make([]Chart, 0)
 	var seenImages []registry.Image = make([]registry.Image, 0)
 
-	for c, imageMap := range chartImageValuesMap {
-
-		if all || func(rs []registry.Registry) bool {
-			importChart := false
-			registryChartStatusMap := registry.Exists(ctx, fmt.Sprintf("charts/%s", c.Name), c.Version, rs)
-			// loop over registries
-			for _, r := range rs {
-				existsInRegistry := registryChartStatusMap[r.URL]
-				importChart = importChart || !existsInRegistry
-			}
-			return importChart
-		}(registries) {
-			if c.Name != "images" {
-				cs = append(cs, c)
-			}
-		}
-
+	for _, imageMap := range chartImageValuesMap {
 		for i := range imageMap {
 			if i.In(seenImages) {
 				ref, _ := i.String()
@@ -59,25 +42,22 @@ func IdentifyImportCandidates(ctx context.Context, registries []registry.Registr
 			// decide if image should be imported
 			if all || func(rs []registry.Registry) bool {
 				importImage := false
-				name, err := i.ImageName()
-				if err != nil {
-					return false
-				}
 				// check if image exists in registry
-				registryImageStatusMap := registry.Exists(ctx, name, i.Tag, rs)
+				registryImageStatusMap := registry.Exists(ctx, i, rs)
 				// loop over registries
 				for _, r := range rs {
-					imageExistsInRegistry := registryImageStatusMap[r.URL]
+					imageExistsInRegistry := registryImageStatusMap[r.GetName()]
 					importImage = importImage || !imageExistsInRegistry
 				}
 				return importImage
 			}(registries) {
 				imgs = append(imgs, *i)
 			}
+
 		}
 	}
 
-	return ChartCollection{Charts: cs}, imgs, nil
+	return imgs, nil
 }
 
 // channels to share data between goroutines
