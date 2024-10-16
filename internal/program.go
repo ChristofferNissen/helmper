@@ -127,7 +127,6 @@ func Program(args []string) error {
 				}
 				for _, modify := range c.Images.Modify {
 					if modify.From != "" {
-
 						if strings.HasPrefix(r, modify.From) {
 							delete(m, i)
 
