@@ -288,7 +288,11 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 					for _, mod := range c.Images.Modify {
 						if mod.FromValuePath != "" {
 							slog.Info("modifying chart value", slog.String("HelmValuesPath", mod.FromValuePath), slog.String("new", mod.To))
-							err := replaceValue(strings.Split(mod.FromValuePath, "."), mod.To, chart.Values)
+
+							to := mod.To
+							versionToken := "{.version}"
+							to = strings.Replace(to, versionToken, c.Version, 1)
+							err := replaceValue(strings.Split(mod.FromValuePath, "."), to, chart.Values)
 							if err != nil {
 								return err
 							}
