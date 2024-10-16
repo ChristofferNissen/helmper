@@ -11,10 +11,14 @@ import (
 	image2 "github.com/aquasecurity/trivy/pkg/fanal/artifact/image"
 	"github.com/aquasecurity/trivy/pkg/fanal/image"
 	ftypes "github.com/aquasecurity/trivy/pkg/fanal/types"
+	"github.com/aquasecurity/trivy/pkg/result"
 	"github.com/aquasecurity/trivy/pkg/rpc/client"
 	"github.com/aquasecurity/trivy/pkg/scanner"
 	"github.com/aquasecurity/trivy/pkg/types"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/samber/lo"
+
+	dbTypes "github.com/aquasecurity/trivy-db/pkg/types"
 
 	_ "modernc.org/sqlite" // sqlite driver for RPM DB and Java DB
 )
@@ -73,13 +77,11 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 			analyzer.TypeSbtLock,
 		},
 		DisabledHandlers: nil,
-		// SkipFiles:         nil,
-		// SkipDirs:          nil,
-		FilePatterns: nil,
-		NoProgress:   false,
-		Insecure:     opts.Insecure,
-		SBOMSources:  nil,
-		RekorURL:     "https://rekor.sigstore.dev",
+		FilePatterns:     nil,
+		NoProgress:       false,
+		Insecure:         opts.Insecure,
+		SBOMSources:      nil,
+		RekorURL:         "https://rekor.sigstore.dev",
 		ImageOption: ftypes.ImageOptions{
 			RegistryOptions: ftypes.RegistryOptions{
 				Insecure: opts.Insecure,
@@ -112,35 +114,23 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	}
 
 	if opts.IgnoreUnfixed {
-		ignoreUnfixed(&report)
+		ignoreStatuses := lo.FilterMap(dbTypes.Statuses, func(s string, _ int) (dbTypes.Status, bool) {
+			fixed := dbTypes.StatusFixed
+			if s == fixed.String() {
+				return 0, false
+			}
+			return dbTypes.NewStatus(s), true
+		})
+
+		result.Filter(context.TODO(), report, result.FilterOptions{
+			Severities: []dbTypes.Severity{
+				dbTypes.SeverityCritical,
+				dbTypes.SeverityHigh,
+			},
+			IgnoreStatuses: ignoreStatuses,
+		})
 	}
 
 	return report, nil
 
-}
-
-func ignoreUnfixed(report *types.Report) {
-
-	// Homebrewed ignore unfixed
-	for _, r := range report.Results {
-		switch r.Class {
-		case "ok-pkgs":
-			vulns := []types.DetectedVulnerability{}
-			for _, v := range r.Vulnerabilities {
-				if v.FixedVersion != "" {
-					// fixed
-					vulns = append(vulns, v)
-				}
-			}
-
-			count := len(r.Vulnerabilities) - len(vulns)
-			if count == 0 {
-				slog.Debug("removed unfixed vulnerabilities from result", slog.Int("count", count), slog.String("image", report.Metadata.ImageID))
-			} else {
-				slog.Info("removed unfixed vulnerabilities from result", slog.Int("count", count), slog.String("image", report.Metadata.ImageID))
-			}
-
-			r.Vulnerabilities = vulns
-		}
-	}
 }
