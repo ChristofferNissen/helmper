@@ -2,11 +2,9 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/ChristofferNissen/helmper/internal/bootstrap"
@@ -18,8 +16,6 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/bobg/go-generics/slices"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
 )
 
 var (
@@ -29,7 +25,6 @@ var (
 )
 
 func modify(cm *helm.ChartData, mirrorConfig []bootstrap.MirrorConfigSection) error {
-
 	// modify images according to user specification
 	for c, m := range *cm {
 		for i, vs := range m {
@@ -197,7 +192,7 @@ func Program(args []string) error {
 
 	// STEP 3: Validate and correct image references from charts
 	slog.Debug("Checking presence of images from chart(s) in registries...")
-	cs, imgs, err := helm.IdentifyImportCandidates(
+	mCharts, mImgs, err := helm.IdentifyImportCandidates(
 		ctx,
 		registries,
 		chartImageHelmValuesMap,
@@ -206,339 +201,149 @@ func Program(args []string) error {
 	if err != nil {
 		return err
 	}
-	_ = output.RenderChartOverviewTable(
+
+	err = output.RenderChartOverviewTable(
 		ctx,
 		viper,
 		len(charts.Charts),
 		registries,
 		charts,
 	)
+	if err != nil {
+		return err
+	}
 	// Output table of image status in registries
-	_ = output.RenderImageOverviewTable(
+	err = output.RenderImageOverviewTable(
 		ctx,
 		viper,
-		len(imgs),
+		len(mImgs),
 		registries,
 		chartImageHelmValuesMap,
 	)
+	if err != nil {
+		return err
+	}
 	slog.Debug("Finished checking image availability in registries")
 
 	// Import charts to registries
-	switch {
-	case importConfig.Import.Enabled && len(cs.Charts) > 0:
+	if importConfig.Import.Enabled {
 		err := helm.ChartImportOption{
-			Registries:      registries,
-			ChartCollection: &cs,
-			All:             all,
-			ModifyRegistry:  importConfig.Import.ReplaceRegistryReferences,
+			Data:           mCharts,
+			All:            all,
+			ModifyRegistry: importConfig.Import.ReplaceRegistryReferences,
 		}.Run(ctx, opts...)
 		if err != nil {
 			return fmt.Errorf("internal: error importing chart to registry: %w", err)
 		}
-
-		if importConfig.Import.Cosign.Enabled {
-			slog.Debug("Cosign enabled")
-			signo := mySign.SignChartOption{
-				ChartCollection: &cs,
-				Registries:      registries,
-
-				KeyRef:            importConfig.Import.Cosign.KeyRef,
-				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
-				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
-			}
-			if err := signo.Run(); err != nil {
-				slog.Error("Error signing with Cosign")
-				return err
-			}
-		}
 	}
 
+	// Import images to registries
 	switch {
 	case importConfig.Import.Enabled && importConfig.Import.Copacetic.Enabled:
 		slog.Debug("Import enabled and Copacetic enabled")
-		patch := make([]*registry.Image, 0)
-		push := make([]*registry.Image, 0)
-
-		bar := progressbar.NewOptions(len(imgs), progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-			progressbar.OptionEnableColorCodes(true),
-			progressbar.OptionShowCount(),
-			progressbar.OptionOnCompletion(func() {
-				fmt.Fprint(os.Stderr, "\n")
-			}),
-			progressbar.OptionSetRenderBlankState(true),
-			progressbar.OptionSetWidth(15),
-			progressbar.OptionSetDescription("Scanning images before patching...\r"),
-			progressbar.OptionShowDescriptionAtLineEnd(),
-			progressbar.OptionSetTheme(progressbar.Theme{
-				Saucer:        "[green]=[reset]",
-				SaucerHead:    "[green]>[reset]",
-				SaucerPadding: " ",
-				BarStart:      "[",
-				BarEnd:        "]",
-			}))
-
-		so := trivy.ScanOption{
-			DockerHost:    importConfig.Import.Copacetic.Buildkitd.Addr,
-			TrivyServer:   importConfig.Import.Copacetic.Trivy.Addr,
-			Insecure:      importConfig.Import.Copacetic.Trivy.Insecure,
-			IgnoreUnfixed: importConfig.Import.Copacetic.Trivy.IgnoreUnfixed,
-			Architecture:  importConfig.Import.Architecture,
-		}
-
-		for _, i := range imgs {
-
-			if i.Patch != nil {
-				if !*i.Patch {
-					ref, err := i.String()
-					if err != nil {
-						return err
-					}
-					slog.Debug("image should not be patched",
-						slog.String("image", ref))
-					push = append(push, &i)
-					continue
-				}
-			}
-
-			ref, err := i.String()
-			if err != nil {
-				return err
-			}
-			r, err := so.Scan(ref)
-			if err != nil {
-				return err
-			}
-
-			switch copa.SupportedOS(r.Metadata.OS) {
-			case true:
-				// filter images with no os-pkgs as copa has nothing to do
-				switch trivy.ContainsOsPkgs(r.Results) {
-				case true:
-					slog.Debug("Image does contain os-pkgs vulnerabilities",
-						slog.String("image", ref))
-					patch = append(patch, &i)
-				case false:
-					slog.Warn("Image does not contain os-pkgs. The image will not be patched.",
-						slog.String("image", ref),
-					)
-					push = append(push, &i)
-				}
-
-			case false:
-				slog.Warn("Image contains an unsupported OS. The image will not be patched.",
-					slog.String("image", ref),
-				)
-				push = append(push, &i)
-			}
-
-			// Write report to filesystem
-			name, _ := i.ImageName()
-			fileName := fmt.Sprintf("%s:%s.json", name, i.Tag)
-			fileName = filepath.Join(importConfig.Import.Copacetic.Output.Reports.Folder, "prescan-"+strings.ReplaceAll(fileName, "/", "-"))
-			b, err := json.MarshalIndent(r, "", "  ")
-			if err != nil {
-				return err
-			}
-			if err := os.WriteFile(fileName, b, os.ModePerm); err != nil {
-				return err
-			}
-
-			_ = bar.Add(1)
-		}
-
-		_ = bar.Finish()
-
-		// determine fully qualified output path for images
-		reportFilePaths := make(map[*registry.Image]string)
-		reportPostFilePaths := make(map[*registry.Image]string)
-		outFilePaths := make(map[*registry.Image]string)
-		for _, i := range append(patch, push...) {
-			name, _ := i.ImageName()
-			fileName := fmt.Sprintf("prescan-%s:%s.json", name, i.Tag)
-			reportFilePaths[i] = filepath.Join(
-				importConfig.Import.Copacetic.Output.Reports.Folder,
-				strings.ReplaceAll(fileName, "/", "-"),
-			)
-			fileName = fmt.Sprintf("postscan-%s:%s.json", name, i.Tag)
-			reportPostFilePaths[i] = filepath.Join(
-				importConfig.Import.Copacetic.Output.Reports.Folder,
-				strings.ReplaceAll(fileName, "/", "-"),
-			)
-			out := fmt.Sprintf("%s:%s.tar", name, i.Tag)
-			outFilePaths[i] = filepath.Join(
-				importConfig.Import.Copacetic.Output.Tars.Folder,
-				strings.ReplaceAll(out, "/", "-"),
-			)
-		}
-
-		// Clean up files
-		defer func() {
-			if importConfig.Import.Copacetic.Output.Reports.Clean {
-				for _, v := range reportFilePaths {
-					_ = os.RemoveAll(v)
-				}
-				for _, v := range reportPostFilePaths {
-					_ = os.RemoveAll(v)
-				}
-			}
-			if importConfig.Import.Copacetic.Output.Reports.Clean {
-				for _, v := range outFilePaths {
-					_ = os.RemoveAll(v)
-				}
-			}
-		}()
-
-		// Import images without os-pkgs vulnerabilities
-		iOpts := registry.ImportOption{
-			Registries:   registries,
-			Imgs:         push,
-			All:          all,
+		err := copa.SpsOption{
+			Data:         mImgs,
 			Architecture: importConfig.Import.Architecture,
-		}
-		err = iOpts.Run(ctx)
-		if err != nil {
-			return err
-		}
 
-		// Patch image and save to tar
-		po := copa.PatchOption{
-			Imgs:       patch,
-			Registries: registries,
-			Buildkit: struct {
-				Addr       string
-				CACertPath string
-				CertPath   string
-				KeyPath    string
-			}{
-				Addr:       importConfig.Import.Copacetic.Buildkitd.Addr,
-				CACertPath: importConfig.Import.Copacetic.Buildkitd.CACertPath,
-				CertPath:   importConfig.Import.Copacetic.Buildkitd.CertPath,
-				KeyPath:    importConfig.Import.Copacetic.Buildkitd.KeyPath,
+			ReportsFolder: importConfig.Import.Copacetic.Output.Reports.Folder,
+			ReportsClean:  importConfig.Import.Copacetic.Output.Reports.Clean,
+			TarsFolder:    importConfig.Import.Copacetic.Output.Tars.Folder,
+			TarsClean:     importConfig.Import.Copacetic.Output.Tars.Clean,
+
+			All: all,
+			ScanOption: trivy.ScanOption{
+				DockerHost:    importConfig.Import.Copacetic.Buildkitd.Addr,
+				TrivyServer:   importConfig.Import.Copacetic.Trivy.Addr,
+				Insecure:      importConfig.Import.Copacetic.Trivy.Insecure,
+				IgnoreUnfixed: importConfig.Import.Copacetic.Trivy.IgnoreUnfixed,
+				Architecture:  importConfig.Import.Architecture,
 			},
-			IgnoreErrors: importConfig.Import.Copacetic.IgnoreErrors,
-			Architecture: importConfig.Import.Architecture,
-		}
-		err = po.Run(ctx, reportFilePaths, outFilePaths)
+			PatchOption: copa.PatchOption{
+				Buildkit: struct {
+					Addr       string
+					CACertPath string
+					CertPath   string
+					KeyPath    string
+				}{
+					Addr:       importConfig.Import.Copacetic.Buildkitd.Addr,
+					CACertPath: importConfig.Import.Copacetic.Buildkitd.CACertPath,
+					CertPath:   importConfig.Import.Copacetic.Buildkitd.CertPath,
+					KeyPath:    importConfig.Import.Copacetic.Buildkitd.KeyPath,
+				},
+				IgnoreErrors: importConfig.Import.Copacetic.IgnoreErrors,
+				Architecture: importConfig.Import.Architecture,
+			},
+		}.Run(ctx)
 		if err != nil {
 			return err
-		}
-
-		bar = progressbar.NewOptions(len(imgs), progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-			progressbar.OptionEnableColorCodes(true),
-			progressbar.OptionShowCount(),
-			progressbar.OptionOnCompletion(func() {
-				fmt.Fprint(os.Stderr, "\n")
-			}),
-			progressbar.OptionSetRenderBlankState(true),
-			progressbar.OptionSetWidth(15),
-			progressbar.OptionSetDescription("Scanning images after patching...\r"),
-			progressbar.OptionShowDescriptionAtLineEnd(),
-			progressbar.OptionSetTheme(progressbar.Theme{
-				Saucer:        "[green]=[reset]",
-				SaucerHead:    "[green]>[reset]",
-				SaucerPadding: " ",
-				BarStart:      "[",
-				BarEnd:        "]",
-			}))
-		err = func(out string, prefix string) error {
-			for _, i := range imgs {
-				ref, _ := i.String()
-				r, err := so.Scan(ref)
-				if err != nil {
-					return err
-				}
-
-				// Write report to filesystem
-				name, _ := i.ImageName()
-				fileName := fmt.Sprintf("%s:%s.json", name, i.Tag)
-				fileName = filepath.Join(out, prefix+strings.ReplaceAll(fileName, "/", "-"))
-				b, err := json.MarshalIndent(r, "", "  ")
-				if err != nil {
-					return err
-				}
-				if err := os.WriteFile(fileName, b, os.ModePerm); err != nil {
-					return err
-				}
-
-				_ = bar.Add(1)
-			}
-			return nil
-		}(importConfig.Import.Copacetic.Output.Reports.Folder, "postscan-")
-		if err != nil {
-			return err
-		}
-
-		_ = bar.Finish()
-
-		if importConfig.Import.Cosign.Enabled {
-
-			verifyo := mySign.VerifyOption{
-				Refs:       append(patch, push...),
-				Registries: registries,
-
-				KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
-				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
-			}
-			res, err := verifyo.Run()
-			if err != nil {
-				return err
-			}
-
-			signo := mySign.SignOption{
-				Data:              res,
-				KeyRef:            importConfig.Import.Cosign.KeyRef,
-				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
-				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
-			}
-			if err := signo.Run(); err != nil {
-				return err
-			}
 		}
 
 	case importConfig.Import.Enabled:
-		slog.Debug("Only import enabled")
-		// convert to pointer array to enable mutable values
-		imgPs := make([]*registry.Image, 0)
-		for _, i := range imgs {
-			imgPs = append(imgPs, &i)
-		}
-
+		slog.Debug("Import enabled")
 		err := registry.ImportOption{
-			Registries:   registries,
-			Imgs:         imgPs,
+			Data:         mImgs,
 			All:          all,
 			Architecture: importConfig.Import.Architecture,
 		}.Run(ctx)
 		if err != nil {
 			return err
 		}
-		if importConfig.Import.Cosign.Enabled {
-			verifyo := mySign.VerifyOption{
-				Refs:       imgPs,
-				Registries: registries,
+	}
 
-				KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
-				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
-			}
-			res, err := verifyo.Run()
-			if err != nil {
-				return err
-			}
-			signo := mySign.SignOption{
-				Data: res,
+	// Sign
+	if importConfig.Import.Cosign.Enabled {
 
-				KeyRef:            importConfig.Import.Cosign.KeyRef,
-				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
-				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
-			}
-			if err := signo.Run(); err != nil {
-				return err
-			}
+		// Charts
+
+		vco := mySign.VerifyChartOption{
+			Data:           mCharts,
+			VerifyExisting: importConfig.Import.Cosign.VerifyExisting,
+
+			KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
+			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+		}
+		charts, err := vco.Run()
+		if err != nil {
+			return err
+		}
+		sco := mySign.SignChartOption{
+			Data: charts,
+
+			KeyRef:            importConfig.Import.Cosign.KeyRef,
+			KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
+			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+		}
+		if err := sco.Run(); err != nil {
+			slog.Error("Error signing with Cosign")
+			return err
+		}
+
+		// Images
+
+		vo := mySign.VerifyOption{
+			Data:           mImgs,
+			VerifyExisting: importConfig.Import.Cosign.VerifyExisting,
+
+			KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
+			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+		}
+		imgs, err := vo.Run()
+		if err != nil {
+			return err
+		}
+		so := mySign.SignOption{
+			Data: imgs,
+
+			KeyRef:            importConfig.Import.Cosign.KeyRef,
+			KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
+			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+		}
+		if err := so.Run(); err != nil {
+			return err
 		}
 	}
 

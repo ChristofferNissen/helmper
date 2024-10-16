@@ -47,6 +47,7 @@ type ImportConfigSection struct {
 		} `yaml:"copacetic"`
 		Cosign struct {
 			Enabled           bool    `yaml:"enabled"`
+			VerifyExisting    bool    `yaml:"verifyExisting"`
 			KeyRef            string  `yaml:"keyRef"`
 			KeyRefPass        *string `yaml:"keyRefPass"`
 			PubKeyRef         *string `yaml:"pubKeyRef"`

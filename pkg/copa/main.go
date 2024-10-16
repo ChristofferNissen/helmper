@@ -3,6 +3,7 @@ package copa
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -22,8 +23,7 @@ import (
 )
 
 type PatchOption struct {
-	Imgs       []*registry.Image
-	Registries []registry.Registry
+	Data map[*registry.Registry]map[*registry.Image]bool
 
 	TarFolder    string
 	ReportFolder string
@@ -41,7 +41,19 @@ type PatchOption struct {
 
 func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Image]string, outFilePaths map[*registry.Image]string) error {
 
-	bar := progressbar.NewOptions(len(o.Imgs),
+	size := func() int {
+		size := 0
+		for _, m := range o.Data {
+			for _, b := range m {
+				if b {
+					size++
+				}
+			}
+		}
+		return size
+	}()
+
+	bar := progressbar.NewOptions(size,
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowCount(),
@@ -61,24 +73,35 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 			BarEnd:        "]",
 		}))
 
-	for _, i := range o.Imgs {
-		ref, _ := i.String()
+	seenImages := []registry.Image{}
+	for _, m := range o.Data {
+		for i := range m {
+			ref, _ := i.String()
 
-		if err := Patch(ctx, 30*time.Minute, ref, reportFilePaths[i], i.Tag, "", "trivy", "openvex", "", o.IgnoreErrors, buildkit.Opts{
-			Addr:       o.Buildkit.Addr,
-			CACertPath: o.Buildkit.CACertPath,
-			CertPath:   o.Buildkit.CertPath,
-			KeyPath:    o.Buildkit.KeyPath,
-		}, outFilePaths[i]); err != nil {
-			return fmt.Errorf("error patching image %s :: %w ", ref, err)
+			if i.In(seenImages) {
+				ref, _ := i.String()
+				log.Printf("Already patched '%s', skipping...\n", ref)
+				continue
+			}
+			// make sure we don't parse again
+			seenImages = append(seenImages, *i)
+
+			if err := Patch(ctx, 30*time.Minute, ref, reportFilePaths[i], i.Tag, "", "trivy", "openvex", "", o.IgnoreErrors, buildkit.Opts{
+				Addr:       o.Buildkit.Addr,
+				CACertPath: o.Buildkit.CACertPath,
+				CertPath:   o.Buildkit.CertPath,
+				KeyPath:    o.Buildkit.KeyPath,
+			}, outFilePaths[i]); err != nil {
+				return fmt.Errorf("error patching image %s :: %w ", ref, err)
+			}
+
+			_ = bar.Add(1)
 		}
-
-		_ = bar.Add(1)
 	}
 
 	_ = bar.Finish()
 
-	bar = progressbar.NewOptions(len(o.Imgs),
+	bar = progressbar.NewOptions(size,
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowCount(),
@@ -98,66 +121,66 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 			BarEnd:        "]",
 		}))
 
-	for _, i := range o.Imgs {
-		name, _ := i.ImageName()
+	for r, m := range o.Data {
+		for i, b := range m {
+			if b {
+				name, _ := i.ImageName()
 
-		store, err := oci.NewFromTar(ctx, outFilePaths[i])
-		if err != nil {
-			return err
-		}
-		manifest, err := store.Resolve(ctx, i.Tag)
-		if err != nil {
-			return err
-		}
-		i.Digest = manifest.Digest.String()
-
-		for _, r := range o.Registries {
-			// Connect to a remote repository
-			repo, err := remote.NewRepository(r.URL + "/" + name)
-			if err != nil {
-				return err
-			}
-
-			repo.PlainHTTP = r.PlainHTTP
-
-			// Prepare authentication using Docker credentials
-			storeOpts := credentials.StoreOptions{}
-			credStore, err := credentials.NewStoreFromDocker(storeOpts)
-			if err != nil {
-				return err
-			}
-			repo.Client = &auth.Client{
-				Client:     retry.DefaultClient,
-				Cache:      auth.NewCache(),
-				Credential: credentials.Credential(credStore), // Use the credentials store
-			}
-
-			// Copy from the file store to the remote repository
-			opts := oras.DefaultCopyOptions
-			if o.Architecture != nil {
-				v, err := v1.ParsePlatform(*o.Architecture)
+				store, err := oci.NewFromTar(ctx, outFilePaths[i])
 				if err != nil {
 					return err
 				}
-				opts.WithTargetPlatform(
-					&v1_spec.Platform{
-						Architecture: v.Architecture,
-						OS:           v.OS,
-						OSVersion:    v.OSVersion,
-						OSFeatures:   v.OSFeatures,
-						Variant:      v.Variant,
-					},
-				)
-			}
-			manifest, err = oras.Copy(ctx, store, i.Tag, repo, i.Tag, opts)
-			if err != nil {
-				return err
-			}
+				manifest, err := store.Resolve(ctx, i.Tag)
+				if err != nil {
+					return err
+				}
+				i.Digest = manifest.Digest.String()
 
-			i.Digest = manifest.Digest.String()
+				// Connect to a remote repository
+				repo, err := remote.NewRepository(r.URL + "/" + name)
+				if err != nil {
+					return err
+				}
 
+				repo.PlainHTTP = r.PlainHTTP
+
+				// Prepare authentication using Docker credentials
+				storeOpts := credentials.StoreOptions{}
+				credStore, err := credentials.NewStoreFromDocker(storeOpts)
+				if err != nil {
+					return err
+				}
+				repo.Client = &auth.Client{
+					Client:     retry.DefaultClient,
+					Cache:      auth.NewCache(),
+					Credential: credentials.Credential(credStore), // Use the credentials store
+				}
+
+				// Copy from the file store to the remote repository
+				opts := oras.DefaultCopyOptions
+				if o.Architecture != nil {
+					v, err := v1.ParsePlatform(*o.Architecture)
+					if err != nil {
+						return err
+					}
+					opts.WithTargetPlatform(
+						&v1_spec.Platform{
+							Architecture: v.Architecture,
+							OS:           v.OS,
+							OSVersion:    v.OSVersion,
+							OSFeatures:   v.OSFeatures,
+							Variant:      v.Variant,
+						},
+					)
+				}
+				manifest, err = oras.Copy(ctx, store, i.Tag, repo, i.Tag, opts)
+				if err != nil {
+					return err
+				}
+
+				i.Digest = manifest.Digest.String()
+			}
 		}
-
 		_ = bar.Add(1)
 	}
 

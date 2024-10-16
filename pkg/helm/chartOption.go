@@ -23,61 +23,64 @@ import (
 type ChartData map[Chart]map[*registry.Image][]string
 
 // Converts data structure to pipeline parameters
-func IdentifyImportCandidates(ctx context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool) (ChartCollection, []registry.Image, error) {
+func IdentifyImportCandidates(ctx context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool) (map[*registry.Registry]map[*Chart]bool, map[*registry.Registry]map[*registry.Image]bool, error) {
+	// registry -> Charts -> bool
+	m1 := make(map[*registry.Registry]map[*Chart]bool, 0)
+	// registry -> Images -> bool
+	m2 := make(map[*registry.Registry]map[*registry.Image]bool, 0)
 
-	// Combine results
-	imgs := make([]registry.Image, 0)
-	cs := make([]Chart, 0)
-	var seenImages []registry.Image = make([]registry.Image, 0)
-
-	for c, imageMap := range chartImageValuesMap {
-
-		if all || func(rs []registry.Registry) bool {
-			importChart := false
-			registryChartStatusMap := registry.Exists(ctx, fmt.Sprintf("charts/%s", c.Name), c.Version, rs)
-			// loop over registries
-			for _, r := range rs {
-				existsInRegistry := registryChartStatusMap[r.URL]
-				importChart = importChart || !existsInRegistry
-			}
-			return importChart
-		}(registries) {
-			if c.Name != "images" {
-				cs = append(cs, c)
-			}
-		}
-
-		for i := range imageMap {
-			if i.In(seenImages) {
-				ref, _ := i.String()
-				log.Printf("Already parsed '%s', skipping...\n", ref)
+	for _, r := range registries {
+		var seenImages []registry.Image = make([]registry.Image, 0)
+		for c, imageMap := range chartImageValuesMap {
+			if c.Name == "images" {
 				continue
 			}
-			// make sure we don't parse again
-			seenImages = append(seenImages, *i)
 
-			// decide if image should be imported
-			if all || func(rs []registry.Registry) bool {
-				importImage := false
+			// Charts
+			n := fmt.Sprintf("charts/%s", c.Name)
+			v := c.Version
+			existsInRegistry := registry.Exists(ctx, n, v, []registry.Registry{r})[r.URL]
+
+			elem := m1[&r]
+			if elem == nil {
+				// init map
+				elem = make(map[*Chart]bool, 0)
+				m1[&r] = elem
+			}
+			elem[&c] = all || !existsInRegistry
+
+			// Images
+			for i := range imageMap {
+				if i.In(seenImages) {
+					ref, _ := i.String()
+					log.Printf("Already parsed '%s', skipping...\n", ref)
+					continue
+				}
+				// make sure we don't parse again
+				seenImages = append(seenImages, *i)
+
+				// decide if image should be imported
 				name, err := i.ImageName()
 				if err != nil {
-					return false
+					return nil, nil, err
 				}
 				// check if image exists in registry
-				registryImageStatusMap := registry.Exists(ctx, name, i.Tag, rs)
+				registryImageStatusMap := registry.Exists(ctx, name, i.Tag, []registry.Registry{r})
 				// loop over registries
-				for _, r := range rs {
-					imageExistsInRegistry := registryImageStatusMap[r.URL]
-					importImage = importImage || !imageExistsInRegistry
+				imageExistsInRegistry := registryImageStatusMap[r.URL]
+
+				elem := m2[&r]
+				if elem == nil {
+					// init map
+					elem = make(map[*registry.Image]bool, 0)
+					m2[&r] = elem
 				}
-				return importImage
-			}(registries) {
-				imgs = append(imgs, *i)
+				elem[i] = all || !imageExistsInRegistry
 			}
 		}
 	}
 
-	return ChartCollection{Charts: cs}, imgs, nil
+	return m1, m2, nil
 }
 
 // channels to share data between goroutines
@@ -100,7 +103,6 @@ type ChartOption struct {
 }
 
 func determineTag(ctx context.Context, img *registry.Image, plainHTTP bool) bool {
-
 	reg, repo, name := img.Elements()
 	ref := fmt.Sprintf("%s/%s/%s", reg, repo, name)
 

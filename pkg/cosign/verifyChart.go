@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -16,8 +17,8 @@ import (
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 )
 
-type VerifyOption struct {
-	Data           map[*registry.Registry]map[*registry.Image]bool
+type VerifyChartOption struct {
+	Data           map[*registry.Registry]map[*helm.Chart]bool
 	VerifyExisting bool
 
 	KeyRef            string
@@ -26,7 +27,7 @@ type VerifyOption struct {
 }
 
 // VerifyOption wraps the cosign CLIs native code
-func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, error) {
+func (vo VerifyChartOption) Run() (map[*registry.Registry]map[*helm.Chart]bool, error) {
 
 	size := func() int {
 		size := 0
@@ -42,8 +43,8 @@ func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, e
 
 	// Return early: no images to sign, or no registries to upload signature to
 	if !(size > 0) {
-		slog.Debug("No images or registries specified. Skipping verifying images...")
-		return make(map[*registry.Registry]map[*registry.Image]bool), nil
+		slog.Debug("No charts or registries specified. Skipping verifying charts...")
+		return make(map[*registry.Registry]map[*helm.Chart]bool), nil
 	}
 
 	bar := progressbar.NewOptions(size, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
@@ -96,12 +97,12 @@ func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, e
 
 	annotations, err := o.AnnotationsMap()
 	if err != nil {
-		return make(map[*registry.Registry]map[*registry.Image]bool), err
+		return make(map[*registry.Registry]map[*helm.Chart]bool), err
 	}
 
 	hashAlgorithm, err := o.SignatureDigest.HashAlgorithm()
 	if err != nil {
-		return make(map[*registry.Registry]map[*registry.Image]bool), err
+		return make(map[*registry.Registry]map[*helm.Chart]bool), err
 	}
 
 	v := &verify.VerifyCommand{
@@ -140,43 +141,33 @@ func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, e
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	defer cancel()
 
-	m := make(map[*registry.Registry]map[*registry.Image]bool, 0)
+	m := make(map[*registry.Registry]map[*helm.Chart]bool, 0)
 	for r, elem := range vo.Data {
 		if elem == nil {
-			elem = make(map[*registry.Image]bool, 0)
+			elem = make(map[*helm.Chart]bool, 0)
 		}
 
-		for i, b := range elem {
+		for c, b := range elem {
 			if b || vo.VerifyExisting {
-
-				name, err := i.ImageName()
+				name := fmt.Sprintf("charts/%s", c.Name)
+				d, err := r.Fetch(ctx, name, c.Version)
 				if err != nil {
-					return nil, err
+					return make(map[*registry.Registry]map[*helm.Chart]bool), err
 				}
+				s := fmt.Sprintf("%s/charts/%s@%s", r.URL, c.Name, d.Digest)
 
-				if !b {
-					if i.Digest == "" {
-						d, err := r.Fetch(ctx, name, i.Tag)
-						if err != nil {
-							return nil, err
-						}
-						i.Digest = d.Digest.String()
-					}
-				}
-
-				s := fmt.Sprintf("%s/%s@%s", r.URL, name, i.Digest)
 				err = v.Exec(ctx, []string{s})
 				if err != nil {
 					switch err.Error() {
 					case "no signatures found":
-						elem[i] = true
+						elem[c] = true
 						_ = bar.Add(1)
 						continue
 					default:
-						return make(map[*registry.Registry]map[*registry.Image]bool), err
+						return make(map[*registry.Registry]map[*helm.Chart]bool), err
 					}
 				}
-				elem[i] = false
+				elem[c] = false
 				_ = bar.Add(1)
 			}
 		}

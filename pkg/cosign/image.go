@@ -1,6 +1,7 @@
 package cosign
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -22,7 +23,7 @@ import (
 )
 
 type SignOption struct {
-	Data map[registry.Registry]map[*registry.Image]bool
+	Data map[*registry.Registry]map[*registry.Image]bool
 
 	KeyRef            string
 	KeyRefPass        string
@@ -33,24 +34,26 @@ type SignOption struct {
 // SignOption wraps the cosign CLIs native code
 func (so SignOption) Run() error {
 
-	// Return early i no images to sign, or no registries to upload signature to
-	if !(len(so.Data) > 0) {
-		slog.Debug("No images or registries specified. Skipping signing images...")
-		return nil
-	}
+	ctx := context.TODO()
 
 	// count number of images
 	size := func() int {
 		i := 0
 		for _, m := range so.Data {
 			for _, b := range m {
-				if !b {
+				if b {
 					i++
 				}
 			}
 		}
 		return i
 	}()
+
+	// Return early i no images to sign, or no registries to upload signature to
+	if !(size > 0) {
+		slog.Debug("No images or registries specified. Skipping signing images...")
+		return nil
+	}
 
 	bar := progressbar.NewOptions(size, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
@@ -132,8 +135,18 @@ func (so SignOption) Run() error {
 	for r, m := range so.Data {
 		refs := []string{}
 		for i, b := range m {
-			if !b {
+			if b {
+				// if i.Registry == "docker.io" {
+				// 	continue
+				// }
 				name, _ := i.ImageName()
+				if i.Digest == "" {
+					d, err := r.Fetch(ctx, name, i.Tag)
+					if err != nil {
+						return err
+					}
+					i.Digest = d.Digest.String()
+				}
 				ref := fmt.Sprintf("%s/%s@%s", r.URL, name, i.Digest)
 				refs = append(refs, ref)
 			}

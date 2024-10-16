@@ -26,8 +26,9 @@ import (
 )
 
 type SignChartOption struct {
-	ChartCollection *helm.ChartCollection
-	Registries      []registry.Registry
+	// ChartCollection *helm.ChartCollection
+	// Registries      []registry.Registry
+	Data map[*registry.Registry]map[*helm.Chart]bool
 
 	KeyRef            string
 	KeyRefPass        string
@@ -38,13 +39,25 @@ type SignChartOption struct {
 // cosignAdapter wraps the cosign CLIs native code
 func (so SignChartOption) Run() error {
 
-	// Return early i no images to sign, or no registries to upload signature to
-	if !(len(so.ChartCollection.Charts) > 0) || !(len(so.Registries) >= 0) {
-		slog.Debug("No images or registries specified. Skipping signing images...")
+	size := func() int {
+		size := 0
+		for _, m := range so.Data {
+			for _, b := range m {
+				if b {
+					size++
+				}
+			}
+		}
+		return size
+	}()
+
+	// Return early i no charts to sign, or no registries to upload signature to
+	if !(size > 0) {
+		slog.Debug("No charts or registries specified. Skipping signing charts...")
 		return nil
 	}
 
-	bar := progressbar.NewOptions(len(so.ChartCollection.Charts), progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
+	bar := progressbar.NewOptions(size, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowCount(),
 		progressbar.OptionOnCompletion(func() {
@@ -121,9 +134,13 @@ func (so SignChartOption) Run() error {
 		IssueCertificateForExistingKey: signOpts.IssueCertificate,
 	}
 
-	for _, r := range so.Registries {
+	for r, m := range so.Data {
 		refs := []string{}
-		for _, c := range so.ChartCollection.Charts {
+
+		for c, b := range m {
+			if !b {
+				continue
+			}
 
 			name := fmt.Sprintf("charts/%s", c.Name)
 			d, err := r.Fetch(context.TODO(), name, c.Version)
@@ -150,7 +167,7 @@ func (so SignChartOption) Run() error {
 				if !(d.Repository == "" || strings.HasPrefix(d.Repository, "file://")) {
 					v := d.Version
 					if strings.Contains(v, "*") || strings.Contains(v, "x") {
-						chart := helm.DependencyToChart(d, c)
+						chart := helm.DependencyToChart(d, *c)
 
 						// Resolve Globs to latest patch
 						v, err = chart.ResolveVersion()

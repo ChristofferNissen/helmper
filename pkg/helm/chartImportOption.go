@@ -14,10 +14,11 @@ import (
 )
 
 type ChartImportOption struct {
-	Registries      []registry.Registry
-	ChartCollection *ChartCollection
-	All             bool
-	ModifyRegistry  bool
+	Data map[*registry.Registry]map[*Chart]bool
+	// Registries      []registry.Registry
+	// ChartCollection *ChartCollection
+	All            bool
+	ModifyRegistry bool
 }
 
 func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
@@ -33,50 +34,23 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 		setter(args)
 	}
 
-	charts := []Chart{}
-	for _, c := range opt.ChartCollection.Charts {
-
-		_, chartRef, _, err := c.Read(args.Update)
-		if err != nil {
-			return err
-		}
-
-		c.DepsCount = len(chartRef.Metadata.Dependencies)
-		charts = append(charts, c)
-
-		for _, d := range chartRef.Metadata.Dependencies {
-
-			// We need all dependencies for the chart to be available in the registry to do 'helm dpt up'
-			// if !ConditionMet(d.Condition, values) {
-			// 	slog.Debug("Skipping disabled chart", slog.String("chart", d.Name), slog.String("condition", d.Condition))
-			// 	continue
-			// }
-
-			// only import remote charts
-			if d.Repository == "" || strings.HasPrefix(d.Repository, "file://") {
-				// Embedded in parent chart
-				slog.Debug("Skipping embedded chart", slog.String("chart", d.Name), slog.String("parent", c.Name))
-				continue
-			}
-
-			chart := DependencyToChart(d, c)
-
-			// Resolve Globs to latest patch
-			if strings.Contains(chart.Version, "*") {
-				v, err := chart.ResolveVersion()
-				if err == nil {
-					chart.Version = v
+	size := func() int {
+		size := 0
+		for _, m := range opt.Data {
+			for _, b := range m {
+				if b {
+					size++
 				}
 			}
-
-			charts = append(charts, chart)
 		}
+		return size
+	}()
+
+	if !(size > 0) {
+		return nil
 	}
 
-	// Sort charts according to least dependencies
-	sort.Slice(charts, func(i, j int) bool { return charts[i].DepsCount < charts[j].DepsCount })
-
-	bar := progressbar.NewOptions(len(charts),
+	bar := progressbar.NewOptions(size,
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowCount(),
@@ -95,13 +69,61 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			BarEnd:        "]",
 		}))
 
-	for _, c := range charts {
+	for r, m := range opt.Data {
+		charts := []Chart{}
 
-		if c.Name == "images" {
-			continue
+		for c, b := range m {
+			if b {
+
+				_, chartRef, _, err := c.Read(args.Update)
+				if err != nil {
+					return err
+				}
+
+				c.DepsCount = len(chartRef.Metadata.Dependencies)
+				charts = append(charts, *c)
+
+				for _, d := range chartRef.Metadata.Dependencies {
+
+					// We need all dependencies for the chart to be available in the registry to do 'helm dpt up'
+					// if !ConditionMet(d.Condition, values) {
+					// 	slog.Debug("Skipping disabled chart", slog.String("chart", d.Name), slog.String("condition", d.Condition))
+					// 	continue
+					// }
+
+					// only import remote charts
+					if d.Repository == "" || strings.HasPrefix(d.Repository, "file://") {
+						// Embedded in parent chart
+						slog.Debug("Skipping embedded chart", slog.String("chart", d.Name), slog.String("parent", c.Name))
+						continue
+					}
+
+					chart := DependencyToChart(d, *c)
+
+					// Resolve Globs to latest patch
+					if strings.Contains(chart.Version, "*") {
+						v, err := chart.ResolveVersion()
+						if err == nil {
+							chart.Version = v
+						}
+					}
+
+					charts = append(charts, chart)
+				}
+			}
 		}
 
-		for _, r := range opt.Registries {
+		// Sort charts according to least dependencies
+		sort.Slice(charts, func(i, j int) bool {
+			return charts[i].DepsCount < charts[j].DepsCount
+		})
+
+		for _, c := range charts {
+
+			if c.Name == "images" {
+				continue
+			}
+
 			registryURL := "oci://" + r.URL + "/charts"
 			if !opt.All {
 				_, err := r.Exist(ctx, "charts/"+c.Name, c.Version)
@@ -128,9 +150,8 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			}
 			slog.Debug(res)
 
+			_ = bar.Add(1)
 		}
-
-		_ = bar.Add(1)
 	}
 
 	return bar.Finish()
