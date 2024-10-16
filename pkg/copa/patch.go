@@ -58,7 +58,7 @@ func Patch(ctx context.Context, timeout time.Duration, image, reportFile, patche
 
 	select {
 	case err := <-ch:
-		if err == nil || err.String() == "no patchable vulnerabilities found" {
+		if err == nil || err.Error() == "no patchable vulnerabilities found" {
 			return nil
 		}
 		return fmt.Errorf("copa: error patching image :: %w", err)
