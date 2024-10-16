@@ -28,10 +28,81 @@ var (
 	date    = "unknown"
 )
 
-func modify(cm *helm.ChartData, mirrorConfig []bootstrap.MirrorConfigSection) error {
+func Program(args []string) error {
+	ctx := context.TODO()
+
+	slogHandlerOpts := &slog.HandlerOptions{}
+	if os.Getenv("HELMPER_LOG_LEVEL") == "DEBUG" {
+		slogHandlerOpts.Level = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, slogHandlerOpts))
+	slog.SetDefault(logger)
+
+	output.Header(version, commit, date)
+
+	viper, err := bootstrap.LoadViperConfiguration(args)
+	if err != nil {
+		return err
+	}
+	var (
+		k8sVersion   string                          = state.GetValue[string](viper, "k8s_version")
+		verbose      bool                            = state.GetValue[bool](viper, "verbose")
+		update       bool                            = state.GetValue[bool](viper, "update")
+		all          bool                            = state.GetValue[bool](viper, "all")
+		parserConfig bootstrap.ParserConfigSection   = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
+		importConfig bootstrap.ImportConfigSection   = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+		mirrorConfig []bootstrap.MirrorConfigSection = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
+		registries   []registry.Registry             = state.GetValue[[]registry.Registry](viper, "registries")
+		images       []registry.Image                = state.GetValue[[]registry.Image](viper, "images")
+		charts       helm.ChartCollection            = state.GetValue[helm.ChartCollection](viper, "input")
+		opts         []helm.Option                   = []helm.Option{
+			helm.K8SVersion(k8sVersion),
+			helm.Verbose(verbose),
+			helm.Update(update),
+		}
+	)
+
+	if verbose {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+
+	// Find input charts in configuration
+	slog.Debug(
+		"Found charts in config",
+		slog.Int("count", len(charts.Charts)),
+	)
+
+	// STEP 1: Setup Helm
+	charts, err = bootstrap.SetupHelm(
+		&charts,
+		opts...,
+	)
+	if err != nil {
+		return err
+	}
+	// Output overview table of charts and subcharts
+	output.RenderChartTable(
+		&charts,
+		output.Update(update),
+	)
+
+	// STEP 2: Find images in Helm Charts and dependencies
+	slog.Debug("Starting parsing user specified chart(s) for images..")
+	co := helm.ChartOption{
+		ChartCollection: &charts,
+		IdentifyImages:  !parserConfig.DisableImageDetection,
+		UseCustomValues: parserConfig.UseCustomValues,
+	}
+	chartImageHelmValuesMap, err := co.Run(
+		ctx,
+		opts...,
+	)
+	if err != nil {
+		return err
+	}
 
 	// modify images according to user specification
-	for c, m := range *cm {
+	for c, m := range chartImageHelmValuesMap {
 		for i, vs := range m {
 			r, err := i.String()
 			if err != nil {
@@ -97,86 +168,6 @@ func modify(cm *helm.ChartData, mirrorConfig []bootstrap.MirrorConfigSection) er
 			}
 		}
 	}
-	return nil
-}
-
-func Program(args []string) error {
-	ctx := context.TODO()
-
-	slogHandlerOpts := &slog.HandlerOptions{}
-	if os.Getenv("HELMPER_LOG_LEVEL") == "DEBUG" {
-		slogHandlerOpts.Level = slog.LevelDebug
-	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, slogHandlerOpts))
-	slog.SetDefault(logger)
-
-	output.Header(version, commit, date)
-
-	viper, err := bootstrap.LoadViperConfiguration(args)
-	if err != nil {
-		return err
-	}
-	var (
-		k8sVersion   string                          = state.GetValue[string](viper, "k8s_version")
-		verbose      bool                            = state.GetValue[bool](viper, "verbose")
-		update       bool                            = state.GetValue[bool](viper, "update")
-		all          bool                            = state.GetValue[bool](viper, "all")
-		parserConfig bootstrap.ParserConfigSection   = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
-		importConfig bootstrap.ImportConfigSection   = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
-		mirrorConfig []bootstrap.MirrorConfigSection = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
-		registries   []registry.Registry             = state.GetValue[[]registry.Registry](viper, "registries")
-		images       []registry.Image                = state.GetValue[[]registry.Image](viper, "images")
-		charts       helm.ChartCollection            = state.GetValue[helm.ChartCollection](viper, "input")
-		opts         []helm.Option                   = []helm.Option{
-			helm.K8SVersion(k8sVersion),
-			helm.Verbose(verbose),
-			helm.Update(update),
-		}
-	)
-
-	if verbose {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
-	}
-
-	// Find input charts in configuration
-	slog.Debug(
-		"Found charts in config",
-		slog.Int("count", len(charts.Charts)),
-	)
-
-	// STEP 1: Setup Helm
-	charts, err = bootstrap.SetupHelm(
-		&charts,
-		opts...,
-	)
-	if err != nil {
-		return err
-	}
-	// Output overview table of charts and subcharts
-	go output.RenderChartTable(
-		&charts,
-		output.Update(update),
-	)
-
-	// STEP 2: Find images in Helm Charts and dependencies
-	slog.Debug("Starting parsing user specified chart(s) for images..")
-	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  !parserConfig.DisableImageDetection,
-		UseCustomValues: parserConfig.UseCustomValues,
-	}
-	chartImageHelmValuesMap, err := co.Run(
-		ctx,
-		opts...,
-	)
-	if err != nil {
-		return err
-	}
-
-	err = modify(&chartImageHelmValuesMap, mirrorConfig)
-	if err != nil {
-		return err
-	}
 
 	// Add in images from config
 	placeHolder := helm.Chart{
@@ -190,14 +181,12 @@ func Program(args []string) error {
 	chartImageHelmValuesMap[placeHolder] = m
 
 	// Output table of image to helm chart value path
-	go func() {
-		output.RenderHelmValuePathToImageTable(chartImageHelmValuesMap)
-		slog.Debug("Parsing of user specified chart(s) completed")
-	}()
+	output.RenderHelmValuePathToImageTable(chartImageHelmValuesMap)
+	slog.Debug("Parsing of user specified chart(s) completed")
 
 	// STEP 3: Validate and correct image references from charts
 	slog.Debug("Checking presence of images from chart(s) in registries...")
-	cs, imgs, err := helm.IdentifyImportCandidates(
+	imgs, err := helm.IdentifyImportCandidates(
 		ctx,
 		registries,
 		chartImageHelmValuesMap,
@@ -206,13 +195,6 @@ func Program(args []string) error {
 	if err != nil {
 		return err
 	}
-	_ = output.RenderChartOverviewTable(
-		ctx,
-		viper,
-		len(charts.Charts),
-		registries,
-		charts,
-	)
 	// Output table of image status in registries
 	_ = output.RenderImageOverviewTable(
 		ctx,
@@ -225,10 +207,10 @@ func Program(args []string) error {
 
 	// Import charts to registries
 	switch {
-	case importConfig.Import.Enabled && len(cs.Charts) > 0:
+	case importConfig.Import.Enabled && len(charts.Charts) > 0:
 		err := helm.ChartImportOption{
 			Registries:      registries,
-			ChartCollection: &cs,
+			ChartCollection: &charts,
 			All:             all,
 			ModifyRegistry:  importConfig.Import.ReplaceRegistryReferences,
 		}.Run(ctx, opts...)
@@ -239,7 +221,7 @@ func Program(args []string) error {
 		if importConfig.Import.Cosign.Enabled {
 			slog.Debug("Cosign enabled")
 			signo := mySign.SignChartOption{
-				ChartCollection: &cs,
+				ChartCollection: &charts,
 				Registries:      registries,
 
 				KeyRef:            importConfig.Import.Cosign.KeyRef,
@@ -294,7 +276,7 @@ func Program(args []string) error {
 					if err != nil {
 						return err
 					}
-					slog.Debug("image should not be patched",
+					slog.Debug("User defined image should not be patched",
 						slog.String("image", ref))
 					push = append(push, &i)
 					continue
