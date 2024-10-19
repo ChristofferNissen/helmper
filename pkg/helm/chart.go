@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
@@ -20,13 +19,15 @@ import (
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
 
+	"helm.sh/helm/v3/pkg/registry"
+	helm_registry "helm.sh/helm/v3/pkg/registry"
+
 	"github.com/blang/semver/v4"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -398,134 +399,57 @@ func (c Chart) LatestVersion() (string, error) {
 	return res, nil
 }
 
-func (c Chart) pullTar() (string, error) {
+// func untar(tarPath string) (string, error) {
+// 	tempDir, err := os.MkdirTemp("", "untar")
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	if strings.HasPrefix(c.Repo.URL, "oci://") {
+// 	file, err := os.Open(tarPath)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	defer file.Close()
 
-		settings := cli.New()
+// 	gzipReader, err := gzip.NewReader(file)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	defer gzipReader.Close()
 
-		helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
+// 	tarReader := tar.NewReader(gzipReader)
+// 	for {
+// 		header, err := tarReader.Next()
+// 		if err == io.EOF {
+// 			break
+// 		}
+// 		if err != nil {
+// 			return "", err
+// 		}
 
-		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name
+// 		targetPath := filepath.Join(tempDir, header.Name)
+// 		switch header.Typeflag {
+// 		case tar.TypeDir:
+// 			if err := os.MkdirAll(targetPath, os.FileMode(header.Mode)); err != nil {
+// 				return "", err
+// 			}
+// 		case tar.TypeReg:
+// 			outFile, err := os.Create(targetPath)
+// 			if err != nil {
+// 				return "", err
+// 			}
+// 			if _, err := io.Copy(outFile, tarReader); err != nil {
+// 				outFile.Close()
+// 				return "", err
+// 			}
+// 			outFile.Close()
+// 		default:
+// 			return "", fmt.Errorf("unknown type: %b in %s", header.Typeflag, header.Name)
+// 		}
+// 	}
 
-		version, vPrefix := strings.CutPrefix(c.Version, "v")
-		if vPrefix {
-			c.Version = version
-		}
-
-		v, err := c.ResolveVersion()
-		if err != nil {
-			return "", err
-		}
-
-		if vPrefix {
-			c.Version = "v" + v
-		} else {
-			c.Version = v
-		}
-
-		co := action.ChartPathOptions{
-			CaFile:                c.Repo.CAFile,
-			CertFile:              c.Repo.CertFile,
-			KeyFile:               c.Repo.KeyFile,
-			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
-			PassCredentialsAll:    c.Repo.PassCredentialsAll,
-			Username:              c.Repo.Username,
-			Password:              c.Repo.Password,
-			Version:               c.Version,
-		}
-
-		// You can pass an empty string instead of settings.Namespace() to list
-		// all namespaces
-		// HELM_DRIVER can be one of: [ configmap, secret, sql ]
-		HelmDriver := "configmap"
-		actionConfig := new(action.Configuration)
-		if err := actionConfig.Init(
-			settings.RESTClientGetter(),
-			settings.Namespace(),
-			HelmDriver,
-			log.Printf,
-		); err != nil {
-			return "", err
-		}
-
-		// Make temporary folder for tar archives
-		f, err := os.MkdirTemp(os.TempDir(), "untar")
-		if err != nil {
-			return "", err
-		}
-		defer os.RemoveAll(f)
-
-		opts := []action.PullOpt{
-			action.WithConfig(actionConfig),
-		}
-		pull := action.NewPullWithOpts(opts...)
-		pull.ChartPathOptions = co
-		pull.Settings = settings
-		pull.DestDir = helmCacheHome
-
-		_, err = pull.Run(ref)
-		if err != nil {
-			return "", err
-		}
-
-		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
-
-	}
-
-	u, err := url.Parse(c.Repo.URL)
-	if err != nil {
-		return "", err
-	}
-
-	co := action.ChartPathOptions{
-		CaFile:                c.Repo.CAFile,
-		CertFile:              c.Repo.CertFile,
-		KeyFile:               c.Repo.KeyFile,
-		InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
-		PlainHTTP:             c.PlainHTTP || u.Scheme == "https",
-		Password:              c.Repo.Password,
-		PassCredentialsAll:    c.Repo.PassCredentialsAll,
-		RepoURL:               c.Repo.URL,
-		Username:              c.Repo.Username,
-		Version:               c.Version,
-	}
-	settings := cli.New()
-
-	// You can pass an empty string instead of settings.Namespace() to list
-	// all namespaces
-	// HELM_DRIVER can be one of: [ configmap, secret, sql ]
-	HelmDriver := "configmap"
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, log.Printf); err != nil {
-		return "", err
-	}
-
-	opts := []action.PullOpt{
-		action.WithConfig(actionConfig),
-	}
-	pull := action.NewPullWithOpts(opts...)
-	pull.ChartPathOptions = co
-	pull.Settings = settings
-	tmp := os.TempDir()
-	pull.DestDir = tmp
-
-	_, err = pull.Run(c.Name)
-	if err != nil {
-		return "", err
-	}
-
-	// Resolve filepath (wildcards) for dependency charts
-	matches, err := filepath.Glob(fmt.Sprintf("%s/%s-*%s.tgz", tmp, c.Name, c.Version))
-	if err != nil {
-		return "", err
-	}
-	sort.Slice(matches, func(i, j int) bool {
-		return matches[i] < matches[j]
-	})
-
-	return matches[0], nil
-}
+// 	return tempDir, nil
+// }
 
 func (c Chart) CountDependencies() (int, error) {
 
@@ -538,7 +462,7 @@ func (c Chart) CountDependencies() (int, error) {
 		return 0, err
 	}
 
-	path, err := c.pullTar()
+	path, err := c.Locate()
 	if err != nil {
 		return 0, err
 	}
@@ -552,323 +476,279 @@ func (c Chart) CountDependencies() (int, error) {
 	return len(chartRef.Metadata.Dependencies), nil
 }
 
-func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, error) {
-
-	settings := cli.New()
-
-	HelmDriver := "configmap"
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, slog.Info); err != nil {
-		slog.Error(fmt.Sprintf("%+v", err))
-		return "", err
-	}
-
-	path, err := c.pullTar()
+func readFileAsBytes(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	defer os.Remove(path)
+	return data, nil
+}
 
-	opts := []action.PushOpt{
-		action.WithPushConfig(actionConfig),
-		action.WithInsecureSkipTLSVerify(insecure),
-		action.WithPlainHTTP(plainHTTP),
+func (c Chart) push(chartFilePath string, destination string) error {
+	// Read chart bytes
+	bs, err := readFileAsBytes(chartFilePath)
+	if err != nil {
+		log.Fatalf("Error reading chart: %v", err)
 	}
-	push := action.NewPushWithOpts(opts...)
-	push.Settings = settings
 
-	out, res := push.Run(path, registry)
-	return out, res
+	// Create a new registry client
+	rc, err := helm_registry.NewClient(
+		helm_registry.ClientOptDebug(true),
+		helm_registry.ClientOptPlainHTTP(),
+	)
+	if err != nil {
+		log.Fatalf("Error creating registry client: %v", err)
+	}
+	_, err = rc.Push(
+		bs,
+		destination,
+		helm_registry.PushOptStrictMode(false),
+	)
+	if err != nil {
+		log.Fatalf("Error pushing chart: %v", err)
+	}
+
+	fmt.Println("Chart pushed successfully")
+
+	return nil
+}
+
+func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, error) {
+	chartFilePath, err := c.Pull()
+	if err != nil {
+		return "", fmt.Errorf("failed to pull tar: %w", err)
+	}
+	defer os.Remove(chartFilePath)
+
+	err = c.push(chartFilePath, fmt.Sprintf("%s/charts/%s:%s", registry, c.Name, c.Version))
+	return chartFilePath, err
 }
 
 func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (string, error) {
-
-	settings := cli.New()
-
-	HelmDriver := "configmap"
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, slog.Info); err != nil {
-		slog.Error(fmt.Sprintf("%+v", err))
-		return "", err
-	}
-
-	path, err := c.pullTar()
+	chartFilePath, err := c.Pull()
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(path)
+	defer os.Remove(chartFilePath)
 
+	// Create a temporary directory for modification
 	dir, err := os.MkdirTemp("", "sampledir")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(dir)
 
-	err = chartutil.ExpandFile(dir, path)
+	// Expand the chart for modification
+	err = chartutil.ExpandFile(dir, chartFilePath)
 	if err != nil {
 		return "", err
 	}
 
-	// modify chart contents here before pushing
-	chartRef, err := loader.Load(dir + "/" + c.Name)
+	// Modify chart contents before pushing
+	chartRef, err := loader.Load(filepath.Join(dir, c.Name))
 	if err != nil {
 		return "", err
 	}
 
-	// Dependencies (Chart.yaml)
+	// Update Dependencies in Chart.yaml
 	for _, d := range chartRef.Metadata.Dependencies {
-		switch {
-		case strings.HasPrefix(d.Repository, "file://"):
-			slog.Debug("Leaving embedded chart as is", slog.String("Chart", d.Name))
-		case d.Repository != "":
-
-			// Change dependency ref to registry being imported to
+		if !strings.HasPrefix(d.Repository, "file://") && d.Repository != "" {
 			d.Repository = registry
-
 			if strings.Contains(d.Version, "*") || strings.Contains(d.Version, "x") {
-				chart := DependencyToChart(d, c)
-
-				// OCI dependencies can not use globs in version
-				// Resolve Globs to latest patch
-				v, err := chart.ResolveVersion()
+				v, err := c.ResolveVersion()
 				if err == nil {
 					d.Version = v
 				}
 			}
 		}
-
 	}
 
-	err = chartutil.SaveChartfile(dir+"/"+c.Name+"/Chart.yaml", chartRef.Metadata)
+	err = chartutil.SaveChartfile(filepath.Join(dir, c.Name, "Chart.yaml"), chartRef.Metadata)
 	if err != nil {
 		return "", err
 	}
 
-	// Helm Dependency Update (helm dep up)
-	// https://github.com/helm/helm/blob/main/cmd/helm/dependency_update.go
+	// Helm Dependency Update
 	var buf bytes.Buffer
 	ma := getManager(&buf, true, true)
-	ma.ChartPath = dir + "/" + c.Name
+	ma.ChartPath = filepath.Join(dir, c.Name)
 	err = ma.Update()
 	if err != nil {
-		slog.Debug("Error occurred trying to update Helm Chart on filesystem, skipping update of chart dependencies", slog.String("error", err.Error()))
+		log.Printf("Error occurred trying to update Helm Chart on filesystem: %v, skipping update of chart dependencies", err)
 	}
 
 	// Reload Helm Chart from filesystem
-	chartRef, err = loader.Load(dir + "/" + c.Name)
+	chartRef, err = loader.Load(filepath.Join(dir, c.Name))
 	if err != nil {
 		return "", err
 	}
 
-	// Image References in values.yaml
+	// Replace Image References in values.yaml
 	replaceImageReferences(chartRef.Values, registry)
 	for _, r := range chartRef.Raw {
 		if r.Name == "values.yaml" {
-			d, _ := yaml.Marshal(chartRef.Values)
+			d, err := yaml.Marshal(chartRef.Values)
+			if err != nil {
+				return "", err
+			}
 			r.Data = d
 		}
 	}
 
-	// Save Helm Chart to Filesystem before push
-	path, err = chartutil.Save(chartRef, "/tmp/")
+	// Save modified Helm Chart to filesystem before push
+	modifiedPath, err := chartutil.Save(chartRef, "/tmp/")
 	if err != nil {
 		return "", err
 	}
 
-	// Push Modified Helm Chart
-	opts := []action.PushOpt{
-		action.WithPushConfig(actionConfig),
-		action.WithInsecureSkipTLSVerify(insecure),
-		action.WithPlainHTTP(plainHTTP),
+	// Use the `Push` method to push the modified chart
+	c.PlainHTTP = plainHTTP
+	c.Repo.InsecureSkipTLSverify = insecure
+	err = c.push(modifiedPath, fmt.Sprintf("%s/charts/%s:%s", registry, c.Name, c.Version))
+	if err != nil {
+		return "", err
 	}
-	push := action.NewPushWithOpts(opts...)
-	push.Settings = settings
 
-	out, res := push.Run(path, registry)
-	return out, res
+	return modifiedPath, nil
+}
+
+func fileExists(filePath string) bool {
+	info, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
 
 func (c Chart) Pull() (string, error) {
-
 	u, err := url.Parse(c.Repo.URL)
 	if err != nil {
 		return "", err
 	}
 
+	settings := cli.New()
+	helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
+	tarPath := fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version)
+	chartPath := fmt.Sprintf("%s/%s", helmCacheHome, c.Name)
+
+	if fileExists(chartPath) && fileExists(tarPath) {
+		return tarPath, nil
+	}
+
+	ref := func() string {
+		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
+		if strings.HasSuffix(url, c.Name) {
+			return url + ":" + c.Version
+		} else {
+			return url + "/" + c.Name + ":" + c.Version
+		}
+	}()
+
+	if strings.HasPrefix(c.Repo.URL, "oci://") {
+		if err := os.Setenv("HELM_EXPERIMENTAL_OCI", "1"); err != nil {
+			return "", err
+		}
+
+		rc, err := registry.NewClient(
+			registry.ClientOptDebug(true),
+			registry.ClientOptPlainHTTP(),
+			// registry.ClientOptInsecureSkipVerifyTLS(c.Repo.InsecureSkipTLSverify),
+		)
+		if err != nil {
+			return "", err
+		}
+
+		p, err := rc.Pull(ref)
+		if err != nil {
+			return "", err
+		}
+
+		err = file.Write(tarPath, p.Chart.Data)
+		if err != nil {
+			return "", err
+		}
+
+	} else {
+		co := action.ChartPathOptions{
+			CaFile:                c.Repo.CAFile,
+			CertFile:              c.Repo.CertFile,
+			KeyFile:               c.Repo.KeyFile,
+			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+			PlainHTTP:             u.Scheme == "http",
+			RepoURL:               c.Repo.URL,
+			Username:              c.Repo.Username,
+			Password:              c.Repo.Password,
+			Version:               c.Version,
+		}
+
+		actionConfig := new(action.Configuration)
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), "configmap", log.Printf); err != nil {
+			return "", err
+		}
+
+		pull := action.NewPullWithOpts(action.WithConfig(actionConfig))
+		pull.ChartPathOptions = co
+		pull.Settings = settings
+		pull.Untar = false
+		pull.DestDir = helmCacheHome
+
+		if _, err := pull.Run(c.Name); err != nil {
+			return "", err
+		}
+	}
+
+	return tarPath, nil
+}
+
+func (c Chart) Locate() (string, error) {
+	settings := cli.New()
+	helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
+
+	// Check if the repository URL is an OCI URL
+	if strings.HasPrefix(c.Repo.URL, "oci://") {
+		// Pull the chart from OCI
+		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name + ":" + c.Version
+		if err := os.Setenv("HELM_EXPERIMENTAL_OCI", "1"); err != nil {
+			return "", err
+		}
+
+		rc, err := helm_registry.NewClient()
+		if err != nil {
+			return "", err
+		}
+
+		if _, err := rc.Pull(ref); err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
+	}
+
+	// For non-OCI URLs, use ChartPathOptions
 	co := action.ChartPathOptions{
 		CaFile:                c.Repo.CAFile,
 		CertFile:              c.Repo.CertFile,
 		KeyFile:               c.Repo.KeyFile,
 		InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
-		PlainHTTP:             u.Scheme == "https",
-		Password:              c.Repo.Password,
-		PassCredentialsAll:    c.Repo.PassCredentialsAll,
+		PlainHTTP:             c.Repo.PassCredentialsAll,
 		RepoURL:               c.Repo.URL,
 		Username:              c.Repo.Username,
+		Password:              c.Repo.Password,
 		Version:               c.Version,
 	}
-	settings := cli.New()
 
-	helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
-
-	// check if artifact already exists
-	tarPath := fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version)
-	chartPath := fmt.Sprintf("%s/%s", helmCacheHome, c.Name)
-	if file.Exists(chartPath) &&
-		file.Exists(tarPath) {
-		return chartPath, nil
-	}
-
-	// You can pass an empty string instead of settings.Namespace() to list
-	// all namespaces
-	// HELM_DRIVER can be one of: [ configmap, secret, sql ]
-	HelmDriver := "configmap"
-	actionConfig := new(action.Configuration)
-	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, log.Printf); err != nil {
-		return "", err
-	}
-
-	// Make temporary folder for tar archives
-	f, err := os.MkdirTemp(os.TempDir(), "untar")
-	if err != nil {
-		return "", err
-	}
-	defer os.RemoveAll(f)
-
-	opts := []action.PullOpt{
-		action.WithConfig(actionConfig),
-	}
-	pull := action.NewPullWithOpts(opts...)
-	pull.ChartPathOptions = co
-	pull.Settings = settings
-	pull.Untar = true
-	pull.UntarDir = f
-	pull.DestDir = helmCacheHome
-
-	_, err = pull.Run(c.Name)
+	// Locate the chart path
+	chartPath, err := co.LocateChart(c.Name, settings)
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(pull.DestDir, c.Name), nil
-}
-
-func (c Chart) Locate() (string, error) {
-	config := cli.New()
-	helmCacheHome := config.EnvVars()["HELM_CACHE_HOME"]
-
-	switch {
-	case strings.HasPrefix(c.Repo.URL, "oci://"):
-
-		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name
-
-		co := action.ChartPathOptions{
-			CaFile:                c.Repo.CAFile,
-			CertFile:              c.Repo.CertFile,
-			KeyFile:               c.Repo.KeyFile,
-			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
-			PassCredentialsAll:    c.Repo.PassCredentialsAll,
-			Username:              c.Repo.Username,
-			Password:              c.Repo.Password,
-			Version:               c.Version,
-		}
-
-		settings := cli.New()
-
-		// You can pass an empty string instead of settings.Namespace() to list
-		// all namespaces
-		// HELM_DRIVER can be one of: [ configmap, secret, sql ]
-		HelmDriver := "configmap"
-		actionConfig := new(action.Configuration)
-		if err := actionConfig.Init(
-			settings.RESTClientGetter(),
-			settings.Namespace(),
-			HelmDriver,
-			log.Printf,
-		); err != nil {
-			return "", err
-		}
-
-		// Make temporary folder for tar archives
-		f, err := os.MkdirTemp(os.TempDir(), "untar")
-		if err != nil {
-			return "", err
-		}
-		defer os.RemoveAll(f)
-
-		opts := []action.PullOpt{
-			action.WithConfig(actionConfig),
-		}
-		pull := action.NewPullWithOpts(opts...)
-		pull.ChartPathOptions = co
-		pull.Settings = settings
-		pull.DestDir = helmCacheHome
-
-		_, err = pull.Run(ref)
-		if err != nil {
-			return "", err
-		}
-
-		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
-
-	default:
-		u, err := url.Parse(c.Repo.URL)
-		if err != nil {
-			return "", err
-		}
-
-		co := action.ChartPathOptions{
-			CaFile:                c.Repo.CAFile,
-			CertFile:              c.Repo.CertFile,
-			KeyFile:               c.Repo.KeyFile,
-			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
-			PlainHTTP:             u.Scheme == "https",
-			Password:              c.Repo.Password,
-			PassCredentialsAll:    c.Repo.PassCredentialsAll,
-			RepoURL:               c.Repo.URL,
-			Username:              c.Repo.Username,
-			Version:               c.Version,
-		}
-
-		chartPath, err := co.LocateChart(c.Name, config)
-		if err != nil {
-			// subcharts nested in parent charts source?
-			if c.Parent != nil {
-				path := filepath.Join(helmCacheHome, c.Parent.Name, "charts", c.Name)
-				if file.Exists(path) {
-					return path, nil
-				}
-			}
-
-			ma := downloader.Manager{
-				ChartPath:  chartPath,
-				SkipUpdate: false,
-			}
-			err := ma.Update()
-			if err != nil {
-				return "", err
-			}
-
-			chartPath, err := co.LocateChart(c.Name, config)
-			if err == nil {
-				return chartPath, nil
-			}
-		}
-
-		return chartPath, nil
-	}
+	return chartPath, nil
 }
 
 func (c Chart) Values() (map[string]any, error) {
-
-	// Get remote Helm Chart using Helm SDK
-	path, err := c.Locate()
-	if err != nil {
-		return nil, err
-	}
-
 	// Get detailed information about the chart
-	chartRef, err := loader.Load(path)
+	chartRef, err := c.ChartRef()
 	if err != nil {
 		return nil, err
 	}
@@ -905,8 +785,21 @@ func (c Chart) Values() (map[string]any, error) {
 	return vs.AsMap(), nil
 }
 
-func (c *Chart) Read(update bool) (string, *chart.Chart, map[string]any, error) {
+func (c *Chart) ChartRef() (*chart.Chart, error) {
+	// Get remote Helm Chart using Helm SDK
+	path, err := c.Locate()
+	if err != nil {
+		return nil, err
+	}
+	// Get detailed information about the chart
+	chartRef, err := loader.Load(path)
+	if err != nil {
+		return nil, err
+	}
+	return chartRef, nil
+}
 
+func (c *Chart) Read(update bool) (string, *chart.Chart, map[string]any, error) {
 	// Check for latest version of chart
 	if update {
 		latest, err := c.LatestVersion()
@@ -916,14 +809,8 @@ func (c *Chart) Read(update bool) (string, *chart.Chart, map[string]any, error) 
 		c.Version = latest
 	}
 
-	// Get remote Helm Chart using Helm SDK
-	path, err := c.Locate()
-	if err != nil {
-		return "", nil, nil, err
-	}
-
 	// Get detailed information about the chart
-	chartRef, err := loader.Load(path)
+	chartRef, err := c.ChartRef()
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -934,5 +821,5 @@ func (c *Chart) Read(update bool) (string, *chart.Chart, map[string]any, error) 
 		return "", nil, nil, err
 	}
 
-	return path, chartRef, values, nil
+	return chartRef.ChartFullPath(), chartRef, values, nil
 }

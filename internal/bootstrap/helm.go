@@ -1,6 +1,9 @@
 package bootstrap
 
 import (
+	"log"
+	"os"
+
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 )
 
@@ -16,6 +19,11 @@ func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) (helm.Chart
 
 	for _, setter := range setters {
 		setter(args)
+	}
+
+	// Set up Helm action configuration
+	if err := os.Setenv("HELM_EXPERIMENTAL_OCI", "1"); err != nil {
+		log.Fatalf("Error setting OCI environment variable: %v", err)
 	}
 
 	return charts.SetupHelm(

@@ -53,6 +53,10 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 		return size
 	}()
 
+	if !(size > 0) {
+		return nil
+	}
+
 	bar := progressbar.NewOptions(size,
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),

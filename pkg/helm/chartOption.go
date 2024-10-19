@@ -226,7 +226,6 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 				}))
 
 			for _, c := range charts.Charts {
-
 				path, chartRef, values, err := c.Read(args.Update)
 				if err != nil {
 					return err

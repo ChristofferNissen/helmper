@@ -65,18 +65,14 @@ func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, e
 		}))
 
 	o := &options.VerifyOptions{
-		Key: vo.KeyRef,
-
+		Key:         vo.KeyRef,
 		CheckClaims: true,
-
-		Output: "json",
-
+		Output:      "json",
 		CommonVerifyOptions: options.CommonVerifyOptions{
 			IgnoreTlog:            true,
 			PrivateInfrastructure: true,
 			ExperimentalOCI11:     true,
 		},
-
 		Registry: options.RegistryOptions{
 			AllowInsecure:     vo.AllowInsecure,
 			AllowHTTPRegistry: vo.AllowHTTPRegistry,

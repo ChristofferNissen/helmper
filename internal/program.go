@@ -294,7 +294,6 @@ func Program(args []string) error {
 	if importConfig.Import.Cosign.Enabled {
 
 		// Charts
-
 		vco := mySign.VerifyChartOption{
 			Data:           mCharts,
 			VerifyExisting: importConfig.Import.Cosign.VerifyExisting,

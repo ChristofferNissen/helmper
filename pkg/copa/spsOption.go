@@ -47,6 +47,10 @@ func (o SpsOption) Run(ctx context.Context) error {
 		return c
 	}()
 
+	if !(lenImages > 0) {
+		return nil
+	}
+
 	bar := progressbar.NewOptions(lenImages, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowCount(),
@@ -68,12 +72,6 @@ func (o SpsOption) Run(ctx context.Context) error {
 	// Trivy scan
 	so := o.ScanOption
 	patch, push, err := func(m map[*registry.Registry]map[*registry.Image]bool) (map[*registry.Registry]map[*registry.Image]bool, map[*registry.Registry]map[*registry.Image]bool, error) {
-
-		// seen := make([]registry.Image, 0)
-		// if i.In(seen) {
-		// 	continue
-		// }
-		// seen = append(seen, *i)
 
 		imgs := make([]*registry.Image, 0)
 		for _, m := range o.Data {

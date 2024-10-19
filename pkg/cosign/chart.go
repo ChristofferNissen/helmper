@@ -148,8 +148,23 @@ func (so SignChartOption) Run() error {
 				return err
 			}
 
-			ref := fmt.Sprintf("%s/%s@%s", r.URL, name, d.Digest)
+			// Create a new registry client
+			// rc, err := helm_registry.NewClient()
+			// if err != nil {localhost:5000/dynatrace-operator@sha256:9dbea0ad2825a7b4267faf60c9f58b4597977c6fda7acf7513fbb1cdcfa0432b
+			// 	log.Fatalf("Error creating registry client: %v", err)
+			// }
+
+			// chartURL := fmt.Sprintf("%s/charts/%s:%s", r.URL, c.Name, c.Version)
+
+			// // Pull the chart manifest
+			// descriptor, err := rc.Pull(chartURL)
+			// if err != nil {
+			// 	log.Fatalf("Error pulling chart: %v", err)
+			// }
+
+			ref := fmt.Sprintf("%s/charts/%s@%s", r.URL, c.Name, d.Digest)
 			refs = append(refs, ref)
+			slog.Info(ref)
 
 			// Get remote Helm Chart using Helm SDK
 			path, err := c.Locate()
@@ -182,13 +197,14 @@ func (so SignChartOption) Run() error {
 						return err
 					}
 
-					ref := fmt.Sprintf("%s/%s@%s", r.URL, name, d.Digest)
+					ref := fmt.Sprintf("%s/charts/%s@%s", r.URL, name, d.Digest)
 					refs = append(refs, ref)
+					slog.Info(ref)
 				}
 			}
 		}
 
-		bar.ChangeMax(len(refs))
+		bar.ChangeMax(size + len(refs) - 1)
 		if err := sign.SignCmd(&ro, ko, signOpts, refs); err != nil {
 			return err
 		}

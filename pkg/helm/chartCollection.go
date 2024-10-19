@@ -15,6 +15,7 @@ type ChartCollection struct {
 
 func (collection ChartCollection) pull() error {
 	for _, chart := range collection.Charts {
+		// TODO: Maybe its time to retire this clause
 		if strings.HasPrefix(chart.Repo.URL, "oci://") {
 			continue
 		}
