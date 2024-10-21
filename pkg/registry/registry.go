@@ -45,59 +45,72 @@ func (r Registry) GetName() string {
 	return r.Name
 }
 
-func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag string, arch *string) (v1.Descriptor, error) {
-
-	// prepare authentication using Docker credentials
+func newDockerCredentialsStore() (*credentials.DynamicStore, error) {
 	storeOpts := credentials.StoreOptions{}
-	credStore, err := credentials.NewStoreFromDocker(storeOpts)
+	return credentials.NewStoreFromDocker(storeOpts)
+}
+
+func setupRepository(baseURL string, name string, credStore *credentials.DynamicStore) (*remote.Repository, error) {
+	ref := strings.Join([]string{baseURL, name}, "/")
+	repo, err := remote.NewRepository(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.Client = &auth.Client{
+		Client:     retry.DefaultClient,
+		Cache:      auth.NewCache(),
+		Credential: credentials.Credential(credStore),
+	}
+	return repo, nil
+}
+
+func isLocalReference(url string) bool {
+	return strings.Contains(url, "localhost") || strings.Contains(url, "0.0.0.0")
+}
+
+func parsePlatform(arch string) (*v1.Platform, error) {
+	v, err := v1_spec.ParsePlatform(arch)
+	if err != nil {
+		return nil, err
+	}
+	return &v1.Platform{
+		Architecture: v.Architecture,
+		OS:           v.OS,
+		OSVersion:    v.OSVersion,
+		OSFeatures:   v.OSFeatures,
+		Variant:      v.Variant,
+	}, nil
+}
+
+// Push pushes an image to the registry.
+func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag string, arch *string) (v1.Descriptor, error) {
+	credStore, err := newDockerCredentialsStore()
 	if err != nil {
 		return v1.Descriptor{}, err
 	}
 
-	// 1. Connect to a remote repository
-	ref := strings.Join([]string{sourceURL, name}, "/")
-	source, err := remote.NewRepository(ref)
+	source, err := setupRepository(sourceURL, name, credStore)
 	if err != nil {
 		return v1.Descriptor{}, err
 	}
-	source.Client = &auth.Client{
-		Client:     retry.DefaultClient,
-		Cache:      auth.NewCache(),
-		Credential: credentials.Credential(credStore), // Use the credentials store
-	}
-	// Determine HTTP or HTTPS. Allow HTTP if local reference
-	source.PlainHTTP = strings.Contains(sourceURL, "localhost") || strings.Contains(sourceURL, "0.0.0.0")
 
-	// 3. Connect to our target repository
-	image := strings.Join([]string{r.URL, name}, "/")
-	target, err := remote.NewRepository(image)
+	source.PlainHTTP = isLocalReference(sourceURL)
+
+	target, err := setupRepository(r.URL, name, credStore)
 	if err != nil {
 		return v1.Descriptor{}, err
 	}
-	// prepare authentication using Docker credentials
-	target.Client = &auth.Client{
-		Client:     retry.DefaultClient,
-		Cache:      auth.NewCache(),
-		Credential: credentials.Credential(credStore), // Use the credentials store
-	}
-	// todo: check if user specified auth
+
 	target.PlainHTTP = r.PlainHTTP
 
 	opts := oras.DefaultCopyOptions
 	if arch != nil {
-		v, err := v1_spec.ParsePlatform(*arch)
+		platform, err := parsePlatform(*arch)
 		if err != nil {
 			return v1.Descriptor{}, err
 		}
-		opts.WithTargetPlatform(
-			&v1.Platform{
-				Architecture: v.Architecture,
-				OS:           v.OS,
-				OSVersion:    v.OSVersion,
-				OSFeatures:   v.OSFeatures,
-				Variant:      v.Variant,
-			},
-		)
+		opts.WithTargetPlatform(platform)
 	}
 
 	manifest, err := oras.Copy(ctx, source, tag, target, tag, opts)

@@ -34,7 +34,7 @@ func TestFindImagesWithoutCharts(t *testing.T) {
 	ctx := context.TODO()
 
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{},
+		Charts: []*helm.Chart{},
 	}
 
 	co := helm.ChartOption{
@@ -77,16 +77,20 @@ func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 	ctx := context.TODO()
 	// home, _ := os.UserHomeDir()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "prometheus",
 				Repo: repo.Entry{
 					Name: "prometheus-community",
 					URL:  "https://prometheus-community.github.io/helm-charts",
 				},
-				Version: "25.8.0",
-				// ValuesFilePath: filepath.Join(home, "repos/helmper/helmper/cmd/helmper/values/prometheus/values.yaml"),
+				Version:        "25.8.0",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -130,15 +134,20 @@ func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "promtail",
 				Repo: repo.Entry{
 					Name: "grafana",
 					URL:  "https://grafana.github.io/helm-charts",
 				},
-				Version: "6.15.3",
+				Version:        "6.15.3",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -182,15 +191,20 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "loki",
 				Repo: repo.Entry{
 					Name: "grafana",
 					URL:  "https://grafana.github.io/helm-charts",
 				},
-				Version: "5.38.0",
+				Version:        "5.38.0",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -234,15 +248,20 @@ func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "mimir-distributed",
 				Repo: repo.Entry{
 					Name: "grafana",
 					URL:  "https://grafana.github.io/helm-charts",
 				},
-				Version: "5.1.3",
+				Version:        "5.1.3",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -286,15 +305,20 @@ func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "grafana",
 				Repo: repo.Entry{
 					Name: "grafana",
 					URL:  "https://grafana.github.io/helm-charts",
 				},
-				Version: "7.0.9",
+				Version:        "7.0.9",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -339,15 +363,20 @@ func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "cilium",
 				Repo: repo.Entry{
 					Name: "cilium",
 					URL:  "https://helm.cilium.io/",
 				},
-				Version: "1.14.4",
+				Version:        "1.14.4",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -391,15 +420,20 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "cert-manager",
 				Repo: repo.Entry{
 					Name: "cert-manager",
 					URL:  "https://charts.jetstack.io",
 				},
-				Version: "1.13.2",
+				Version:        "1.13.2",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -443,15 +477,20 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "ingress-nginx",
 				Repo: repo.Entry{
 					Name: "ingress-nginx",
 					URL:  "https://kubernetes.github.io/ingress-nginx",
 				},
-				Version: "4.8.3",
+				Version:        "4.8.3",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -497,15 +536,20 @@ func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "reflector",
 				Repo: repo.Entry{
 					Name: "reflector",
 					URL:  "https://emberstack.github.io/helm-charts",
 				},
-				Version: "7.1.216",
+				Version:        "7.1.216",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -549,15 +593,20 @@ func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "velero",
 				Repo: repo.Entry{
 					Name: "vmware-tanzu",
 					URL:  "https://vmware-tanzu.github.io/helm-charts",
 				},
-				Version: "5.1.4",
+				Version:        "5.1.4",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -601,15 +650,20 @@ func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "kured",
 				Repo: repo.Entry{
 					Name: "kubereboot",
 					URL:  "https://kubereboot.github.io/charts",
 				},
-				Version: "5.3.1",
+				Version:        "5.3.1",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -653,15 +707,20 @@ func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "keda",
 				Repo: repo.Entry{
 					Name: "kedacore",
 					URL:  "https://kedacore.github.io/charts",
 				},
-				Version: "2.12.1",
+				Version:        "2.12.1",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -707,15 +766,20 @@ func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "trivy-operator",
 				Repo: repo.Entry{
 					Name: "aquasecurity",
 					URL:  "https://aquasecurity.github.io/helm-charts",
 				},
-				Version: "0.19.0",
+				Version:        "0.19.0",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -759,15 +823,20 @@ func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "kubescape-operator",
 				Repo: repo.Entry{
 					Name: "kubescape",
 					URL:  "https://kubescape.github.io/helm-charts",
 				},
-				Version: "1.16.3",
+				Version:        "1.16.3",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -811,15 +880,20 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "kyverno",
 				Repo: repo.Entry{
 					Name: "kyverno",
 					URL:  "https://kyverno.github.io/kyverno",
 				},
-				Version: "3.1.1",
+				Version:        "3.1.1",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 			{
 				Name: "kyverno-policies",
@@ -827,7 +901,11 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 					Name: "kyverno",
 					URL:  "https://kyverno.github.io/kyverno",
 				},
-				Version: "3.1.1",
+				Version:        "3.1.1",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -873,15 +951,20 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "argo-cd",
 				Repo: repo.Entry{
 					Name: "argoproj",
 					URL:  "https://argoproj.github.io/argo-helm",
 				},
-				Version: "5.51.4",
+				Version:        "5.51.4",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -925,15 +1008,20 @@ func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "harbor",
 				Repo: repo.Entry{
 					Name: "harbor",
 					URL:  "https://helm.goharbor.io",
 				},
-				Version: "1.14.1",
+				Version:        "1.14.1",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -977,15 +1065,20 @@ func TestFindImagesInHelmChartsOnExternalSecretsChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "external-secrets",
 				Repo: repo.Entry{
 					Name: "external-secrets",
 					URL:  "https://charts.external-secrets.io",
 				},
-				Version: "0.10.4",
+				Version:        "0.10.4",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}
@@ -1029,15 +1122,20 @@ func TestFindImagesInHelmChartsOnKubePrometheusStackChart(t *testing.T) {
 	// Arrange
 	ctx := context.TODO()
 
+	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
-		Charts: []helm.Chart{
+		Charts: []*helm.Chart{
 			{
 				Name: "kube-prometheus-stack",
 				Repo: repo.Entry{
 					Name: "prometheus-community",
 					URL:  "https://prometheus-community.github.io/helm-charts",
 				},
-				Version: "63.1.0",
+				Version:        "63.1.0",
+				RegistryClient: rc,
+				IndexFileLoader: &helm.FunctionLoader{
+					LoadFunc: repo.LoadIndexFile,
+				},
 			},
 		},
 	}

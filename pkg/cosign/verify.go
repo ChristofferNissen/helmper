@@ -26,7 +26,7 @@ type VerifyOption struct {
 }
 
 // VerifyOption wraps the cosign CLIs native code
-func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, error) {
+func (vo VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*registry.Image]bool, error) {
 
 	size := func() int {
 		size := 0
@@ -67,7 +67,7 @@ func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, e
 	o := &options.VerifyOptions{
 		Key:         vo.KeyRef,
 		CheckClaims: true,
-		Output:      "json",
+		Output:      "",
 		CommonVerifyOptions: options.CommonVerifyOptions{
 			IgnoreTlog:            true,
 			PrivateInfrastructure: true,
@@ -133,9 +133,6 @@ func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, e
 		ExperimentalOCI11:            o.CommonVerifyOptions.ExperimentalOCI11,
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
-	defer cancel()
-
 	m := make(map[*registry.Registry]map[*registry.Image]bool, 0)
 	for r, elem := range vo.Data {
 		if elem == nil {
@@ -160,8 +157,11 @@ func (vo VerifyOption) Run() (map[*registry.Registry]map[*registry.Image]bool, e
 					}
 				}
 
-				s := fmt.Sprintf("%s/%s@%s", r.URL, name, i.Digest)
-				err = v.Exec(ctx, []string{s})
+				out, err := captureOutput(func() error {
+					s := fmt.Sprintf("%s/%s@%s", r.URL, name, i.Digest)
+					return v.Exec(ctx, []string{s})
+				})
+				slog.Debug(out)
 				if err != nil {
 					switch err.Error() {
 					case "no signatures found":

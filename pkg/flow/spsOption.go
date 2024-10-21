@@ -1,4 +1,4 @@
-package copa
+package flow
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ChristofferNissen/helmper/pkg/copa"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	"github.com/k0kubun/go-ansi"
@@ -24,7 +25,7 @@ type SpsOption struct {
 	TarsFolder    string
 	TarsClean     bool
 	ScanOption    trivy.ScanOption
-	PatchOption   PatchOption
+	PatchOption   copa.PatchOption
 }
 
 func (o SpsOption) Run(ctx context.Context) error {
@@ -87,8 +88,6 @@ func (o SpsOption) Run(ctx context.Context) error {
 
 		patch := make([]*registry.Image, 0)
 		push := make([]*registry.Image, 0)
-		// patch := make(map[*registry.Registry]map[*registry.Image]bool, 0)
-		// push := make(map[*registry.Registry]map[*registry.Image]bool, 0)
 		for _, i := range imgs {
 			if i.Patch != nil {
 				if !*i.Patch {
@@ -109,27 +108,24 @@ func (o SpsOption) Run(ctx context.Context) error {
 				return nil, nil, err
 			}
 
-			switch SupportedOS(r.Metadata.OS) {
+			switch copa.SupportedOS(r.Metadata.OS) {
 			case true:
 				// filter images with no os-pkgs as copa has nothing to do
 				switch trivy.ContainsOsPkgs(r.Results) {
 				case true:
 					slog.Debug("Image does contain os-pkgs vulnerabilities",
 						slog.String("image", ref))
-					// patchRegistry[i] = true
 					patch = append(patch, i)
 				case false:
 					slog.Warn("Image does not contain os-pkgs. The image will not be patched.",
 						slog.String("image", ref),
 					)
-					// pushRegistry[i] = true
 					push = append(push, i)
 				}
 			case false:
 				slog.Warn("Image contains an unsupported OS. The image will not be patched.",
 					slog.String("image", ref),
 				)
-				// pushRegistry[i] = true
 				push = append(push, i)
 			}
 
@@ -144,7 +140,6 @@ func (o SpsOption) Run(ctx context.Context) error {
 			if err := os.WriteFile(fileName, b, os.ModePerm); err != nil {
 				return nil, nil, err
 			}
-
 		}
 
 		// filter images
@@ -165,64 +160,12 @@ func (o SpsOption) Run(ctx context.Context) error {
 
 			for i, b := range elem {
 				if b {
-
 					switch {
 					case i.InP(patch):
 						patchRegistry[i] = true
 					case i.InP(push):
 						pushRegistry[i] = true
 					}
-
-					// if i.Patch != nil {
-					// 	if !*i.Patch {
-					// 		ref, _ := i.String()
-					// 		slog.Debug("image should not be patched", slog.String("image", ref))
-					// 		pushRegistry[i] = true
-					// 		continue
-					// 	}
-					// }
-
-					// ref, err := i.String()
-					// if err != nil {
-					// 	return nil, nil, err
-					// }
-					// r, err := so.Scan(ref)
-					// if err != nil {
-					// 	return nil, nil, err
-					// }
-
-					// switch SupportedOS(r.Metadata.OS) {
-					// case true:
-					// 	// filter images with no os-pkgs as copa has nothing to do
-					// 	switch trivy.ContainsOsPkgs(r.Results) {
-					// 	case true:
-					// 		slog.Debug("Image does contain os-pkgs vulnerabilities",
-					// 			slog.String("image", ref))
-					// 		patchRegistry[i] = true
-					// 	case false:
-					// 		slog.Warn("Image does not contain os-pkgs. The image will not be patched.",
-					// 			slog.String("image", ref),
-					// 		)
-					// 		pushRegistry[i] = true
-					// 	}
-					// case false:
-					// 	slog.Warn("Image contains an unsupported OS. The image will not be patched.",
-					// 		slog.String("image", ref),
-					// 	)
-					// 	pushRegistry[i] = true
-					// }
-
-					// // Write report to filesystem
-					// name, _ := i.ImageName()
-					// fileName := fmt.Sprintf("%s:%s.json", name, i.Tag)
-					// fileName = filepath.Join(o.ReportsFolder, "prescan-"+strings.ReplaceAll(fileName, "/", "-"))
-					// b, err := json.MarshalIndent(r, "", "  ")
-					// if err != nil {
-					// 	return nil, nil, err
-					// }
-					// if err := os.WriteFile(fileName, b, os.ModePerm); err != nil {
-					// 	return nil, nil, err
-					// }
 
 					_ = bar.Add(1)
 				}
@@ -320,7 +263,14 @@ func (o SpsOption) Run(ctx context.Context) error {
 		for _, m := range o.Data {
 			for i, b := range m {
 				if b {
-					ref, _ := i.String()
+
+					ref, err := i.String()
+					if err != nil {
+						return err
+					}
+
+					slog.Default().With(slog.String("image", ref))
+
 					r, err := so.Scan(ref)
 					if err != nil {
 						return err

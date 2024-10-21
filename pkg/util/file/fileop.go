@@ -70,3 +70,19 @@ func Exists(path string) bool {
 	}
 	return true
 }
+
+func ReadFileAsBytes(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func FileExists(filePath string) bool {
+	info, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}

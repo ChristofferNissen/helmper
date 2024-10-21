@@ -32,9 +32,7 @@ type SignOption struct {
 }
 
 // SignOption wraps the cosign CLIs native code
-func (so SignOption) Run() error {
-
-	ctx := context.TODO()
+func (so SignOption) Run(ctx context.Context) error {
 
 	// count number of images
 	size := func() int {
@@ -136,9 +134,6 @@ func (so SignOption) Run() error {
 		refs := []string{}
 		for i, b := range m {
 			if b {
-				// if i.Registry == "docker.io" {
-				// 	continue
-				// }
 				name, _ := i.ImageName()
 				if i.Digest == "" {
 					d, err := r.Fetch(ctx, name, i.Tag)

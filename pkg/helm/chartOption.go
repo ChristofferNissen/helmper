@@ -9,7 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ChristofferNissen/helmper/pkg/myTable"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/counter"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
+	"github.com/bobg/go-generics/slices"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
@@ -20,89 +25,20 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 )
 
-type ChartData map[Chart]map[*registry.Image][]string
-
-// Converts data structure to pipeline parameters
-func IdentifyImportCandidates(ctx context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool) (map[*registry.Registry]map[*Chart]bool, map[*registry.Registry]map[*registry.Image]bool, error) {
-	// registry -> Charts -> bool
-	m1 := make(map[*registry.Registry]map[*Chart]bool, 0)
-	// registry -> Images -> bool
-	m2 := make(map[*registry.Registry]map[*registry.Image]bool, 0)
-
-	for _, r := range registries {
-		var seenImages []registry.Image = make([]registry.Image, 0)
-		for c, imageMap := range chartImageValuesMap {
-			if c.Name == "images" {
-				continue
-			}
-
-			// Charts
-			n := fmt.Sprintf("charts/%s", c.Name)
-			v := c.Version
-			existsInRegistry := registry.Exists(ctx, n, v, []registry.Registry{r})[r.URL]
-
-			elem := m1[&r]
-			if elem == nil {
-				// init map
-				elem = make(map[*Chart]bool, 0)
-				m1[&r] = elem
-			}
-			elem[&c] = all || !existsInRegistry
-
-			// Images
-			for i := range imageMap {
-				if i.In(seenImages) {
-					ref, _ := i.String()
-					log.Printf("Already parsed '%s', skipping...\n", ref)
-					continue
-				}
-				// make sure we don't parse again
-				seenImages = append(seenImages, *i)
-
-				// decide if image should be imported
-				name, err := i.ImageName()
-				if err != nil {
-					return nil, nil, err
-				}
-				// check if image exists in registry
-				registryImageStatusMap := registry.Exists(ctx, name, i.Tag, []registry.Registry{r})
-				// loop over registries
-				imageExistsInRegistry := registryImageStatusMap[r.URL]
-
-				elem := m2[&r]
-				if elem == nil {
-					// init map
-					elem = make(map[*registry.Image]bool, 0)
-					m2[&r] = elem
-				}
-				elem[i] = all || !imageExistsInRegistry
-			}
-		}
-	}
-
-	return m1, m2, nil
-}
-
-// channels to share data between goroutines
-type chartInfo struct {
-	chartRef *chart.Chart
-	*Chart
-}
-
-type imageInfo struct {
-	available  bool
-	chart      *Chart
-	image      *registry.Image
-	collection *[]string
-}
-
 type ChartOption struct {
 	ChartCollection *ChartCollection
 	IdentifyImages  bool
 	UseCustomValues bool
+
+	Mirrors []Mirror
+	Images  []registry.Image
+
+	ChartTable *myTable.Table
+	ValueTable *myTable.Table
 }
 
-func determineTag(ctx context.Context, img *registry.Image, plainHTTP bool) bool {
+func determineTag(_ context.Context, img *registry.Image, plainHTTP bool) bool {
+	ctx := context.TODO()
 	reg, repo, name := img.Elements()
 	ref := fmt.Sprintf("%s/%s/%s", reg, repo, name)
 
@@ -141,8 +77,7 @@ func determineSubChartPath(d *chart.Dependency, subChart *Chart, c *Chart, path 
 	case strings.HasPrefix(d.Repository, "file://"): //  Helm version >2.2.0
 		fallthrough
 	case d.Repository == "": // Embedded
-		s := fmt.Sprintf("%s/charts/%s", p, subChart.Name)
-		return s, nil
+		return fmt.Sprintf("%s/charts/%s", p, subChart.Name), nil
 	}
 
 	// Get Dependency Charts to local filesystem
@@ -158,6 +93,9 @@ func determineSubChartPath(d *chart.Dependency, subChart *Chart, c *Chart, path 
 	)
 
 	_, _ = subChart.Pull()
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	return subChartPath, nil
 }
@@ -179,6 +117,77 @@ func replaceValue(elem []string, new string, m map[string]interface{}) error {
 	}
 }
 
+func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
+	// modify images according to user specification
+	for c, m := range *cm {
+		for i, vs := range m {
+			r, err := i.String()
+			if err != nil {
+				return err
+			}
+
+			if c.Images != nil {
+				for _, e := range c.Images.Exclude {
+					if strings.HasPrefix(r, e.Ref) {
+						delete(m, i)
+						slog.Info("excluded image", slog.String("image", r))
+						break
+					}
+				}
+				for _, ec := range c.Images.ExcludeCopacetic {
+					if strings.HasPrefix(r, ec.Ref) {
+						slog.Info("excluded image from copacetic patching", slog.String("image", r))
+						f := false
+						i.Patch = &f
+						break
+					}
+				}
+				for _, modify := range c.Images.Modify {
+					if modify.From != "" {
+
+						if strings.HasPrefix(r, modify.From) {
+							delete(m, i)
+
+							img, err := registry.RefToImage(
+								strings.Replace(r, modify.From, modify.To, 1),
+							)
+							if err != nil {
+								return err
+							}
+
+							img.Digest = i.Digest
+							img.UseDigest = i.UseDigest
+							img.Tag = i.Tag
+							img.Patch = i.Patch
+
+							m[&img] = vs
+
+							newR, err := img.String()
+							if err != nil {
+								return err
+							}
+							slog.Info("modified image reference", slog.String("old_image", r), slog.String("new_image", newR))
+						}
+					}
+				}
+			}
+
+			// Replace mirrors
+			ms, err := slices.Filter(mirrorConfig, func(m Mirror) (bool, error) {
+				return m.Registry == i.Registry, nil
+			})
+			if err != nil {
+				return err
+			}
+
+			if len(ms) > 0 {
+				i.Registry = ms[0].Mirror
+			}
+		}
+	}
+	return nil
+}
+
 func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, error) {
 
 	// Default Options
@@ -191,6 +200,8 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 	for _, setter := range setters {
 		setter(args)
 	}
+
+	var sc counter.SafeCounter = counter.NewSafeCounter()
 
 	eg, egCtx := errgroup.WithContext(ctx)
 
@@ -226,22 +237,56 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 				}))
 
 			for _, c := range charts.Charts {
+
+				slog.Default().With(slog.String("chart", c.Name), slog.String("repo", c.Repo.URL), slog.String("version", c.Version))
+
+				// Check for latest version of chart
+				latest, err := c.LatestVersion()
+				if err != nil {
+					slog.Error(err.Error())
+					// continue as we do not want this failed lookup to stop the program
+				}
+
+				// Read info from filesystem
 				path, chartRef, values, err := c.Read(args.Update)
 				if err != nil {
 					return err
 				}
+				valuesType := myTable.DeterminePathType(c.ValuesFilePath)
 				bar.ChangeMax(bar.GetMax() + len(chartRef.Metadata.Dependencies))
 
+				co.ChartTable.AddRow(table.Row{sc.Value("charts"), "Chart", c.Name, c.Version, latest, terminal.StatusEmoji(c.Version == latest), valuesType, "", "", "", ""})
+
+				// reserve ids for table output
+				sc.Inc("charts")
+				count := len(chartRef.Metadata.Dependencies)
+				reservedIDs := make([]int, count)
+				for i := 0; i < count; i++ {
+					reservedIDs[i] = sc.Value("charts")
+					sc.Inc("charts")
+				}
+
 				_ = bar.Add(1)
-				channel <- &chartInfo{chartRef, &c}
+				channel <- &chartInfo{chartRef, c}
 
 				// Look at SubCharts if they are enabled (chart dependency condition satisfied in values.yaml)
-				for _, d := range chartRef.Metadata.Dependencies {
+				for id, d := range chartRef.Metadata.Dependencies {
 
 					// subchart enabled in main chart?
 					enabled := ConditionMet(d.Condition, values)
 					if args.Verbose {
 						log.Printf("Chart '%s' SubChart '%s' enabled by condition '%s': %t\n", chartRef.Name(), d.Name, d.Condition, enabled)
+					}
+					slog.Debug(
+						"SubChart enabled by condition in parent chart",
+						slog.String("subChartName", d.Name),
+						slog.String("condition", d.Condition),
+						slog.Bool("enabled", enabled))
+
+					co.ChartTable.AddRow(table.Row{reservedIDs[id], "Subchart", "", "", "", "", "parent", d.Name, d.Version, d.Condition, terminal.StatusEmoji(enabled)})
+
+					if d.Repository == "" || strings.HasPrefix(d.Repository, "file://") {
+						continue
 					}
 
 					// if condition is met to include subChart
@@ -254,7 +299,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 					subChart := DependencyToChart(d, c)
 
 					// Determine path to subChart in filesystem
-					scPath, err := determineSubChartPath(d, &subChart, &c, path, args)
+					scPath, err := determineSubChartPath(d, subChart, c, path, args)
 					if err != nil {
 						return err
 					}
@@ -264,7 +309,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 					}
 
 					_ = bar.Add(1)
-					channel <- &chartInfo{chartRef, &subChart}
+					channel <- &chartInfo{chartRef, subChart}
 
 				}
 			}
@@ -276,7 +321,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 		return channel
 	}
 
-	collector := func(charts <-chan *chartInfo) ChartData {
+	chartCollector := func(charts <-chan *chartInfo) ChartData {
 		chartImageHelmValuesMap := make(ChartData)
 
 		for c := range charts {
@@ -346,7 +391,6 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 							}
 
 							plainHTTP := strings.Contains(i.Registry, "localhost") || strings.Contains(i.Registry, "0.0.0.0")
-
 							available := determineTag(egCtx, i, plainHTTP)
 
 							// send availability response
@@ -372,6 +416,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 
 	imageCollector := func(imgs <-chan *imageInfo) ChartData {
 		chartImageHelmValuesMap := make(ChartData)
+		id := 0
 
 		for i := range imgs {
 			if !i.available {
@@ -389,6 +434,11 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 				imageHelmValuesPathMap[i.image] = append(imageHelmValuesPathMap[i.image], *i.collection...)
 			}
 
+			// Add table row
+			ref, _ := i.image.String()
+			noSHA := strings.SplitN(ref, "@", 2)[0]
+			co.ValueTable.AddRow(table.Row{id, i.chart.Name, i.chart.Version, noSHA, strings.Join(*i.collection, "\n")})
+
 			// Add image map to chart map
 			switch {
 			case chartImageHelmValuesMap[*i.chart] == nil:
@@ -396,30 +446,43 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 			case chartImageHelmValuesMap[*i.chart][i.image] == nil:
 				chartImageHelmValuesMap[*i.chart][i.image] = imageHelmValuesPathMap[i.image]
 			}
+
+			id = id + 1
 		}
 
 		return chartImageHelmValuesMap
 	}
 
-	f := func(c *ChartCollection) ChartData {
-		return collector(chartGenerator(c))
-	}
-
-	if co.IdentifyImages {
-		f = func(c *ChartCollection) ChartData {
+	workload := func(c *ChartCollection) ChartData {
+		if co.IdentifyImages {
 			return imageCollector(
 				imageGenerator(
 					chartGenerator(c),
 				),
 			)
 		}
+		return chartCollector(chartGenerator(c))
 	}
 
-	cd := f(co.ChartCollection)
+	cd := workload(co.ChartCollection)
 
 	if err := eg.Wait(); err != nil {
 		return ChartData{}, err
 	}
+
+	// Replace mirrors for further processing
+	err := replaceWithMirrors(&cd, co.Mirrors)
+	if err != nil {
+		return ChartData{}, err
+	}
+
+	// Add in images from config
+	placeHolder := Chart{Name: "images", Version: "0.0.0"}
+	m := map[*registry.Image][]string{}
+	for _, i := range co.Images {
+		m[&i] = []string{}
+	}
+	cd[placeHolder] = m
 
 	return cd, nil
 }

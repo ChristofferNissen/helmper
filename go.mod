@@ -24,7 +24,9 @@ require (
 	github.com/sigstore/sigstore/pkg/signature/kms/azure v1.8.9
 	github.com/sigstore/sigstore/pkg/signature/kms/gcp v1.8.8
 	github.com/sigstore/sigstore/pkg/signature/kms/hashivault v1.8.8
+	github.com/smallstep/assert v0.0.0-20200723003110-82e2b9b3b262
 	github.com/spf13/viper v1.19.0
+	go.uber.org/fx v1.23.0
 	golang.org/x/sync v0.8.0
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028
 	helm.sh/helm/v3 v3.16.1
@@ -124,6 +126,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.step.sm/crypto v0.51.1 // indirect
+	go.uber.org/dig v1.18.0 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect
 	mvdan.cc/sh/v3 v3.8.0 // indirect
@@ -421,7 +424,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spiffe/go-spiffe/v2 v2.3.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
+	github.com/stretchr/testify v1.9.0
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tchap/go-patricia/v2 v2.3.1 // indirect

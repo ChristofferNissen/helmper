@@ -27,7 +27,7 @@ type VerifyChartOption struct {
 }
 
 // VerifyOption wraps the cosign CLIs native code
-func (vo VerifyChartOption) Run() (map[*registry.Registry]map[*helm.Chart]bool, error) {
+func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map[*helm.Chart]bool, error) {
 
 	size := func() int {
 		size := 0
@@ -134,9 +134,6 @@ func (vo VerifyChartOption) Run() (map[*registry.Registry]map[*helm.Chart]bool, 
 		ExperimentalOCI11:            o.CommonVerifyOptions.ExperimentalOCI11,
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Minute)
-	defer cancel()
-
 	m := make(map[*registry.Registry]map[*helm.Chart]bool, 0)
 	for r, elem := range vo.Data {
 		if elem == nil {
@@ -152,26 +149,11 @@ func (vo VerifyChartOption) Run() (map[*registry.Registry]map[*helm.Chart]bool, 
 					return make(map[*registry.Registry]map[*helm.Chart]bool), err
 				}
 
-				// Create a new registry client
-				// rc, err := helm_registry.NewClient()
-				// if err != nil {
-				// 	log.Fatalf("Error creating registry client: %v", err)
-				// }
-
-				// chartURL := fmt.Sprintf("%s/charts/%s:%s", r.URL, c.Name, c.Version)
-
-				// // // Pull the chart manifest
-				// descriptor, err := rc.Pull(chartURL)
-				// if err != nil {
-				// 	log.Fatalf("Error pulling chart: %v", err)
-				// }
-
-				// slog.Warn("digest equal helm <> oras:", slog.Bool("equal", descriptor.Chart.Digest == d.Digest.String()), slog.String("oras", d.Digest.String()), slog.String("helm", descriptor.Chart.Digest))
-
-				s := fmt.Sprintf("%s/charts/%s@%s", r.URL, c.Name, d.Digest)
-				slog.Info(s)
-
-				err = v.Exec(ctx, []string{s})
+				out, err := captureOutput(func() error {
+					s := fmt.Sprintf("%s/charts/%s@%s", r.URL, c.Name, d.Digest)
+					return v.Exec(ctx, []string{s})
+				})
+				slog.Debug(out)
 				if err != nil {
 					switch err.Error() {
 					case "no signatures found":

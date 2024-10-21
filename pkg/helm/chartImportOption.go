@@ -3,6 +3,7 @@ package helm
 import (
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
 	"sort"
@@ -14,9 +15,70 @@ import (
 )
 
 type ChartImportOption struct {
-	Data           map[*registry.Registry]map[*Chart]bool
+	Data           RegistryChartStatus
 	All            bool
 	ModifyRegistry bool
+}
+
+// Converts data structure to pipeline parameters
+func IdentifyImportCandidates(_ context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool) (RegistryChartStatus, RegistryImageStatus, error) {
+	// registry -> Charts -> bool
+	m1 := make(RegistryChartStatus, 0)
+	// registry -> Images -> bool
+	m2 := make(RegistryImageStatus, 0)
+
+	for _, r := range registries {
+		var seenImages []registry.Image = make([]registry.Image, 0)
+		for c, imageMap := range chartImageValuesMap {
+			if c.Name == "images" {
+				continue
+			}
+
+			// Charts
+			n := fmt.Sprintf("charts/%s", c.Name)
+			v := c.Version
+			existsInRegistry := registry.Exists(context.TODO(), n, v, []registry.Registry{r})[r.URL]
+
+			elem := m1[&r]
+			if elem == nil {
+				// init map
+				elem = make(map[*Chart]bool, 0)
+				m1[&r] = elem
+			}
+			elem[&c] = all || !existsInRegistry
+
+			// Images
+			for i := range imageMap {
+				if i.In(seenImages) {
+					ref, _ := i.String()
+					log.Printf("Already parsed '%s', skipping...\n", ref)
+					continue
+				}
+				// make sure we don't parse again
+				seenImages = append(seenImages, *i)
+
+				// decide if image should be imported
+				name, err := i.ImageName()
+				if err != nil {
+					return nil, nil, err
+				}
+				// check if image exists in registry
+				registryImageStatusMap := registry.Exists(context.TODO(), name, i.Tag, []registry.Registry{r})
+				// loop over registries
+				imageExistsInRegistry := registryImageStatusMap[r.URL]
+
+				elem := m2[&r]
+				if elem == nil {
+					// init map
+					elem = make(map[*registry.Image]bool, 0)
+					m2[&r] = elem
+				}
+				elem[i] = all || !imageExistsInRegistry
+			}
+		}
+	}
+
+	return m1, m2, nil
 }
 
 func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
@@ -68,18 +130,19 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 		}))
 
 	for r, m := range opt.Data {
-		charts := []Chart{}
+		charts := []*Chart{}
 
 		for c, b := range m {
 			if b {
 
-				_, chartRef, _, err := c.Read(args.Update)
+				chartRef, err := c.ChartRef()
+				// _, chartRef, _, err := c.Read(args.Update)
 				if err != nil {
 					return err
 				}
 
 				c.DepsCount = len(chartRef.Metadata.Dependencies)
-				charts = append(charts, *c)
+				charts = append(charts, c)
 
 				for _, d := range chartRef.Metadata.Dependencies {
 
@@ -96,7 +159,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 						continue
 					}
 
-					chart := DependencyToChart(d, *c)
+					chart := DependencyToChart(d, c)
 
 					// Resolve Globs to latest patch
 					if strings.Contains(chart.Version, "*") {
@@ -117,6 +180,8 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 		})
 
 		for _, c := range charts {
+
+			slog.Default().With(slog.String("chart", c.Name))
 
 			if c.Name == "images" {
 				continue
@@ -154,5 +219,4 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 	}
 
 	return bar.Finish()
-
 }

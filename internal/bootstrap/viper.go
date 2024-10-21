@@ -12,7 +12,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 type ImportConfigSection struct {
@@ -79,6 +81,17 @@ type MirrorConfigSection struct {
 	Mirror   string `yaml:"mirror"`
 }
 
+func ConvertToHelmMirrors(configs []MirrorConfigSection) []helm.Mirror {
+	var mirrors []helm.Mirror
+	for _, config := range configs {
+		mirrors = append(mirrors, helm.Mirror{
+			Registry: config.Registry,
+			Mirror:   config.Mirror,
+		})
+	}
+	return mirrors
+}
+
 type config struct {
 	Parser       ParserConfigSection     `yaml:"parser"`
 	ImportConfig ImportConfigSection     `yaml:"import"`
@@ -88,7 +101,7 @@ type config struct {
 }
 
 // Reads flags from user and sets state accordingly
-func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
+func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 	viper := viper.New()
 
 	pflag.String("f", "unused", "path to configuration file")
@@ -124,6 +137,13 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	inputConf := helm.ChartCollection{}
 	if err := viper.Unmarshal(&inputConf); err != nil {
 		return nil, err
+	}
+
+	for _, c := range inputConf.Charts {
+		c.RegistryClient = rc
+		c.IndexFileLoader = &helm.FunctionLoader{
+			LoadFunc: repo.LoadIndexFile,
+		}
 	}
 	viper.Set("input", inputConf)
 
@@ -243,3 +263,8 @@ copacetic:
 
 	return viper, nil
 }
+
+// Viper module for Fx
+var ViperModule = fx.Provide(
+	LoadViperConfiguration,
+)

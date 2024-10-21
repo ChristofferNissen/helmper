@@ -9,16 +9,12 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 )
 
-type ChartCollection struct {
-	Charts []Chart `json:"charts"`
-}
-
 func (collection ChartCollection) pull() error {
 	for _, chart := range collection.Charts {
 		// TODO: Maybe its time to retire this clause
-		if strings.HasPrefix(chart.Repo.URL, "oci://") {
-			continue
-		}
+		// if strings.HasPrefix(chart.Repo.URL, "oci://") {
+		// 	continue
+		// }
 		if _, err := chart.Pull(); err != nil {
 			return err
 		}
@@ -31,7 +27,7 @@ func (collection ChartCollection) addToHelmRepositoryConfig() error {
 		if strings.HasPrefix(c.Repo.URL, "oci://") {
 			continue
 		}
-		_, err := c.AddToHelmRepositoryFile()
+		_, err := c.addToHelmRepositoryFile()
 		if err != nil {
 			return err
 		}
@@ -74,7 +70,7 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 	}
 
 	// Expand collection if semantic version range
-	res := []Chart{}
+	res := []*Chart{}
 	for _, c := range collection.Charts {
 		vs, err := c.ResolveVersions()
 		if err != nil {
