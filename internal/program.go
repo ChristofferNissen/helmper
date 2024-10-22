@@ -6,7 +6,6 @@ import (
 	"log/slog"
 
 	"github.com/ChristofferNissen/helmper/internal/bootstrap"
-	"github.com/ChristofferNissen/helmper/internal/output"
 	"github.com/ChristofferNissen/helmper/pkg/copa"
 	mySign "github.com/ChristofferNissen/helmper/pkg/cosign"
 	"github.com/ChristofferNissen/helmper/pkg/flow"
@@ -15,7 +14,8 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
-	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
+	"github.com/common-nighthawk/go-figure"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 )
@@ -26,8 +26,16 @@ var (
 	date    = "unknown"
 )
 
+func Header(version, commit, date string) {
+	myFigure := figure.NewFigure("helmper", "rectangles", true)
+	myFigure.Print()
+	terminal.PrintYellow(fmt.Sprintf("version %s (commit %s, built at %s)\n", version, commit, date))
+}
+
 func Program(args []string) error {
 	done := make(chan error) // Channel to signal completion
+
+	Header(version, commit, date)
 
 	app := fx.New(
 		helm.RegistryModule,
@@ -67,8 +75,6 @@ func Program(args []string) error {
 
 func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 
-	output.Header(version, commit, date)
-
 	var (
 		k8sVersion   string                          = state.GetValue[string](viper, "k8s_version")
 		verbose      bool                            = state.GetValue[bool](viper, "verbose")
@@ -101,10 +107,6 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 	}
 
 	// STEP 2: Find images in Helm Charts and dependencies
-	chartTable := myTable.NewTable("Charts")
-	chartTable.AddHeader(table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
-	valueTable := myTable.NewTable("Helm Values Paths Per Image")
-	valueTable.AddHeader(table.Row{"#", "Helm Chart", "Chart Version", "Image", "Helm Value Path(s)"})
 	slog.Debug("Starting parsing user specified chart(s) for images..")
 	co := helm.ChartOption{
 		ChartCollection: &charts,
@@ -114,53 +116,36 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 		Mirrors: bootstrap.ConvertToHelmMirrors(mirrorConfig),
 		Images:  images,
 
-		ChartTable: chartTable,
-		ValueTable: valueTable,
+		ChartTable: myTable.NewTable("Charts"),
+		ValueTable: myTable.NewTable("Helm Values Paths Per Image"),
 	}
 	chartImageHelmValuesMap, err := co.Run(ctx, opts...)
 	if err != nil {
 		return err
 	}
 	// Output overview table of charts and subcharts
-	chartTable.Render()
-	valueTable.Render()
+	co.ChartTable.Render()
+	co.ValueTable.Render()
 	slog.Debug("Parsing of user specified chart(s) completed")
 
 	// STEP 3: Validate and correct image references from charts
+	chartOverviewTable := myTable.NewTable("Registry Overview For Charts")
+	imageOverviewTable := myTable.NewTable("Registry Overview For Images")
 	slog.Debug("Checking presence of images from chart(s) in registries...")
 	mCharts, mImgs, err := helm.IdentifyImportCandidates(
 		ctx,
 		registries,
 		chartImageHelmValuesMap,
 		all,
+		chartOverviewTable,
+		imageOverviewTable,
+		importConfig.Import.Enabled,
 	)
 	if err != nil {
 		return err
 	}
-	// Output table of chart status in registries
-	err = output.RenderChartOverviewTable(
-		context.WithoutCancel(ctx),
-		viper,
-		len(charts.Charts),
-		registries,
-		charts,
-	)
-	if err != nil {
-		return err
-	}
-	slog.Debug("Finished checking charts availability in registries")
-	// Output table of image status in registries
-	err = output.RenderImageOverviewTable(
-		context.WithoutCancel(ctx),
-		viper,
-		len(mImgs),
-		registries,
-		chartImageHelmValuesMap,
-	)
-	if err != nil {
-		return err
-	}
-	slog.Debug("Finished checking image availability in registries")
+	chartOverviewTable.Render()
+	imageOverviewTable.Render()
 
 	// Step 4: Import charts to registries
 	if importConfig.Import.Enabled {

@@ -201,6 +201,9 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 		setter(args)
 	}
 
+	co.ChartTable.AddHeader(table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
+	co.ValueTable.AddHeader(table.Row{"#", "Helm Chart", "Chart Version", "Image", "Helm Value Path(s)"})
+
 	var sc counter.SafeCounter = counter.NewSafeCounter()
 
 	eg, egCtx := errgroup.WithContext(ctx)

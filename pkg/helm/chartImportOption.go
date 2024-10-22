@@ -9,7 +9,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ChristofferNissen/helmper/pkg/myTable"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/counter"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 )
@@ -21,22 +25,39 @@ type ChartImportOption struct {
 }
 
 // Converts data structure to pipeline parameters
-func IdentifyImportCandidates(_ context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool) (RegistryChartStatus, RegistryImageStatus, error) {
+func IdentifyImportCandidates(_ context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool, chartsOverview *myTable.Table, imagesOverview *myTable.Table, importEnabled bool) (RegistryChartStatus, RegistryImageStatus, error) {
+
+	var sc counter.SafeCounter = counter.NewSafeCounter()
+
+	c_header := table.Row{"#", "Helm Chart", "Chart Version"}
+	c_footer := table.Row{"", "", ""}
+
+	i_header := table.Row{"#", "Helm Chart", "Chart Version", "Image"}
+	i_footer := table.Row{"", "", "", ""}
+
+	// Create collection of registry names as keys for iterating registries
+	keys := make([]string, 0)
+	for _, r := range registries {
+		keys = append(keys, r.URL)
+	}
+
 	// registry -> Charts -> bool
 	m1 := make(RegistryChartStatus, 0)
 	// registry -> Images -> bool
 	m2 := make(RegistryImageStatus, 0)
 
-	for _, r := range registries {
-		var seenImages []registry.Image = make([]registry.Image, 0)
-		for c, imageMap := range chartImageValuesMap {
-			if c.Name == "images" {
-				continue
-			}
+	for c := range chartImageValuesMap {
+		if c.Name == "images" {
+			continue
+		}
 
-			// Charts
-			n := fmt.Sprintf("charts/%s", c.Name)
-			v := c.Version
+		// Charts
+		n := fmt.Sprintf("charts/%s", c.Name)
+		v := c.Version
+
+		row := table.Row{sc.Value("index_import_charts"), c.Name, c.Version}
+
+		for _, r := range registries {
 			existsInRegistry := registry.Exists(context.TODO(), n, v, []registry.Registry{r})[r.URL]
 
 			elem := m1[&r]
@@ -45,27 +66,50 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 				elem = make(map[*Chart]bool, 0)
 				m1[&r] = elem
 			}
-			elem[&c] = all || !existsInRegistry
+			b := all || !existsInRegistry
+			elem[&c] = b
 
-			// Images
-			for i := range imageMap {
-				if i.In(seenImages) {
-					ref, _ := i.String()
-					log.Printf("Already parsed '%s', skipping...\n", ref)
-					continue
-				}
-				// make sure we don't parse again
-				seenImages = append(seenImages, *i)
+			if b {
+				sc.Inc(r.URL + "charts")
+			}
+			row = append(row, terminal.StatusEmoji(existsInRegistry), terminal.StatusEmoji(b))
+		}
+		chartsOverview.AddRow(row)
 
-				// decide if image should be imported
-				name, err := i.ImageName()
-				if err != nil {
-					return nil, nil, err
-				}
+		sc.Inc("index_import_charts")
+	}
+
+	var seenImages []registry.Image = make([]registry.Image, 0)
+	for c, imageMap := range chartImageValuesMap {
+
+		// Images
+		for i := range imageMap {
+			if i.In(seenImages) {
+				ref, _ := i.String()
+				log.Printf("Already parsed '%s', skipping...\n", ref)
+				continue
+			}
+			// make sure we don't parse again
+			seenImages = append(seenImages, *i)
+
+			// decide if image should be imported
+			name, err := i.ImageName()
+			if err != nil {
+				return nil, nil, err
+			}
+
+			// add row to overview table
+			ref, _ := i.String()
+			row := table.Row{sc.Value("index_import"), c.Name, c.Version, ref}
+
+			for _, r := range registries {
+
 				// check if image exists in registry
 				registryImageStatusMap := registry.Exists(context.TODO(), name, i.Tag, []registry.Registry{r})
 				// loop over registries
 				imageExistsInRegistry := registryImageStatusMap[r.URL]
+
+				row = append(row, terminal.StatusEmoji(imageExistsInRegistry))
 
 				elem := m2[&r]
 				if elem == nil {
@@ -73,10 +117,44 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 					elem = make(map[*registry.Image]bool, 0)
 					m2[&r] = elem
 				}
-				elem[i] = all || !imageExistsInRegistry
+				b := all || !imageExistsInRegistry
+				elem[i] = b
+
+				if b {
+					sc.Inc(r.URL)
+				}
+				row = append(row, terminal.StatusEmoji(b))
+
 			}
+
+			sc.Inc("index_import")
+			imagesOverview.AddRow(row)
 		}
 	}
+
+	// Table
+
+	for _, r := range registries {
+
+		// dynamic number of registries in table
+		i_header = append(i_header, r.GetName())
+		i_footer = append(i_footer, "")
+		c_header = append(c_header, r.GetName())
+		c_footer = append(c_footer, "")
+
+		if importEnabled {
+			// second static part of header
+			i_header = append(i_header, "import")
+			i_footer = append(i_footer, sc.Value(r.URL))
+			c_header = append(c_header, "import")
+			c_footer = append(c_footer, sc.Value(r.URL+"charts"))
+		}
+	}
+
+	chartsOverview.AddHeader(c_header)
+	chartsOverview.AddFooter(c_footer)
+	imagesOverview.AddHeader(i_header)
+	imagesOverview.AddFooter(i_footer)
 
 	return m1, m2, nil
 }

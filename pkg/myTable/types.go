@@ -23,8 +23,14 @@ func (t *Table) AddRow(row table.Row) {
 	t.writer.AppendRow(row)
 }
 
+// AddHeader adds a row to the table as header
 func (t *Table) AddHeader(header table.Row, configs ...table.RowConfig) {
 	t.writer.AppendHeader(header, configs...)
+}
+
+// AddFooter adds a row to the table as footer
+func (t *Table) AddFooter(footer table.Row, configs ...table.RowConfig) {
+	t.writer.AppendFooter(footer, configs...)
 }
 
 // Render renders the table
