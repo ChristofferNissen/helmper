@@ -325,6 +325,14 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 								default:
 									// If tag is empty in values.yaml, use App Version by convention
 									i.Tag = chart.Metadata.AppVersion
+
+									ref, _ := i.String()
+									parts := strings.Split(ref, ":")
+
+									if len(parts) > 1 {
+										i.Tag = parts[len(parts)-1]
+									}
+
 								}
 							}
 

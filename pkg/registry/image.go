@@ -114,7 +114,7 @@ func (i Image) Elements() (string, string, string) {
 			if len(s) == 1 {
 				return "library", s[0]
 			} else {
-				return s[0], s[1]
+				return strings.Join(s[:len(s)-1], "/"), s[len(s)-1]
 			}
 		}()
 		return reference.Domain(r), repository, name
