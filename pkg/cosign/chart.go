@@ -17,6 +17,7 @@ import (
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/cli"
 
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"
@@ -34,6 +35,8 @@ type SignChartOption struct {
 	KeyRefPass        string
 	AllowInsecure     bool
 	AllowHTTPRegistry bool
+
+	Settings *cli.EnvSettings
 }
 
 // cosignAdapter wraps the cosign CLIs native code
@@ -55,6 +58,10 @@ func (so SignChartOption) Run() error {
 	if !(size > 0) {
 		slog.Debug("No charts or registries specified. Skipping signing charts...")
 		return nil
+	}
+
+	if so.Settings == nil {
+		so.Settings = cli.New()
 	}
 
 	bar := progressbar.NewOptions(size, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
@@ -152,7 +159,7 @@ func (so SignChartOption) Run() error {
 			refs = append(refs, ref)
 
 			// Get remote Helm Chart using Helm SDK
-			path, err := c.Locate()
+			path, err := c.Locate(so.Settings)
 			if err != nil {
 				return err
 			}
@@ -170,7 +177,7 @@ func (so SignChartOption) Run() error {
 						chart := helm.DependencyToChart(d, c)
 
 						// Resolve Globs to latest patch
-						v, err = chart.ResolveVersion()
+						v, err = chart.ResolveVersion(so.Settings)
 						if err != nil {
 							return err
 						}

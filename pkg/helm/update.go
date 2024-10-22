@@ -14,7 +14,7 @@ import (
 )
 
 // Contructs a Helm Chart Downloader Manager from Helm SDK
-func getManager(out *bytes.Buffer, verbose bool, update bool) downloader.Manager {
+func getManager(settings *cli.EnvSettings, out *bytes.Buffer, verbose bool, update bool) downloader.Manager {
 	httpGetter := func(options ...getter.Option) (getter.Getter, error) {
 		// Get retryable logic
 		retryClient := retryablehttp.NewClient()
@@ -32,18 +32,16 @@ func getManager(out *bytes.Buffer, verbose bool, update bool) downloader.Manager
 		return getter.NewHTTPGetter(opts...)
 	}
 
-	cl := cli.New()
-
 	// TODO: Handle error
-	rClient, _ := registry.NewRegistryClientWithTLS(out, "", "", "", false, cl.RegistryConfig, false)
+	rClient, _ := registry.NewRegistryClientWithTLS(out, "", "", "", false, settings.RegistryConfig, false)
 	// if err != nil {
 
 	// }
 	return downloader.Manager{
 		Out:              out,
 		RegistryClient:   rClient,
-		RepositoryConfig: cl.RepositoryConfig,
-		RepositoryCache:  cl.RepositoryCache,
+		RepositoryConfig: settings.RepositoryConfig,
+		RepositoryCache:  settings.RepositoryCache,
 		Verify:           downloader.VerifyIfPossible,
 		Debug:            verbose,
 		SkipUpdate:       !update,
@@ -60,7 +58,7 @@ func getManager(out *bytes.Buffer, verbose bool, update bool) downloader.Manager
 	}
 }
 
-func updateRepository(path string, opts ...Option) error {
+func updateRepository(settings *cli.EnvSettings, path string, opts ...Option) error {
 
 	// Default Options
 	args := &Options{
@@ -74,7 +72,7 @@ func updateRepository(path string, opts ...Option) error {
 
 	// Update Helm Repos
 	var out bytes.Buffer
-	ma := getManager(&out, args.Verbose, args.Update)
+	ma := getManager(settings, &out, args.Verbose, args.Update)
 	if args.Verbose {
 		slog.Info(out.String())
 	}
@@ -83,11 +81,11 @@ func updateRepository(path string, opts ...Option) error {
 }
 
 // update all repositories in local configuration file
-func updateRepositories(verbose, update bool) (string, error) {
+func updateRepositories(settings *cli.EnvSettings, verbose, update bool) (string, error) {
 
 	// Update Helm Repos
 	var out bytes.Buffer
-	ma := getManager(&out, verbose, update)
+	ma := getManager(settings, &out, verbose, update)
 
 	err := ma.UpdateRepositories()
 	if err != nil {

@@ -1,4 +1,4 @@
-package myTable
+package report
 
 import "github.com/ChristofferNissen/helmper/pkg/util/file"
 

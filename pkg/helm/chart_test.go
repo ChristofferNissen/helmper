@@ -8,6 +8,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"github.com/smallstep/assert"
 	"github.com/stretchr/testify/mock"
+	"helm.sh/helm/v3/pkg/cli"
 	helm_registry "helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
@@ -59,10 +60,11 @@ func TestPull(t *testing.T) {
 			expectExist: false,
 		},
 	}
+	settings := cli.New()
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			p, err := c.chart.Pull()
+			p, err := c.chart.Pull(settings)
 			if (err != nil) != c.expectErr {
 				t.Errorf("expected error: %v, got: %v", c.expectErr, err)
 			}

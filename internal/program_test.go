@@ -2,9 +2,14 @@ package internal
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -28,10 +33,59 @@ import (
 // ArgoCD
 // Harbor
 
+func createTempDir() (string, func(), error) {
+	// Create a new temporary directory
+	tempDir, err := os.MkdirTemp("", "tempdir_*")
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Define the cleanup function
+	cleanup := func() {
+		err := os.RemoveAll(tempDir)
+		if err != nil {
+			fmt.Printf("Failed to remove temp dir: %v\n", err)
+		} else {
+			fmt.Printf("Temp dir %s removed.\n", tempDir)
+		}
+	}
+
+	return tempDir, cleanup, nil
+}
+
+func testSettings() (*cli.EnvSettings, error) {
+	// Create a temporary directory
+	tempDir, cleanup, err := createTempDir()
+	if err != nil {
+		fmt.Printf("Error creating temp dir: %v\n", err)
+		return nil, err
+	}
+	// Ensure cleanup is called to remove the temp directory
+	defer cleanup()
+	// Use the temp directory for your operations
+	fmt.Printf("Temporary directory created: %s\n", tempDir)
+	settings := cli.New()
+	settings.RepositoryCache = tempDir
+	f := repo.NewFile()
+	repoFile := filepath.Join(tempDir, "repositories.yaml")
+	f.WriteFile(repoFile, 0644)
+	settings.RepositoryConfig = repoFile
+
+	return settings, nil
+}
+
 func TestFindImagesWithoutCharts(t *testing.T) {
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	charts := helm.ChartCollection{
 		Charts: []*helm.Chart{},
@@ -40,8 +94,9 @@ func TestFindImagesWithoutCharts(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -71,11 +126,17 @@ func TestFindImagesWithoutCharts(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
-	// home, _ := os.UserHomeDir()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -98,8 +159,9 @@ func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -129,10 +191,17 @@ func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -155,8 +224,9 @@ func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -186,10 +256,17 @@ func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -212,8 +289,9 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -243,10 +321,17 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -269,8 +354,9 @@ func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -300,10 +386,17 @@ func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -326,8 +419,9 @@ func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -354,14 +448,20 @@ func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
 	if imageCount != expectedImageCount {
 		t.Fatalf("want '%d' number of images, got '%d'\n", expectedImageCount, imageCount)
 	}
-
 }
 
 func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -384,8 +484,9 @@ func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -415,10 +516,17 @@ func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -441,8 +549,10 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+
+		Settings: settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -472,10 +582,17 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -498,8 +615,9 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -531,10 +649,17 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 // Cluster
 
 func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -557,8 +682,9 @@ func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -588,10 +714,17 @@ func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -614,8 +747,9 @@ func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -645,10 +779,17 @@ func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -671,8 +812,9 @@ func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -702,10 +844,17 @@ func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -728,8 +877,9 @@ func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -758,13 +908,18 @@ func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
 	}
 }
 
-// Security
-
 func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -787,8 +942,9 @@ func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -818,10 +974,17 @@ func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -844,8 +1007,9 @@ func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -875,10 +1039,17 @@ func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -913,8 +1084,9 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -943,13 +1115,18 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 	}
 }
 
-// CI/CD
-
 func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -972,8 +1149,9 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1003,10 +1181,17 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -1029,8 +1214,9 @@ func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1060,10 +1246,17 @@ func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnExternalSecretsChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -1086,8 +1279,9 @@ func TestFindImagesInHelmChartsOnExternalSecretsChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1117,10 +1311,17 @@ func TestFindImagesInHelmChartsOnExternalSecretsChart(t *testing.T) {
 }
 
 func TestFindImagesInHelmChartsOnKubePrometheusStackChart(t *testing.T) {
-	// t.Parallel()
+	t.Parallel()
+
+	// Create a context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
 	// Arrange
-	ctx := context.TODO()
+	settings, err := testSettings()
+	if err != nil {
+		t.Error(err)
+	}
 
 	rc, _ := helm.NewDefaultRegistryClient()
 	charts := helm.ChartCollection{
@@ -1143,8 +1344,9 @@ func TestFindImagesInHelmChartsOnKubePrometheusStackChart(t *testing.T) {
 	co := helm.ChartOption{
 		ChartCollection: &charts,
 		IdentifyImages:  true,
+		Settings:        settings,
 	}
-	_, err := co.ChartCollection.SetupHelm()
+	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
 		t.Error(err)
 	}

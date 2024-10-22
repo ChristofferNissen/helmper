@@ -44,30 +44,28 @@ func DependencyToChart(d *chart.Dependency, p *Chart) *Chart {
 }
 
 // addToHelmRepositoryFile adds repository to Helm repository.yml to enable querying/pull
-func (c Chart) addToHelmRepositoryFile() (bool, error) {
-	config := cli.New()
-	repoConfig := config.RepositoryConfig
+func (c Chart) addToHelmRepositoryFile(settings *cli.EnvSettings) (bool, error) {
 
 	var f *repo.File = repo.NewFile()
-	if file.Exists(repoConfig) {
-		file, err := repo.LoadFile(repoConfig)
+	if file.Exists(settings.RepositoryConfig) {
+		file, err := repo.LoadFile(settings.RepositoryConfig)
 		if err != nil {
 			return false, err
 		}
 		f = file
+	} else {
+		f.WriteFile(settings.RepositoryConfig, 0644)
 	}
 
 	if !f.Has(c.Repo.Name) {
 		f.Update(&c.Repo)
-		return true, f.WriteFile(repoConfig, 0644)
+		return true, f.WriteFile(settings.RepositoryConfig, 0644)
 	}
 
 	return false, nil
 }
 
-func (c Chart) CountDependencies() (int, error) {
-
-	settings := cli.New()
+func (c Chart) CountDependencies(settings *cli.EnvSettings) (int, error) {
 
 	HelmDriver := "configmap"
 	actionConfig := new(action.Configuration)
@@ -76,7 +74,7 @@ func (c Chart) CountDependencies() (int, error) {
 		return 0, err
 	}
 
-	path, err := c.Locate()
+	path, err := c.Locate(settings)
 	if err != nil {
 		return 0, err
 	}
@@ -105,8 +103,8 @@ func (c Chart) push(chartFilePath string, destination string) error {
 	return nil
 }
 
-func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, error) {
-	chartFilePath, err := c.Locate()
+func (c Chart) Push(settings *cli.EnvSettings, registry string, insecure bool, plainHTTP bool) (string, error) {
+	chartFilePath, err := c.Locate(settings)
 	if err != nil {
 		return "", fmt.Errorf("failed to pull tar: %w", err)
 	}
@@ -116,8 +114,8 @@ func (c Chart) Push(registry string, insecure bool, plainHTTP bool) (string, err
 	return chartFilePath, err
 }
 
-func (c *Chart) modifyRegistryReferences(newRegistry string) (string, error) {
-	chartFilePath, err := c.Locate()
+func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry string) (string, error) {
+	chartFilePath, err := c.Locate(settings)
 	if err != nil {
 		return "", err
 	}
@@ -158,7 +156,7 @@ func (c *Chart) modifyRegistryReferences(newRegistry string) (string, error) {
 
 				// OCI dependencies can not use globs in version
 				// Resolve Globs to latest patch
-				v, err := chart.ResolveVersion()
+				v, err := chart.ResolveVersion(settings)
 				if err == nil {
 					d.Version = v
 				}
@@ -179,7 +177,7 @@ func (c *Chart) modifyRegistryReferences(newRegistry string) (string, error) {
 
 	// Helm Dependency Update
 	var buf bytes.Buffer
-	ma := getManager(&buf, true, true)
+	ma := getManager(settings, &buf, true, true)
 	ma.ChartPath = filepath.Join(dir, c.Name)
 	err = ma.Update()
 	if err != nil {
@@ -233,9 +231,9 @@ func removeLockFile(chartPath string) error {
 	return nil
 }
 
-func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (string, error) {
+func (c Chart) PushAndModify(settings *cli.EnvSettings, registry string, insecure bool, plainHTTP bool) (string, error) {
 	// Modify chart
-	modifiedPath, err := c.modifyRegistryReferences(registry)
+	modifiedPath, err := c.modifyRegistryReferences(settings, registry)
 	if err != nil {
 		return "", err
 	}
@@ -251,23 +249,33 @@ func (c Chart) PushAndModify(registry string, insecure bool, plainHTTP bool) (st
 	return modifiedPath, nil
 }
 
-func (c Chart) Pull() (string, error) {
+func findFile(pattern string) (string, bool) {
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		fmt.Printf("Error matching pattern: %v\n", err)
+		return "", false
+	}
+	if len(matches) > 0 {
+		return matches[0], true
+	}
+	return "", false
+}
+
+func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 	u, err := url.Parse(c.Repo.URL)
 	if err != nil {
 		return "", err
 	}
 
-	settings := cli.New()
-	helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
-	tarPath := fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version)
-	chartPath := fmt.Sprintf("%s/%s", helmCacheHome, c.Name)
+	chartPath := strings.Replace(settings.RepositoryCache, "/repository", "/"+c.Name, 1)
+	tarPattern := fmt.Sprintf("%s-*%s*.tgz", chartPath, c.Version)
 
 	if file.FileExists(chartPath) {
 		return chartPath, nil
 	}
 
-	if file.FileExists(tarPath) {
-		return tarPath, nil
+	if foundPath, ok := findFile(tarPattern); ok {
+		return foundPath, nil
 	}
 
 	ref := func() string {
@@ -298,18 +306,16 @@ func (c Chart) Pull() (string, error) {
 			return "", err
 		}
 
+		tarPath := fmt.Sprintf("%s-%s.tgz", chartPath, c.Version)
+
 		err = file.Write(tarPath, p.Chart.Data)
 		if err != nil {
 			return "", err
 		}
 
+		return tarPath, nil
+
 	} else {
-		// // Make temporary folder for tar archives
-		// f, err := os.MkdirTemp(os.TempDir(), "untar")
-		// if err != nil {
-		// 	return "", err
-		// }
-		// defer os.RemoveAll(f)
 
 		co := action.ChartPathOptions{
 			CaFile:                c.Repo.CAFile,
@@ -332,22 +338,23 @@ func (c Chart) Pull() (string, error) {
 		pull.ChartPathOptions = co
 		pull.Settings = settings
 		pull.Untar = true
-		pull.UntarDir = chartPath
-		pull.DestDir = helmCacheHome
+		pull.DestDir = chartPath
+		pull.UntarDir = "charts"
 
 		if _, err := pull.Run(c.Name); err != nil {
 			return "", err
 		}
 
-		return chartPath, nil
-	}
+		f, b := findFile(fmt.Sprintf("%s/charts/%s-*%s*.tgz", chartPath, c.Name, c.Version))
+		if b {
+			os.RemoveAll(f)
+		}
 
-	return tarPath, nil
+		return chartPath + "/charts/" + c.Name, nil
+	}
 }
 
-func (c Chart) Locate() (string, error) {
-	settings := cli.New()
-	helmCacheHome := settings.EnvVars()["HELM_CACHE_HOME"]
+func (c Chart) Locate(settings *cli.EnvSettings) (string, error) {
 
 	// Check if the repository URL is an OCI URL
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
@@ -366,7 +373,7 @@ func (c Chart) Locate() (string, error) {
 			return "", err
 		}
 
-		return fmt.Sprintf("%s/%s-%s.tgz", helmCacheHome, c.Name, c.Version), nil
+		return fmt.Sprintf("%s-%s.tgz", settings.RepositoryCache, c.Version), nil
 	}
 
 	// For non-OCI URLs, use ChartPathOptions
@@ -391,9 +398,9 @@ func (c Chart) Locate() (string, error) {
 	return chartPath, nil
 }
 
-func (c Chart) Values() (map[string]any, error) {
+func (c Chart) Values(settings *cli.EnvSettings) (map[string]any, error) {
 	// Get detailed information about the chart
-	chartRef, err := c.ChartRef()
+	chartRef, err := c.ChartRef(settings)
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +423,7 @@ func (c Chart) Values() (map[string]any, error) {
 	}
 
 	if c.Parent != nil {
-		pv, err := c.Parent.Values()
+		pv, err := c.Parent.Values(settings)
 		if err != nil {
 			return nil, err
 		}
@@ -430,9 +437,9 @@ func (c Chart) Values() (map[string]any, error) {
 	return vs.AsMap(), nil
 }
 
-func (c *Chart) ChartRef() (*chart.Chart, error) {
+func (c *Chart) ChartRef(settings *cli.EnvSettings) (*chart.Chart, error) {
 	// Get remote Helm Chart using Helm SDK
-	path, err := c.Locate()
+	path, err := c.Locate(settings)
 	if err != nil {
 		return nil, err
 	}
@@ -444,10 +451,10 @@ func (c *Chart) ChartRef() (*chart.Chart, error) {
 	return chartRef, nil
 }
 
-func (c *Chart) Read(update bool) (string, *chart.Chart, map[string]any, error) {
+func (c *Chart) Read(settings *cli.EnvSettings, update bool) (string, *chart.Chart, map[string]any, error) {
 	// Check for latest version of chart
 	if update {
-		latest, err := c.LatestVersion()
+		latest, err := c.LatestVersion(settings)
 		if err != nil {
 			return "", nil, nil, err
 		}
@@ -455,13 +462,13 @@ func (c *Chart) Read(update bool) (string, *chart.Chart, map[string]any, error) 
 	}
 
 	// Get detailed information about the chart
-	chartRef, err := c.ChartRef()
+	chartRef, err := c.ChartRef(settings)
 	if err != nil {
 		return "", nil, nil, err
 	}
 
 	// Get custom Helm values
-	values, err := c.Values()
+	values, err := c.Values(settings)
 	if err != nil {
 		return "", nil, nil, err
 	}

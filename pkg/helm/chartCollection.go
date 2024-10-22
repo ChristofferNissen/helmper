@@ -5,38 +5,36 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
-func (collection ChartCollection) pull() error {
+func (collection ChartCollection) pull(settings *cli.EnvSettings) error {
 	for _, chart := range collection.Charts {
-		// TODO: Maybe its time to retire this clause
-		// if strings.HasPrefix(chart.Repo.URL, "oci://") {
-		// 	continue
-		// }
-		if _, err := chart.Pull(); err != nil {
+		if _, err := chart.Pull(settings); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (collection ChartCollection) addToHelmRepositoryConfig() error {
+func (collection ChartCollection) addToHelmRepositoryConfig(settings *cli.EnvSettings) error {
 	for _, c := range collection.Charts {
 		if strings.HasPrefix(c.Repo.URL, "oci://") {
 			continue
 		}
-		_, err := c.addToHelmRepositoryFile()
+		_, err := c.addToHelmRepositoryFile(settings)
 		if err != nil {
 			return err
 		}
+
 	}
 	return nil
 }
 
 // configures helm and pulls charts to local fs
-func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection, error) {
+func (collection ChartCollection) SetupHelm(settings *cli.EnvSettings, setters ...Option) (*ChartCollection, error) {
 
 	// Default Options
 	args := &Options{
@@ -49,18 +47,18 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 	}
 
 	// Add Helm Repos
-	err := collection.addToHelmRepositoryConfig()
+	err := collection.addToHelmRepositoryConfig(settings)
 	if err != nil {
-		return ChartCollection{}, err
+		return nil, err
 	}
 	if args.Verbose {
-		log.Printf("Added Helm repositories to config '%s' %s\n", cli.New().RepositoryConfig, terminal.GetCheckMarkEmoji())
+		log.Printf("Added Helm repositories to config '%s' %s\n", settings.RepositoryConfig, terminal.GetCheckMarkEmoji())
 	}
 
 	// Update Helm Repos
-	output, err := updateRepositories(args.Verbose, args.Update)
+	output, err := updateRepositories(settings, args.Verbose, args.Update)
 	if err != nil {
-		return ChartCollection{}, err
+		return nil, err
 	}
 	// Log results
 	if args.Verbose {
@@ -72,10 +70,10 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 	// Expand collection if semantic version range
 	res := []*Chart{}
 	for _, c := range collection.Charts {
-		vs, err := c.ResolveVersions()
+		vs, err := c.ResolveVersions(settings)
 		if err != nil {
 			// resolve Glob version
-			v, err := c.ResolveVersion()
+			v, err := c.ResolveVersion(settings)
 			if err != nil {
 				slog.Info("version is not semver. skipping this version", slog.String("name", c.Name), slog.String("version", c.Version))
 				continue
@@ -93,13 +91,13 @@ func (collection ChartCollection) SetupHelm(setters ...Option) (ChartCollection,
 	collection.Charts = res
 
 	// Pull Helm Charts
-	err = collection.pull()
+	err = collection.pull(settings)
 	if err != nil {
-		return ChartCollection{}, err
+		return nil, err
 	}
 	if args.Verbose {
 		log.Println("Pulled Helm Charts")
 	}
 
-	return collection, nil
+	return to.Ptr(collection), nil
 }

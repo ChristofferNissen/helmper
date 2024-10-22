@@ -45,7 +45,7 @@ func VersionsInRange(r semver.Range, c Chart) ([]string, error) {
 	return versionsInRange, nil
 }
 
-func (c Chart) ResolveVersions() ([]string, error) {
+func (c Chart) ResolveVersions(settings *cli.EnvSettings) ([]string, error) {
 	// prefixV := strings.Contains(c.Version, "v")
 	version := strings.ReplaceAll(c.Version, "v", "")
 	r, err := semver.ParseRange(version)
@@ -62,12 +62,12 @@ func (c Chart) ResolveVersions() ([]string, error) {
 		return versionsInRange, nil
 	}
 
-	update, err := c.addToHelmRepositoryFile()
+	update, err := c.addToHelmRepositoryFile(settings)
 	if err != nil {
 		return nil, err
 	}
 	if update {
-		_, err = updateRepositories(false, false)
+		_, err = updateRepositories(settings, false, false)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (c Chart) ResolveVersions() ([]string, error) {
 	return VersionsInRange(r, c)
 }
 
-func (c Chart) ResolveVersion() (string, error) {
+func (c Chart) ResolveVersion(settings *cli.EnvSettings) (string, error) {
 	v := strings.ReplaceAll(c.Version, "*", "x")
 	r, err := semver.ParseRange(v)
 	if err != nil {
@@ -95,19 +95,18 @@ func (c Chart) ResolveVersion() (string, error) {
 		return "", xerrors.Errorf("Not found")
 	}
 
-	update, err := c.addToHelmRepositoryFile()
+	update, err := c.addToHelmRepositoryFile(settings)
 	if err != nil {
 		return "", err
 	}
 	if update {
-		_, err = updateRepositories(false, false)
+		_, err = updateRepositories(settings, false, false)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	config := cli.New()
-	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", settings.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err
@@ -130,8 +129,7 @@ func (c Chart) ResolveVersion() (string, error) {
 	return "", xerrors.New("Not Found")
 }
 
-func (c Chart) LatestVersion() (string, error) {
-	config := cli.New()
+func (c Chart) LatestVersion(settings *cli.EnvSettings) (string, error) {
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
@@ -165,7 +163,7 @@ func (c Chart) LatestVersion() (string, error) {
 		return l, nil
 	}
 
-	indexPath := fmt.Sprintf("%s/%s-index.yaml", config.RepositoryCache, c.Repo.Name)
+	indexPath := fmt.Sprintf("%s/%s-index.yaml", settings.RepositoryCache, c.Repo.Name)
 	index, err := repo.LoadIndexFile(indexPath)
 	if err != nil {
 		return "", err

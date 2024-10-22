@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -70,15 +71,19 @@ func TestResolveVersions(t *testing.T) {
 		RegistryClient: mockClient,
 	}
 
+	settings := cli.New()
+
 	mockClient.On("Tags", mock.Anything).Return([]string{"1.0.0", "1.1.0"}, nil)
 
-	versions, err := c.ResolveVersions()
+	versions, err := c.ResolveVersions(settings)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"1.0.0", "1.1.0"}, versions)
 }
 
 func TestResolveVersion(t *testing.T) {
 	mockClient := new(MockRegistryClient)
+
+	settings := cli.New()
 
 	c := Chart{
 		Repo: repo.Entry{
@@ -92,7 +97,7 @@ func TestResolveVersion(t *testing.T) {
 
 	mockClient.On("Tags", mock.Anything).Return([]string{"1.0.0", "1.1.0"}, nil)
 
-	version, err := c.ResolveVersion()
+	version, err := c.ResolveVersion(settings)
 	assert.NoError(t, err)
 	assert.Equal(t, "1.1.0", version)
 }
@@ -110,9 +115,11 @@ func TestLatestVersion(t *testing.T) {
 		RegistryClient: mockClient,
 	}
 
+	settings := cli.New()
+
 	mockClient.On("Tags", mock.Anything).Return([]string{"1.0.0", "1.1.0"}, nil)
 
-	version, err := c.LatestVersion()
+	version, err := c.LatestVersion(settings)
 	assert.NoError(t, err)
 	assert.Equal(t, "1.1.0", version)
 }

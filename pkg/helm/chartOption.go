@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/pkg/myTable"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/counter"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/bobg/go-generics/slices"
@@ -33,8 +33,10 @@ type ChartOption struct {
 	Mirrors []Mirror
 	Images  []registry.Image
 
-	ChartTable *myTable.Table
-	ValueTable *myTable.Table
+	ChartTable *report.Table
+	ValueTable *report.Table
+
+	Settings *cli.EnvSettings
 }
 
 func determineTag(_ context.Context, img *registry.Image, plainHTTP bool) bool {
@@ -61,16 +63,17 @@ func determineTag(_ context.Context, img *registry.Image, plainHTTP bool) bool {
 	return false
 }
 
-func determineSubChartPath(d *chart.Dependency, subChart *Chart, c *Chart, path string, args *Options) (string, error) {
+func determineSubChartPath(settings *cli.EnvSettings, d *chart.Dependency, subChart *Chart, path string, args *Options) (string, error) {
 	p := path
 
 	// Check if path is archive e.g. contains '.tgz'
 	if strings.Contains(p, ".tgz") {
 		// Unpack tar
-		if err := chartutil.ExpandFile(cli.New().EnvVars()["HELM_CACHE_HOME"], p); err != nil {
+		if err := chartutil.ExpandFile(settings.EnvVars()["HELM_CACHE_HOME"], p); err != nil {
 			return "", err
 		}
-		p = filepath.Join(cli.New().EnvVars()["HELM_CACHE_HOME"], c.Name)
+
+		p = filepath.Join(settings.EnvVars()["HELM_CACHE_HOME"], subChart.Parent.Name)
 	}
 
 	switch {
@@ -81,18 +84,19 @@ func determineSubChartPath(d *chart.Dependency, subChart *Chart, c *Chart, path 
 	}
 
 	// Get Dependency Charts to local filesystem
-	subChartPath, err := subChart.Locate()
+	subChartPath, err := subChart.Locate(settings)
 	if err != nil {
 		return "", err
 	}
 
 	_ = updateRepository(
+		settings,
 		subChartPath,
 		Verbose(args.Verbose),
 		Update(args.Update),
 	)
 
-	_, _ = subChart.Pull()
+	_, _ = subChart.Pull(settings)
 	// if err != nil {
 	// 	return "", err
 	// }
@@ -188,7 +192,7 @@ func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
 	return nil
 }
 
-func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, error) {
+func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, error) {
 
 	// Default Options
 	args := &Options{
@@ -199,6 +203,18 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 
 	for _, setter := range setters {
 		setter(args)
+	}
+
+	if co.Settings == nil {
+		co.Settings = cli.New()
+	}
+
+	// init tables
+	if co.ChartTable == nil {
+		co.ChartTable = report.NewTable("Charts")
+	}
+	if co.ValueTable == nil {
+		co.ValueTable = report.NewTable("Helm Values Paths Per Image")
 	}
 
 	co.ChartTable.AddHeader(table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
@@ -244,18 +260,18 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 				slog.Default().With(slog.String("chart", c.Name), slog.String("repo", c.Repo.URL), slog.String("version", c.Version))
 
 				// Check for latest version of chart
-				latest, err := c.LatestVersion()
+				latest, err := c.LatestVersion(co.Settings)
 				if err != nil {
 					slog.Error(err.Error())
 					// continue as we do not want this failed lookup to stop the program
 				}
 
 				// Read info from filesystem
-				path, chartRef, values, err := c.Read(args.Update)
+				path, chartRef, values, err := c.Read(co.Settings, args.Update)
 				if err != nil {
 					return err
 				}
-				valuesType := myTable.DeterminePathType(c.ValuesFilePath)
+				valuesType := report.DeterminePathType(c.ValuesFilePath)
 				bar.ChangeMax(bar.GetMax() + len(chartRef.Metadata.Dependencies))
 
 				co.ChartTable.AddRow(table.Row{sc.Value("charts"), "Chart", c.Name, c.Version, latest, terminal.StatusEmoji(c.Version == latest), valuesType, "", "", "", ""})
@@ -302,7 +318,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 					subChart := DependencyToChart(d, c)
 
 					// Determine path to subChart in filesystem
-					scPath, err := determineSubChartPath(d, subChart, c, path, args)
+					scPath, err := determineSubChartPath(co.Settings, d, subChart, path, args)
 					if err != nil {
 						return err
 					}
@@ -347,7 +363,7 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 				c, chart := chart.Chart, chart.chartRef
 
 				// Get custom Helm values
-				values, err := c.Values()
+				values, err := c.Values(co.Settings)
 				if err != nil {
 					return err
 				}
@@ -479,13 +495,15 @@ func (co ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, er
 		return ChartData{}, err
 	}
 
-	// Add in images from config
-	placeHolder := Chart{Name: "images", Version: "0.0.0"}
-	m := map[*registry.Image][]string{}
-	for _, i := range co.Images {
-		m[&i] = []string{}
+	if len(co.Images) > 0 {
+		// Add in images from config
+		placeHolder := Chart{Name: "images", Version: "0.0.0"}
+		m := map[*registry.Image][]string{}
+		for _, i := range co.Images {
+			m[&i] = []string{}
+		}
+		cd[placeHolder] = m
 	}
-	cd[placeHolder] = m
 
 	return cd, nil
 }

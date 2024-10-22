@@ -1,14 +1,15 @@
-package internal
+package bootstrap
 
 import (
 	"log"
 	"os"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 // Add Helm repos to user's local helm configuration file, Optionupdate all existing repos and pulls charts
-func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) (helm.ChartCollection, error) {
+func SetupHelm(settings *cli.EnvSettings, charts *helm.ChartCollection, setters ...helm.Option) (*helm.ChartCollection, error) {
 
 	// Default Options
 	args := &helm.Options{
@@ -27,6 +28,7 @@ func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) (helm.Chart
 	}
 
 	return charts.SetupHelm(
+		settings,
 		helm.Update(args.Update),
 		helm.Verbose(args.Verbose),
 	)

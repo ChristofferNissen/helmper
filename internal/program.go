@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/internal/bootstrap"
 	"github.com/ChristofferNissen/helmper/pkg/copa"
 	mySign "github.com/ChristofferNissen/helmper/pkg/cosign"
 	"github.com/ChristofferNissen/helmper/pkg/flow"
 	"github.com/ChristofferNissen/helmper/pkg/helm"
-	"github.com/ChristofferNissen/helmper/pkg/myTable"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
@@ -18,6 +18,7 @@ import (
 	"github.com/common-nighthawk/go-figure"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 var (
@@ -40,7 +41,7 @@ func Program(args []string) error {
 	app := fx.New(
 		helm.RegistryModule,
 		bootstrap.ViperModule,
-		LoggerModule,
+		bootstrap.LoggerModule,
 		fx.Invoke(func(logger *slog.Logger) {
 			// Logger is set up and can be used here
 			logger.Info("Logger is configured")
@@ -74,7 +75,6 @@ func Program(args []string) error {
 }
 
 func program(ctx context.Context, _ []string, viper *viper.Viper) error {
-
 	var (
 		k8sVersion   string                          = state.GetValue[string](viper, "k8s_version")
 		verbose      bool                            = state.GetValue[bool](viper, "verbose")
@@ -85,7 +85,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 		mirrorConfig []bootstrap.MirrorConfigSection = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
 		registries   []registry.Registry             = state.GetValue[[]registry.Registry](viper, "registries")
 		images       []registry.Image                = state.GetValue[[]registry.Image](viper, "images")
-		charts       helm.ChartCollection            = state.GetValue[helm.ChartCollection](viper, "input")
+		charts       *helm.ChartCollection           = to.Ptr(state.GetValue[helm.ChartCollection](viper, "input"))
 		opts         []helm.Option                   = []helm.Option{
 			helm.K8SVersion(k8sVersion),
 			helm.Verbose(verbose),
@@ -93,15 +93,16 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 		}
 	)
 
+	settings := cli.New()
+
 	if verbose {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
-
 	// Find input charts in configuration
 	slog.Debug("Found charts in config", slog.Int("count", len(charts.Charts)))
 
 	// STEP 1: Setup Helm
-	charts, err := SetupHelm(&charts, opts...)
+	charts, err := bootstrap.SetupHelm(settings, charts, opts...)
 	if err != nil {
 		return err
 	}
@@ -109,15 +110,12 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 	// STEP 2: Find images in Helm Charts and dependencies
 	slog.Debug("Starting parsing user specified chart(s) for images..")
 	co := helm.ChartOption{
-		ChartCollection: &charts,
+		ChartCollection: charts,
 		IdentifyImages:  !parserConfig.DisableImageDetection,
 		UseCustomValues: parserConfig.UseCustomValues,
 
 		Mirrors: bootstrap.ConvertToHelmMirrors(mirrorConfig),
 		Images:  images,
-
-		ChartTable: myTable.NewTable("Charts"),
-		ValueTable: myTable.NewTable("Helm Values Paths Per Image"),
 	}
 	chartImageHelmValuesMap, err := co.Run(ctx, opts...)
 	if err != nil {
@@ -125,27 +123,26 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 	}
 	// Output overview table of charts and subcharts
 	co.ChartTable.Render()
+	// Output overview of helm path values per image
 	co.ValueTable.Render()
 	slog.Debug("Parsing of user specified chart(s) completed")
 
 	// STEP 3: Validate and correct image references from charts
-	chartOverviewTable := myTable.NewTable("Registry Overview For Charts")
-	imageOverviewTable := myTable.NewTable("Registry Overview For Images")
 	slog.Debug("Checking presence of images from chart(s) in registries...")
-	mCharts, mImgs, err := helm.IdentifyImportCandidates(
-		ctx,
-		registries,
-		chartImageHelmValuesMap,
-		all,
-		chartOverviewTable,
-		imageOverviewTable,
-		importConfig.Import.Enabled,
-	)
+	io := helm.IdentityImportOption{
+		Registries:          registries,
+		ChartImageValuesMap: chartImageHelmValuesMap,
+
+		All:           all,
+		ImportEnabled: importConfig.Import.Enabled,
+	}
+	mCharts, mImgs, err := io.Run(ctx)
 	if err != nil {
 		return err
 	}
-	chartOverviewTable.Render()
-	imageOverviewTable.Render()
+	io.ChartsOverview.Render()
+	io.ImagesOverview.Render()
+	slog.Debug("Checking presence of images from chart(s) in registries completed")
 
 	// Step 4: Import charts to registries
 	if importConfig.Import.Enabled {

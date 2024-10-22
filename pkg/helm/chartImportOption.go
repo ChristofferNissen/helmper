@@ -9,23 +9,36 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/pkg/myTable"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/counter"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
-type ChartImportOption struct {
-	Data           RegistryChartStatus
-	All            bool
-	ModifyRegistry bool
+type IdentityImportOption struct {
+	Registries          []registry.Registry
+	ChartImageValuesMap ChartData
+
+	All           bool
+	ImportEnabled bool
+
+	ChartsOverview *report.Table
+	ImagesOverview *report.Table
 }
 
 // Converts data structure to pipeline parameters
-func IdentifyImportCandidates(_ context.Context, registries []registry.Registry, chartImageValuesMap ChartData, all bool, chartsOverview *myTable.Table, imagesOverview *myTable.Table, importEnabled bool) (RegistryChartStatus, RegistryImageStatus, error) {
+func (io *IdentityImportOption) Run(_ context.Context) (RegistryChartStatus, RegistryImageStatus, error) {
+
+	if io.ChartsOverview == nil {
+		io.ChartsOverview = report.NewTable("Registry Overview For Charts")
+	}
+	if io.ImagesOverview == nil {
+		io.ImagesOverview = report.NewTable("Registry Overview For Images")
+	}
 
 	var sc counter.SafeCounter = counter.NewSafeCounter()
 
@@ -37,7 +50,7 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 
 	// Create collection of registry names as keys for iterating registries
 	keys := make([]string, 0)
-	for _, r := range registries {
+	for _, r := range io.Registries {
 		keys = append(keys, r.URL)
 	}
 
@@ -46,7 +59,7 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 	// registry -> Images -> bool
 	m2 := make(RegistryImageStatus, 0)
 
-	for c := range chartImageValuesMap {
+	for c := range io.ChartImageValuesMap {
 		if c.Name == "images" {
 			continue
 		}
@@ -57,7 +70,7 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 
 		row := table.Row{sc.Value("index_import_charts"), c.Name, c.Version}
 
-		for _, r := range registries {
+		for _, r := range io.Registries {
 			existsInRegistry := registry.Exists(context.TODO(), n, v, []registry.Registry{r})[r.URL]
 
 			elem := m1[&r]
@@ -66,7 +79,7 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 				elem = make(map[*Chart]bool, 0)
 				m1[&r] = elem
 			}
-			b := all || !existsInRegistry
+			b := io.All || !existsInRegistry
 			elem[&c] = b
 
 			if b {
@@ -74,13 +87,13 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 			}
 			row = append(row, terminal.StatusEmoji(existsInRegistry), terminal.StatusEmoji(b))
 		}
-		chartsOverview.AddRow(row)
+		io.ChartsOverview.AddRow(row)
 
 		sc.Inc("index_import_charts")
 	}
 
 	var seenImages []registry.Image = make([]registry.Image, 0)
-	for c, imageMap := range chartImageValuesMap {
+	for c, imageMap := range io.ChartImageValuesMap {
 
 		// Images
 		for i := range imageMap {
@@ -102,7 +115,7 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 			ref, _ := i.String()
 			row := table.Row{sc.Value("index_import"), c.Name, c.Version, ref}
 
-			for _, r := range registries {
+			for _, r := range io.Registries {
 
 				// check if image exists in registry
 				registryImageStatusMap := registry.Exists(context.TODO(), name, i.Tag, []registry.Registry{r})
@@ -117,7 +130,7 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 					elem = make(map[*registry.Image]bool, 0)
 					m2[&r] = elem
 				}
-				b := all || !imageExistsInRegistry
+				b := io.All || !imageExistsInRegistry
 				elem[i] = b
 
 				if b {
@@ -128,13 +141,13 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 			}
 
 			sc.Inc("index_import")
-			imagesOverview.AddRow(row)
+			io.ImagesOverview.AddRow(row)
 		}
 	}
 
 	// Table
 
-	for _, r := range registries {
+	for _, r := range io.Registries {
 
 		// dynamic number of registries in table
 		i_header = append(i_header, r.GetName())
@@ -142,7 +155,7 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 		c_header = append(c_header, r.GetName())
 		c_footer = append(c_footer, "")
 
-		if importEnabled {
+		if io.ImportEnabled {
 			// second static part of header
 			i_header = append(i_header, "import")
 			i_footer = append(i_footer, sc.Value(r.URL))
@@ -151,12 +164,20 @@ func IdentifyImportCandidates(_ context.Context, registries []registry.Registry,
 		}
 	}
 
-	chartsOverview.AddHeader(c_header)
-	chartsOverview.AddFooter(c_footer)
-	imagesOverview.AddHeader(i_header)
-	imagesOverview.AddFooter(i_footer)
+	io.ChartsOverview.AddHeader(c_header)
+	io.ChartsOverview.AddFooter(c_footer)
+	io.ImagesOverview.AddHeader(i_header)
+	io.ImagesOverview.AddFooter(i_footer)
 
 	return m1, m2, nil
+}
+
+type ChartImportOption struct {
+	Data           RegistryChartStatus
+	All            bool
+	ModifyRegistry bool
+
+	Settings *cli.EnvSettings
 }
 
 func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
@@ -170,6 +191,10 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 	for _, setter := range setters {
 		setter(args)
+	}
+
+	if opt.Settings == nil {
+		opt.Settings = cli.New()
 	}
 
 	size := func() int {
@@ -213,7 +238,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 		for c, b := range m {
 			if b {
 
-				chartRef, err := c.ChartRef()
+				chartRef, err := c.ChartRef(opt.Settings)
 				// _, chartRef, _, err := c.Read(args.Update)
 				if err != nil {
 					return err
@@ -241,7 +266,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 
 					// Resolve Globs to latest patch
 					if strings.Contains(chart.Version, "*") {
-						v, err := chart.ResolveVersion()
+						v, err := chart.ResolveVersion(opt.Settings)
 						if err == nil {
 							chart.Version = v
 						}
@@ -275,7 +300,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			}
 
 			if opt.ModifyRegistry {
-				res, err := c.PushAndModify(r.URL, r.Insecure, r.PlainHTTP)
+				res, err := c.PushAndModify(opt.Settings, r.URL, r.Insecure, r.PlainHTTP)
 				if err != nil {
 					registryURL := "oci://" + r.URL + "/charts"
 					return fmt.Errorf("helm: error pushing and modifying chart %s to registry %s :: %w", c.Name, registryURL, err)
@@ -285,7 +310,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 				continue
 			}
 
-			res, err := c.Push(r.URL, r.Insecure, r.PlainHTTP)
+			res, err := c.Push(opt.Settings, r.URL, r.Insecure, r.PlainHTTP)
 			if err != nil {
 				registryURL := "oci://" + r.URL + "/charts"
 				return fmt.Errorf("helm: error pushing chart %s to registry %s :: %w", c.Name, registryURL, err)
