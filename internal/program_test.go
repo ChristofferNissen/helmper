@@ -646,8 +646,6 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 	}
 }
 
-// Cluster
-
 func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 	t.Parallel()
 

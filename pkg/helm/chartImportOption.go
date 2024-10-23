@@ -146,21 +146,20 @@ func (io *IdentityImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 	}
 
 	// Table
-
 	for _, r := range io.Registries {
-
 		// dynamic number of registries in table
-		i_header = append(i_header, r.GetName())
-		i_footer = append(i_footer, "")
-		c_header = append(c_header, r.GetName())
+		rn := r.GetName()
+		c_header = append(c_header, rn)
 		c_footer = append(c_footer, "")
+		i_header = append(i_header, rn)
+		i_footer = append(i_footer, "")
 
 		if io.ImportEnabled {
 			// second static part of header
-			i_header = append(i_header, "import")
-			i_footer = append(i_footer, sc.Value(r.URL))
 			c_header = append(c_header, "import")
 			c_footer = append(c_footer, sc.Value(r.URL+"charts"))
+			i_header = append(i_header, "import")
+			i_footer = append(i_footer, sc.Value(r.URL))
 		}
 	}
 
@@ -293,7 +292,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			if !opt.All {
 				_, err := r.Exist(ctx, "charts/"+c.Name, c.Version)
 				if err == nil {
-					slog.Info("Chart alreregistryURLady present in registry. Skipping import", slog.String("chart", "charts/"+c.Name), slog.String("registry", "oci://"+r.URL), slog.String("version", c.Version))
+					slog.Info("Chart already present in registry. Skipping import", slog.String("chart", "charts/"+c.Name), slog.String("registry", "oci://"+r.URL), slog.String("version", c.Version))
 					continue
 				}
 				slog.Debug(err.Error())

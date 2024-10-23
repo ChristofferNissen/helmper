@@ -256,7 +256,6 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 				}))
 
 			for _, c := range charts.Charts {
-
 				slog.Default().With(slog.String("chart", c.Name), slog.String("repo", c.Repo.URL), slog.String("version", c.Version))
 
 				// Check for latest version of chart
@@ -305,6 +304,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 					co.ChartTable.AddRow(table.Row{reservedIDs[id], "Subchart", "", "", "", "", "parent", d.Name, d.Version, d.Condition, terminal.StatusEmoji(enabled)})
 
 					if d.Repository == "" || strings.HasPrefix(d.Repository, "file://") {
+						_ = bar.Add(1)
 						continue
 					}
 
@@ -316,6 +316,11 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 					// Create chart for dependency
 					subChart := DependencyToChart(d, c)
+					v, err := subChart.ResolveVersion(co.Settings)
+					if err != nil {
+						return err
+					}
+					subChart.Version = v
 
 					// Determine path to subChart in filesystem
 					scPath, err := determineSubChartPath(co.Settings, d, subChart, path, args)

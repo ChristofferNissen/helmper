@@ -18,6 +18,7 @@ import (
 	"github.com/common-nighthawk/go-figure"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -42,9 +43,11 @@ func Program(args []string) error {
 		helm.RegistryModule,
 		bootstrap.ViperModule,
 		bootstrap.LoggerModule,
-		fx.Invoke(func(logger *slog.Logger) {
-			// Logger is set up and can be used here
+		fx.WithLogger(func(logger *slog.Logger) fxevent.Logger {
 			logger.Info("Logger is configured")
+			return &fxevent.SlogLogger{
+				Logger: logger,
+			}
 		}),
 		fx.Invoke(func(lc fx.Lifecycle, v *viper.Viper) {
 			lc.Append(fx.Hook{
