@@ -110,13 +110,18 @@ func (i Image) Elements() (string, string, string) {
 	case reference.Named:
 		withoutDomain := strings.Replace(r.Name(), reference.Domain(r)+"/", "", 1)
 		s := strings.Split(withoutDomain, "/")
+
 		repository, name := func() (string, string) {
-			if len(s) == 1 {
+			switch {
+			case len(s) == 1:
 				return "library", s[0]
-			} else {
-				return s[0], s[1]
+			case len(s) > 1:
+				return strings.Join(s[:len(s)-1], "/"), s[len(s)-1]
+			default:
+				return "", ""
 			}
 		}()
+
 		return reference.Domain(r), repository, name
 	default:
 		return "", "", ""
