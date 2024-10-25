@@ -144,6 +144,7 @@ registries:
 | `import.cosign.enabled`           | bool   | false   | false | Enables signing with Cosign |
 | `import.cosign.keyRef`            | string |         | true | Path to Cosign private key  |
 | `import.cosign.keyRefPass`        | string |         | true | Cosign private key password |
+| `import.cosign.pubKeyRef`         | string |         | false | Path to Cosign public key  |
 | `import.cosign.allowInsecure`     | bool   | false   | false | Disable TLS verification    |
 | `import.cosign.allowHTTPRegistry` | bool   | false   | false | Allow HTTP instead of HTTPS |
 | `charts`      | list(object) | [] | false | Defines which charts to target |
@@ -264,8 +265,14 @@ Read more in the official docs by [moby/buildkit](https://github.com/moby/buildk
 
 ### keyRef
 
-keyRef as support for local files, through remote protocols `<some provider>://<some key>` or environment variables `env://[ENV_VAR]`.
+`keyRef` as support for local files, through remote protocols `<some provider>://<some key>` or environment variables `env://[ENV_VAR]`.
 Read more about all options in the [Cosign Docs](https://docs.sigstore.dev/signing/signing_with_containers/#sign-with-a-key-pair-stored-elsewhere).
+
+### pubKeyRef
+
+`pubKeyRef` defines the path to the public key used to verify chart and image signatures.
+`pubKeyRef` can be omitted when using remote protocol for keyRef as remote KMS protocols usually works with key-pairs.
+If `keyRef` is a path to a local file, and `pubKeyRef` is not define, pubKeyRef will be set to the same path as `keyRef`, with `.pub` instead of `.key`, fx `/home/you/keypair/cosign.key` becomes `/home/you/keypair/cosign.pub`.
 
 #### local
 

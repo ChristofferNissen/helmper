@@ -33,6 +33,7 @@ import:
         clean: true
   cosign:
     enabled: true
+    verifyExisting: false
     keyRef: /workspace/.devcontainer/cosign.key
     KeyRefPass: ""
     allowInsecure: true

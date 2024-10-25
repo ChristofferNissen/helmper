@@ -152,3 +152,12 @@ func (i *Image) In(s []Image) bool {
 	}
 	return false
 }
+
+func (i *Image) InP(s []*Image) bool {
+	for _, e := range s {
+		if i.Registry == e.Registry && i.Repository == e.Repository && i.Tag == e.Tag {
+			return true
+		}
+	}
+	return false
+}

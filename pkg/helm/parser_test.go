@@ -71,5 +71,4 @@ func TestConditionMet(t *testing.T) {
 			t.Errorf("got '%t' want '%t'", res, test.expectedResult)
 		}
 	}
-
 }

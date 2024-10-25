@@ -4,19 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/cli"
 
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/azure"
@@ -26,41 +25,44 @@ import (
 )
 
 type SignChartOption struct {
-	ChartCollection *helm.ChartCollection
-	Registries      []registry.Registry
+	// ChartCollection *helm.ChartCollection
+	// Registries      []registry.Registry
+	Data map[*registry.Registry]map[*helm.Chart]bool
 
 	KeyRef            string
 	KeyRefPass        string
 	AllowInsecure     bool
 	AllowHTTPRegistry bool
+
+	Settings *cli.EnvSettings
 }
 
 // cosignAdapter wraps the cosign CLIs native code
 func (so SignChartOption) Run() error {
 
-	// Return early i no images to sign, or no registries to upload signature to
-	if !(len(so.ChartCollection.Charts) > 0) || !(len(so.Registries) >= 0) {
-		slog.Debug("No images or registries specified. Skipping signing images...")
+	size := func() int {
+		size := 0
+		for _, m := range so.Data {
+			for _, b := range m {
+				if b {
+					size++
+				}
+			}
+		}
+		return size
+	}()
+
+	// Return early i no charts to sign, or no registries to upload signature to
+	if !(size > 0) {
+		slog.Debug("No charts or registries specified. Skipping signing charts...")
 		return nil
 	}
 
-	bar := progressbar.NewOptions(len(so.ChartCollection.Charts), progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetDescription("Signing charts...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	if so.Settings == nil {
+		so.Settings = cli.New()
+	}
+
+	bar := bar.New("Signing charts...\r", size)
 
 	// Sign with cosign
 	timeout := 2 * time.Minute
@@ -121,57 +123,26 @@ func (so SignChartOption) Run() error {
 		IssueCertificateForExistingKey: signOpts.IssueCertificate,
 	}
 
-	for _, r := range so.Registries {
+	for r, m := range so.Data {
 		refs := []string{}
-		for _, c := range so.ChartCollection.Charts {
+		for c, b := range m {
+			if !b {
+				continue
+			}
 
-			name := fmt.Sprintf("charts/%s", c.Name)
+			name := fmt.Sprintf("%s/%s", chartutil.ChartsDir, c.Name)
 			d, err := r.Fetch(context.TODO(), name, c.Version)
 			if err != nil {
 				return err
 			}
 
-			ref := fmt.Sprintf("%s/%s@%s", r.URL, name, d.Digest)
+			url, _ := strings.CutPrefix(r.URL, "oci://")
+			url = strings.Replace(url, "0.0.0.0", "localhost", 1)
+			ref := fmt.Sprintf("%s/%s/%s@%s", url, chartutil.ChartsDir, c.Name, d.Digest)
 			refs = append(refs, ref)
-
-			// Get remote Helm Chart using Helm SDK
-			path, err := c.Locate()
-			if err != nil {
-				return err
-			}
-
-			// Get detailed information about the chart
-			chartRef, err := loader.Load(path)
-			if err != nil {
-				return err
-			}
-
-			for _, d := range chartRef.Metadata.Dependencies {
-				if !(d.Repository == "" || strings.HasPrefix(d.Repository, "file://")) {
-					v := d.Version
-					if strings.Contains(v, "*") || strings.Contains(v, "x") {
-						chart := helm.DependencyToChart(d, c)
-
-						// Resolve Globs to latest patch
-						v, err = chart.ResolveVersion()
-						if err != nil {
-							return err
-						}
-					}
-
-					name := fmt.Sprintf("charts/%s", d.Name)
-					d, err := r.Fetch(context.TODO(), name, v)
-					if err != nil {
-						return err
-					}
-
-					ref := fmt.Sprintf("%s/%s@%s", r.URL, name, d.Digest)
-					refs = append(refs, ref)
-				}
-			}
 		}
 
-		bar.ChangeMax(len(refs))
+		// bar.ChangeMax(size + len(refs) - 1)
 		if err := sign.SignCmd(&ro, ko, signOpts, refs); err != nil {
 			return err
 		}

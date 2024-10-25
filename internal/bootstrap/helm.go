@@ -1,11 +1,16 @@
 package bootstrap
 
 import (
+	"log"
+	"os"
+
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"go.uber.org/fx"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 // Add Helm repos to user's local helm configuration file, Optionupdate all existing repos and pulls charts
-func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) (helm.ChartCollection, error) {
+func SetupHelm(settings *cli.EnvSettings, charts *helm.ChartCollection, setters ...helm.Option) (*helm.ChartCollection, error) {
 
 	// Default Options
 	args := &helm.Options{
@@ -18,8 +23,20 @@ func SetupHelm(charts *helm.ChartCollection, setters ...helm.Option) (helm.Chart
 		setter(args)
 	}
 
+	// Set up Helm action configuration
+	if err := os.Setenv("HELM_EXPERIMENTAL_OCI", "1"); err != nil {
+		log.Fatalf("Error setting OCI environment variable: %v", err)
+	}
+
 	return charts.SetupHelm(
+		settings,
 		helm.Update(args.Update),
 		helm.Verbose(args.Verbose),
 	)
 }
+
+func ProvideHelmSettings() *cli.EnvSettings {
+	return cli.New()
+}
+
+var HelmSettingsModule = fx.Provide(ProvideHelmSettings)
