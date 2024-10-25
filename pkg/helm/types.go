@@ -36,6 +36,7 @@ var IndexFileLoaderModule = fx.Provide(FunctionLoader{LoadFunc: repo.LoadIndexFi
 
 // Define the interface for the registry client
 type RegistryClient interface {
+	Pull(ref string, opts ...helm_registry.PullOption) (*helm_registry.PullResult, error)
 	Push(chart []byte, destination string, opts ...helm_registry.PushOption) (*helm_registry.PushResult, error)
 	Tags(ref string) ([]string, error)
 }

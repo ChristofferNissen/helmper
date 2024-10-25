@@ -3,6 +3,7 @@ package file
 import (
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 )
@@ -79,10 +80,7 @@ func ReadFileAsBytes(path string) ([]byte, error) {
 	return data, nil
 }
 
-func FileExists(filePath string) bool {
-	info, err := os.Stat(filePath)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return !info.IsDir()
+func FileExists(path string) (exists bool) {
+	_, err := os.Stat(path)
+	return !errors.Is(err, fs.ErrNotExist)
 }
