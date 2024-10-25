@@ -107,7 +107,7 @@ func TestPush(t *testing.T) {
 	}
 
 	chartFilePath := "/tmp/testchart.tgz"
-	destination := "oci://localhost:5000/testchart:0.1.0"
+	destination := "localhost:5000/testchart:0.1.0"
 
 	// Create a dummy chart file for testing
 	err := os.WriteFile(chartFilePath, []byte("test data"), 0644)
