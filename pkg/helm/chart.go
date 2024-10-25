@@ -1,7 +1,8 @@
 package helm
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"log/slog"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/util/file"
 	"gopkg.in/yaml.v3"
@@ -94,7 +96,8 @@ func (c Chart) push(chartFilePath string, destination string) error {
 		return fmt.Errorf("error reading chart: %w", err)
 	}
 
-	_, err = c.RegistryClient.Push(bs, destination)
+	dest, _ := strings.CutPrefix(destination, "oci://")
+	_, err = c.RegistryClient.Push(bs, dest)
 	if err != nil {
 		return fmt.Errorf("error pushing chart: %w", err)
 	}
@@ -110,7 +113,7 @@ func (c Chart) Push(settings *cli.EnvSettings, registry string, insecure bool, p
 	}
 	defer os.Remove(chartFilePath)
 
-	err = c.push(chartFilePath, fmt.Sprintf("%s/charts/%s:%s", registry, c.Name, c.Version))
+	err = c.push(chartFilePath, fmt.Sprintf("%s/%s/%s:%s", registry, chartutil.ChartsDir, c.Name, c.Version))
 	return chartFilePath, err
 }
 
@@ -140,7 +143,7 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 		return "", err
 	}
 
-	// Dependencies (Chart.yaml)
+	// Modify dependencies
 	for _, d := range chartRef.Metadata.Dependencies {
 		switch {
 		case strings.HasPrefix(d.Repository, "file://"):
@@ -163,8 +166,8 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 			}
 		}
 	}
-
-	err = chartutil.SaveChartfile(filepath.Join(dir, c.Name, "Chart.yaml"), chartRef.Metadata)
+	// Write modified dependencies to Chart.yaml
+	err = chartutil.SaveChartfile(filepath.Join(dir, c.Name, chartutil.ChartfileName), chartRef.Metadata)
 	if err != nil {
 		return "", err
 	}
@@ -175,17 +178,7 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 		return "", err
 	}
 
-	// Helm Dependency Update
-	var buf bytes.Buffer
-	ma := getManager(settings, &buf, true, true)
-	ma.ChartPath = filepath.Join(dir, c.Name)
-	err = ma.Update()
-	if err != nil {
-		slog.Info(buf.String())
-		log.Printf("Error occurred trying to update Helm Chart on filesystem: %v, skipping update of chart dependencies", err)
-	}
-
-	// Reload Helm Chart from filesystem
+	// Reload Chart from filesystem
 	chartRef, err = loader.Load(filepath.Join(dir, c.Name))
 	if err != nil {
 		return "", err
@@ -203,18 +196,52 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 		}
 	}
 
-	// Save modified Helm Chart to filesystem before push
-	modifiedPath, err := chartutil.Save(chartRef, "/tmp/")
+	// Compute the SHA256 digest of the chart metadata
+	metadataBytes, err := yaml.Marshal(chartRef.Metadata)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to marshal chart metadata: %w", err)
+	}
+	sha := sha256.Sum256(metadataBytes)
+	digest := hex.EncodeToString(sha[:])
+
+	// Create the Chart.lock content
+	lock := chart.Lock{
+		Generated:    time.Now(),
+		Dependencies: chartRef.Metadata.Dependencies,
+		Digest:       digest,
 	}
 
-	return modifiedPath, nil
+	// Serialize the lock file content
+	data, err := yaml.Marshal(&lock)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal lock file: %w", err)
+	}
+
+	// Write the lock file to the chart path
+	lockFilePath := filepath.Join(dir, c.Name, "Chart.lock")
+	if err := os.WriteFile(lockFilePath, data, 0644); err != nil {
+		return "", fmt.Errorf("failed to write lock file: %w", err)
+	}
+
+	// Validate Chart
+	b, err := chartutil.IsChartDir(filepath.Join(dir, c.Name))
+	if err != nil {
+		return "", fmt.Errorf("could not validate chart directory")
+	}
+	if b {
+		// Save modified Helm Chart to filesystem before push
+		modifiedPath, err := chartutil.Save(chartRef, "/tmp/")
+		if err != nil {
+			return "", err
+		}
+		return modifiedPath, nil
+	}
+
+	return "", fmt.Errorf("modified chart is malformed")
 }
 
 // Function to remove the lock file
 func removeLockFile(chartPath string) error {
-
 	// Locate the lock file
 	lockFilePath := filepath.Join(chartPath, "Chart.lock")
 	if _, err := os.Stat(lockFilePath); os.IsNotExist(err) {
@@ -241,7 +268,7 @@ func (c Chart) PushAndModify(settings *cli.EnvSettings, registry string, insecur
 	// Use the `Push` method to push the modified chart
 	c.PlainHTTP = plainHTTP
 	c.Repo.InsecureSkipTLSverify = insecure
-	err = c.push(modifiedPath, fmt.Sprintf("%s/charts/%s:%s", registry, c.Name, c.Version))
+	err = c.push(modifiedPath, fmt.Sprintf("%s/%s/%s:%s", registry, chartutil.ChartsDir, c.Name, c.Version))
 	if err != nil {
 		return "", err
 	}
@@ -339,18 +366,18 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 		pull.Settings = settings
 		pull.Untar = true
 		pull.DestDir = chartPath
-		pull.UntarDir = "charts"
+		pull.UntarDir = chartutil.ChartsDir
 
 		if _, err := pull.Run(c.Name); err != nil {
 			return "", err
 		}
 
-		f, b := findFile(fmt.Sprintf("%s/charts/%s-*%s*.tgz", chartPath, c.Name, c.Version))
+		f, b := findFile(fmt.Sprintf("%s/%s/%s-*%s*.tgz", chartPath, chartutil.ChartsDir, c.Name, c.Version))
 		if b {
 			os.RemoveAll(f)
 		}
 
-		return chartPath + "/charts/" + c.Name, nil
+		return chartPath + "/" + chartutil.ChartsDir + "/" + c.Name, nil
 	}
 }
 

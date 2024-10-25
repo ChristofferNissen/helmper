@@ -4,19 +4,17 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
-	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 
 	_ "github.com/sigstore/sigstore/pkg/signature/kms/aws"
@@ -64,23 +62,7 @@ func (so SignChartOption) Run() error {
 		so.Settings = cli.New()
 	}
 
-	bar := progressbar.NewOptions(size, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetDescription("Signing charts...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := bar.New("Signing charts...\r", size)
 
 	// Sign with cosign
 	timeout := 2 * time.Minute
@@ -143,59 +125,24 @@ func (so SignChartOption) Run() error {
 
 	for r, m := range so.Data {
 		refs := []string{}
-
 		for c, b := range m {
 			if !b {
 				continue
 			}
 
-			name := fmt.Sprintf("charts/%s", c.Name)
+			name := fmt.Sprintf("%s/%s", chartutil.ChartsDir, c.Name)
 			d, err := r.Fetch(context.TODO(), name, c.Version)
 			if err != nil {
 				return err
 			}
 
-			ref := fmt.Sprintf("%s/charts/%s@%s", r.URL, c.Name, d.Digest)
+			url, _ := strings.CutPrefix(r.URL, "oci://")
+			url = strings.Replace(url, "0.0.0.0", "localhost", 1)
+			ref := fmt.Sprintf("%s/%s/%s@%s", url, chartutil.ChartsDir, c.Name, d.Digest)
 			refs = append(refs, ref)
-
-			// Get remote Helm Chart using Helm SDK
-			path, err := c.Locate(so.Settings)
-			if err != nil {
-				return err
-			}
-
-			// Get detailed information about the chart
-			chartRef, err := loader.Load(path)
-			if err != nil {
-				return err
-			}
-
-			for _, d := range chartRef.Metadata.Dependencies {
-				if !(d.Repository == "" || strings.HasPrefix(d.Repository, "file://")) {
-					v := d.Version
-					if strings.Contains(v, "*") || strings.Contains(v, "x") {
-						chart := helm.DependencyToChart(d, c)
-
-						// Resolve Globs to latest patch
-						v, err = chart.ResolveVersion(so.Settings)
-						if err != nil {
-							return err
-						}
-					}
-
-					name := fmt.Sprintf("charts/%s", d.Name)
-					d, err := r.Fetch(context.TODO(), name, v)
-					if err != nil {
-						return err
-					}
-
-					ref := fmt.Sprintf("%s/charts/%s@%s", r.URL, name, d.Digest)
-					refs = append(refs, ref)
-				}
-			}
 		}
 
-		bar.ChangeMax(size + len(refs) - 1)
+		// bar.ChangeMax(size + len(refs) - 1)
 		if err := sign.SignCmd(&ro, ko, signOpts, refs); err != nil {
 			return err
 		}

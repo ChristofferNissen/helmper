@@ -97,7 +97,8 @@ func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag s
 
 	source.PlainHTTP = isLocalReference(sourceURL)
 
-	target, err := setupRepository(r.URL, name, credStore)
+	url, _ := strings.CutPrefix(r.URL, "oci://")
+	target, err := setupRepository(url, name, credStore)
 	if err != nil {
 		return v1.Descriptor{}, err
 	}
@@ -123,7 +124,8 @@ func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag s
 
 func (r Registry) Fetch(ctx context.Context, name string, tag string) (*v1.Descriptor, error) {
 	// 1. Connect to a remote repository
-	ref := strings.Join([]string{r.URL, name}, "/")
+	url, _ := strings.CutPrefix(r.URL, "oci://")
+	ref := strings.Join([]string{url, name}, "/")
 	repo, err := remote.NewRepository(ref)
 	if err != nil {
 		return nil, err
@@ -190,7 +192,9 @@ func (r Registry) Exist(ctx context.Context, name string, tag string) (bool, err
 	return Exist(ctx, strings.Join([]string{r.URL, name}, "/"), tag, r.PlainHTTP)
 }
 
-func Exists(ctx context.Context, ref string, tag string, registries []Registry) map[string]bool {
+func Exists(ctx context.Context, ref string, tag string, registries []*Registry) map[string]bool {
+	ref, _ = strings.CutPrefix(ref, "oci://")
+
 	m := make(map[string]bool, len(registries))
 
 	for _, r := range registries {
@@ -209,6 +213,8 @@ func Exists(ctx context.Context, ref string, tag string, registries []Registry) 
 }
 
 func Exist(ctx context.Context, reference string, tag string, plainHTTP bool) (bool, error) {
+
+	reference, _ = strings.CutPrefix(reference, "oci://")
 
 	// 1. Connect to a remote repository
 	repo, err := remote.NewRepository(reference)

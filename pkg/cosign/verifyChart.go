@@ -4,17 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
+	"helm.sh/helm/v3/pkg/chartutil"
 )
 
 type VerifyChartOption struct {
@@ -47,23 +48,7 @@ func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map
 		return make(map[*registry.Registry]map[*helm.Chart]bool), nil
 	}
 
-	bar := progressbar.NewOptions(size, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetDescription("Verifying signatures...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := bar.New("Verifying signatures...\r", size)
 
 	o := &options.VerifyOptions{
 		Key:         vo.KeyRef,
@@ -143,15 +128,18 @@ func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map
 		for c, b := range elem {
 			if b || vo.VerifyExisting {
 
-				name := fmt.Sprintf("charts/%s", c.Name)
+				name := fmt.Sprintf("%s/%s", chartutil.ChartsDir, c.Name)
 				d, err := r.Fetch(ctx, name, c.Version)
 				if err != nil {
 					return make(map[*registry.Registry]map[*helm.Chart]bool), err
 				}
 
-				out, err := captureOutput(func() error {
-					s := fmt.Sprintf("%s/charts/%s@%s", r.URL, c.Name, d.Digest)
-					return v.Exec(ctx, []string{s})
+				out, err := terminal.CaptureOutput(func() error {
+					url, _ := strings.CutPrefix(r.URL, "oci://")
+					url = strings.Replace(url, "0.0.0.0", "localhost", 1)
+					s := fmt.Sprintf("%s/%s/%s@%s", url, chartutil.ChartsDir, c.Name, d.Digest)
+					err := v.Exec(ctx, []string{s})
+					return err
 				})
 				slog.Debug(out)
 				if err != nil {
@@ -168,7 +156,9 @@ func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map
 				_ = bar.Add(1)
 			}
 		}
-		m[r] = elem
+		if len(elem) > 0 {
+			m[r] = elem
+		}
 	}
 
 	_ = bar.Finish()

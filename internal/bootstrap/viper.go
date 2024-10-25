@@ -233,15 +233,15 @@ copacetic:
 
 	viper.Set("importConfig", importConf)
 
-	rs := []registry.Registry{}
+	rs := []*registry.Registry{}
 	for _, r := range conf.Registries {
 		rs = append(rs,
-			registry.Registry{
+			to.Ptr(registry.Registry{
 				Name:      r.Name,
 				URL:       r.URL,
 				PlainHTTP: r.PlainHTTP,
 				Insecure:  r.Insecure,
-			})
+			}))
 	}
 	state.SetValue(viper, "registries", rs)
 

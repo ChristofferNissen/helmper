@@ -49,11 +49,12 @@ func Program(args []string) error {
 				Logger: logger,
 			}
 		}),
-		fx.Invoke(func(lc fx.Lifecycle, v *viper.Viper) {
+		bootstrap.HelmSettingsModule,
+		fx.Invoke(func(lc fx.Lifecycle, v *viper.Viper, settings *cli.EnvSettings) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
 					go func() {
-						done <- program(ctx, args, v) // Send the result to the channel
+						done <- program(ctx, args, v, settings) // Send the result to the channel
 					}()
 					return nil
 				},
@@ -77,7 +78,9 @@ func Program(args []string) error {
 	return nil
 }
 
-func program(ctx context.Context, _ []string, viper *viper.Viper) error {
+func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.EnvSettings) error {
+	slog.Info("Helmper", slog.String("version", version), slog.String("commit", commit), slog.String("date", date))
+
 	var (
 		k8sVersion   string                          = state.GetValue[string](viper, "k8s_version")
 		verbose      bool                            = state.GetValue[bool](viper, "verbose")
@@ -86,7 +89,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 		parserConfig bootstrap.ParserConfigSection   = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
 		importConfig bootstrap.ImportConfigSection   = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
 		mirrorConfig []bootstrap.MirrorConfigSection = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
-		registries   []registry.Registry             = state.GetValue[[]registry.Registry](viper, "registries")
+		registries   []*registry.Registry            = state.GetValue[[]*registry.Registry](viper, "registries")
 		images       []registry.Image                = state.GetValue[[]registry.Image](viper, "images")
 		charts       *helm.ChartCollection           = to.Ptr(state.GetValue[helm.ChartCollection](viper, "input"))
 		opts         []helm.Option                   = []helm.Option{
@@ -95,8 +98,6 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 			helm.Update(update),
 		}
 	)
-
-	settings := cli.New()
 
 	if verbose {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
@@ -242,7 +243,6 @@ func program(ctx context.Context, _ []string, viper *viper.Viper) error {
 		}
 
 		// Images
-
 		vo := mySign.VerifyOption{
 			Data:           mImgs,
 			VerifyExisting: importConfig.Import.Cosign.VerifyExisting,

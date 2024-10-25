@@ -5,18 +5,16 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/report"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/ChristofferNissen/helmper/pkg/util/counter"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/bobg/go-generics/slices"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 	"helm.sh/helm/v3/pkg/chart"
@@ -236,24 +234,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 				return nil
 			}
 
-			bar := progressbar.NewOptions(len(charts.Charts),
-				progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-				progressbar.OptionEnableColorCodes(true),
-				progressbar.OptionShowCount(),
-				progressbar.OptionOnCompletion(func() {
-					fmt.Fprint(os.Stderr, "\n")
-				}),
-				progressbar.OptionSetWidth(15),
-				progressbar.OptionSetElapsedTime(true),
-				progressbar.OptionSetDescription("Parsing charts...\r"),
-				progressbar.OptionShowDescriptionAtLineEnd(),
-				progressbar.OptionSetTheme(progressbar.Theme{
-					Saucer:        "[green]=[reset]",
-					SaucerHead:    "[green]>[reset]",
-					SaucerPadding: " ",
-					BarStart:      "[",
-					BarEnd:        "]",
-				}))
+			bar := bar.New("Parsing charts...\r", len(charts.Charts))
 
 			for _, c := range charts.Charts {
 				slog.Default().With(slog.String("chart", c.Name), slog.String("repo", c.Repo.URL), slog.String("version", c.Version))

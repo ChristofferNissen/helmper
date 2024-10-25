@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/aquasecurity/trivy/pkg/fanal/types"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/k0kubun/go-ansi"
@@ -57,25 +58,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 		return nil
 	}
 
-	bar := progressbar.NewOptions(size,
-		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetElapsedTime(true),
-		progressbar.OptionSetDescription("Patching images...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := bar.New("Patching images...\r", size)
 
 	seenImages := []registry.Image{}
 	for _, m := range o.Data {

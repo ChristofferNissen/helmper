@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"go.uber.org/fx"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -33,3 +34,9 @@ func SetupHelm(settings *cli.EnvSettings, charts *helm.ChartCollection, setters 
 		helm.Verbose(args.Verbose),
 	)
 }
+
+func ProvideHelmSettings() *cli.EnvSettings {
+	return cli.New()
+}
+
+var HelmSettingsModule = fx.Provide(ProvideHelmSettings)

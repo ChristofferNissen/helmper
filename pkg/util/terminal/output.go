@@ -1,4 +1,4 @@
-package cosign
+package terminal
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-func captureOutput(f func() error) (string, error) {
+func CaptureOutput(f func() error) (string, error) {
 	// Create a pipe
 	r, w, err := os.Pipe()
 	if err != nil {

@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
 
@@ -53,23 +52,7 @@ func (so SignOption) Run(ctx context.Context) error {
 		return nil
 	}
 
-	bar := progressbar.NewOptions(size, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetDescription("Signing images...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := bar.New("Signing images...\r", size)
 
 	// Sign with cosign
 	timeout := 2 * time.Minute
@@ -142,7 +125,9 @@ func (so SignOption) Run(ctx context.Context) error {
 					}
 					i.Digest = d.Digest.String()
 				}
-				ref := fmt.Sprintf("%s/%s@%s", r.URL, name, i.Digest)
+				url, _ := strings.CutPrefix(r.URL, "oci://")
+				url = strings.Replace(url, "0.0.0.0", "localhost", 1)
+				ref := fmt.Sprintf("%s/%s@%s", url, name, i.Digest)
 				refs = append(refs, ref)
 			}
 		}

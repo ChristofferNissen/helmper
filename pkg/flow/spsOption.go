@@ -12,6 +12,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/copa"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 )
@@ -52,23 +53,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 		return nil
 	}
 
-	bar := progressbar.NewOptions(lenImages, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("Scanning images before patching...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := bar.New("Scanning images before patching...\r", lenImages)
 
 	// Trivy scan
 	so := o.ScanOption
