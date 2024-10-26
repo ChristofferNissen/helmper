@@ -315,7 +315,6 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 					_ = bar.Add(1)
 					channel <- &chartInfo{chartRef, subChart}
-
 				}
 			}
 

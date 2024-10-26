@@ -54,8 +54,8 @@ func (c Chart) ResolveVersions(settings *cli.EnvSettings) ([]string, error) {
 	}
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
-		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
-		versionsInRange, err := c.RegistryClient.Tags(ref)
+		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
+		versionsInRange, err := c.RegistryClient.Tags(url)
 		if err != nil {
 			return nil, err
 		}
@@ -83,8 +83,8 @@ func (c Chart) ResolveVersion(settings *cli.EnvSettings) (string, error) {
 	}
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
-		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
-		vs, err := c.RegistryClient.Tags(ref)
+		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
+		vs, err := c.RegistryClient.Tags(url)
 		if err != nil {
 			return "", err
 		}
@@ -132,8 +132,8 @@ func (c Chart) ResolveVersion(settings *cli.EnvSettings) (string, error) {
 func (c Chart) LatestVersion(settings *cli.EnvSettings) (string, error) {
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
-		ref := strings.TrimPrefix(strings.TrimSuffix(c.Repo.URL, "/")+"/"+c.Name, "oci://")
-		repo, err := remote.NewRepository(ref)
+		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
+		repo, err := remote.NewRepository(url)
 		if err != nil {
 			return "", err
 		}
@@ -151,7 +151,7 @@ func (c Chart) LatestVersion(settings *cli.EnvSettings) (string, error) {
 		}
 
 		vPrefix := strings.Contains(c.Version, "v")
-		vs, err := c.RegistryClient.Tags(ref)
+		vs, err := c.RegistryClient.Tags(url)
 
 		if err != nil {
 			return "", err

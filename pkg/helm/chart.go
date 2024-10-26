@@ -16,7 +16,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"helm.sh/helm/v3/pkg/registry"
-	helm_registry "helm.sh/helm/v3/pkg/registry"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -386,21 +385,8 @@ func (c Chart) Locate(settings *cli.EnvSettings) (string, error) {
 	// Check if the repository URL is an OCI URL
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		// Pull the chart from OCI
-		ref := strings.TrimSuffix(c.Repo.URL, "/") + "/" + c.Name + ":" + c.Version
-		if err := os.Setenv("HELM_EXPERIMENTAL_OCI", "1"); err != nil {
-			return "", err
-		}
 
-		rc, err := helm_registry.NewClient()
-		if err != nil {
-			return "", err
-		}
-
-		if _, err := rc.Pull(ref); err != nil {
-			return "", err
-		}
-
-		return fmt.Sprintf("%s-%s.tgz", settings.RepositoryCache, c.Version), nil
+		return c.Pull(settings)
 	}
 
 	// For non-OCI URLs, use ChartPathOptions
