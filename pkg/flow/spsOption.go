@@ -12,9 +12,7 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/copa"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
-	"github.com/ChristofferNissen/helmper/pkg/util/bar"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
+	myBar "github.com/ChristofferNissen/helmper/pkg/util/bar"
 )
 
 type SpsOption struct {
@@ -30,18 +28,17 @@ type SpsOption struct {
 }
 
 func (o SpsOption) Run(ctx context.Context) error {
-
 	// Count of images to import across registries
 	lenImages := func() int {
 		c := 0
 		seen := make([]registry.Image, 0)
 		for _, m := range o.Data {
 			for i, b := range m {
-				if i.In(seen) {
-					continue
-				}
-				seen = append(seen, *i)
 				if b {
+					if i.In(seen) {
+						continue
+					}
+					seen = append(seen, *i)
 					c++
 				}
 			}
@@ -53,12 +50,9 @@ func (o SpsOption) Run(ctx context.Context) error {
 		return nil
 	}
 
-	bar := bar.New("Scanning images before patching...\r", lenImages)
-
 	// Trivy scan
-	so := o.ScanOption
-	patch, push, err := func(m map[*registry.Registry]map[*registry.Image]bool) (map[*registry.Registry]map[*registry.Image]bool, map[*registry.Registry]map[*registry.Image]bool, error) {
-
+	bar := myBar.New("Scanning images before patching...\r", lenImages)
+	prescan := func() (map[*registry.Registry]map[*registry.Image]bool, map[*registry.Registry]map[*registry.Image]bool, error) {
 		imgs := make([]*registry.Image, 0)
 		for _, m := range o.Data {
 			for i, b := range m {
@@ -88,7 +82,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 			if err != nil {
 				return nil, nil, err
 			}
-			r, err := so.Scan(ref)
+			r, err := o.ScanOption.Scan(ref)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -130,8 +124,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 		// filter images
 		patchM := make(map[*registry.Registry]map[*registry.Image]bool, 0)
 		pushM := make(map[*registry.Registry]map[*registry.Image]bool, 0)
-		for r, elem := range m {
-
+		for r, elem := range o.Data {
 			patchRegistry := patchM[r]
 			if patchRegistry == nil {
 				patchRegistry = make(map[*registry.Image]bool, 0)
@@ -161,37 +154,39 @@ func (o SpsOption) Run(ctx context.Context) error {
 		}
 
 		return patchM, pushM, nil
-	}(o.Data)
+	}
+	patch, push, err := prescan()
 	if err != nil {
 		return err
 	}
 	_ = bar.Finish()
 
-	// determine fully qualified output path for images
+	// Determine fully qualified output path for images
 	reportFilePaths := make(map[*registry.Image]string)
 	reportPostFilePaths := make(map[*registry.Image]string)
 	outFilePaths := make(map[*registry.Image]string)
 	for _, elem := range o.Data {
-		for i := range elem {
-			name, _ := i.ImageName()
-			fileName := fmt.Sprintf("prescan-%s:%s.json", name, i.Tag)
-			reportFilePaths[i] = filepath.Join(
-				o.ReportsFolder,
-				strings.ReplaceAll(fileName, "/", "-"),
-			)
-			fileName = fmt.Sprintf("postscan-%s:%s.json", name, i.Tag)
-			reportPostFilePaths[i] = filepath.Join(
-				o.ReportsFolder,
-				strings.ReplaceAll(fileName, "/", "-"),
-			)
-			out := fmt.Sprintf("%s:%s.tar", name, i.Tag)
-			outFilePaths[i] = filepath.Join(
-				o.TarsFolder,
-				strings.ReplaceAll(out, "/", "-"),
-			)
+		for i, b := range elem {
+			if b {
+				name, _ := i.ImageName()
+				fileName := fmt.Sprintf("prescan-%s:%s.json", name, i.Tag)
+				reportFilePaths[i] = filepath.Join(
+					o.ReportsFolder,
+					strings.ReplaceAll(fileName, "/", "-"),
+				)
+				fileName = fmt.Sprintf("postscan-%s:%s.json", name, i.Tag)
+				reportPostFilePaths[i] = filepath.Join(
+					o.ReportsFolder,
+					strings.ReplaceAll(fileName, "/", "-"),
+				)
+				out := fmt.Sprintf("%s:%s.tar", name, i.Tag)
+				outFilePaths[i] = filepath.Join(
+					o.TarsFolder,
+					strings.ReplaceAll(out, "/", "-"),
+				)
+			}
 		}
 	}
-
 	// Clean up files
 	defer func() {
 		if o.ReportsClean {
@@ -215,35 +210,19 @@ func (o SpsOption) Run(ctx context.Context) error {
 		All:          o.All,
 		Architecture: o.Architecture,
 	}
-	err = io.Run(ctx)
+	err = io.Run(context.WithoutCancel(ctx))
 	if err != nil {
 		return err
 	}
 
 	// Patch image and save to tar
 	o.PatchOption.Data = patch
-	err = o.PatchOption.Run(ctx, reportFilePaths, outFilePaths)
+	err = o.PatchOption.Run(context.WithoutCancel(ctx), reportFilePaths, outFilePaths)
 	if err != nil {
 		return err
 	}
 
-	bar = progressbar.NewOptions(lenImages, progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetDescription("Scanning images after patching...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar = myBar.New("Scanning images after patching...\r", lenImages)
 	err = func(out string, prefix string) error {
 		for _, m := range o.Data {
 			for i, b := range m {
@@ -256,7 +235,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 
 					slog.Default().With(slog.String("image", ref))
 
-					r, err := so.Scan(ref)
+					r, err := o.ScanOption.Scan(ref)
 					if err != nil {
 						return err
 					}

@@ -4,17 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
-	"github.com/ChristofferNissen/helmper/pkg/util/bar"
+	myBar "github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/aquasecurity/trivy/pkg/fanal/types"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/k0kubun/go-ansi"
 	v1_spec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/project-copacetic/copacetic/pkg/buildkit"
-	"github.com/schollz/progressbar/v3"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry/remote"
@@ -41,7 +39,6 @@ type PatchOption struct {
 }
 
 func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Image]string, outFilePaths map[*registry.Image]string) error {
-
 	size := func() int {
 		size := 0
 		for _, m := range o.Data {
@@ -58,7 +55,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 		return nil
 	}
 
-	bar := bar.New("Patching images...\r", size)
+	bar := myBar.New("Patching images...\r", size)
 
 	seenImages := []registry.Image{}
 	for _, m := range o.Data {
@@ -88,25 +85,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 
 	_ = bar.Finish()
 
-	bar = progressbar.NewOptions(size,
-		progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetElapsedTime(true),
-		progressbar.OptionSetDescription("Pushing images from tar...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar = myBar.New("Pushing images from tar...\r", size)
 
 	for r, m := range o.Data {
 		for i, b := range m {
@@ -124,7 +103,8 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 				i.Digest = manifest.Digest.String()
 
 				// Connect to a remote repository
-				repo, err := remote.NewRepository(r.URL + "/" + name)
+				url, _ := strings.CutPrefix(r.URL, "oci://")
+				repo, err := remote.NewRepository(url + "/" + name)
 				if err != nil {
 					return err
 				}
