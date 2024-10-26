@@ -9,10 +9,13 @@ import (
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
+	"github.com/ChristofferNissen/helmper/pkg/util/counter"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -25,10 +28,20 @@ type VerifyChartOption struct {
 	KeyRef            string
 	AllowInsecure     bool
 	AllowHTTPRegistry bool
+
+	Report *report.Table
 }
 
 // VerifyOption wraps the cosign CLIs native code
-func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map[*helm.Chart]bool, error) {
+func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map[*helm.Chart]bool, error) {
+
+	if vo.Report == nil {
+		vo.Report = report.NewTable("Signature Overview For Charts")
+	}
+
+	var sc counter.SafeCounter = counter.NewSafeCounter()
+
+	header := table.Row{"#", "Helm Chart", "Chart Version"}
 
 	size := func() int {
 		size := 0
@@ -125,7 +138,12 @@ func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map
 			elem = make(map[*helm.Chart]bool, 0)
 		}
 
+		// extend table for each registry
+		rn := r.GetName()
+		header = append(header, rn)
+
 		for c, b := range elem {
+			row := table.Row{sc.Value("index_sign_charts"), c.Name, c.Version}
 			if b || vo.VerifyExisting {
 
 				name := fmt.Sprintf("%s/%s", chartutil.ChartsDir, c.Name)
@@ -146,6 +164,9 @@ func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map
 					switch err.Error() {
 					case "no signatures found":
 						elem[c] = true
+						row = append(row, terminal.StatusEmoji(false))
+						vo.Report.AddRow(row)
+						sc.Inc("index_sign_charts")
 						_ = bar.Add(1)
 						continue
 					default:
@@ -153,6 +174,9 @@ func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map
 					}
 				}
 				elem[c] = false
+				row = append(row, terminal.StatusEmoji(true))
+				vo.Report.AddRow(row)
+				sc.Inc("index_sign_charts")
 				_ = bar.Add(1)
 			}
 		}
@@ -160,6 +184,8 @@ func (vo VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]map
 			m[r] = elem
 		}
 	}
+
+	vo.Report.AddHeader(header)
 
 	_ = bar.Finish()
 

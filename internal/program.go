@@ -229,6 +229,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 		if err != nil {
 			return err
 		}
+		vco.Report.Render()
 		sco := mySign.SignChartOption{
 			Data: charts,
 
@@ -255,6 +256,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 		if err != nil {
 			return err
 		}
+		vo.Report.Render()
 		so := mySign.SignOption{
 			Data: imgs,
 

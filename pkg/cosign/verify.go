@@ -8,10 +8,13 @@ import (
 	"time"
 
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
+	"github.com/ChristofferNissen/helmper/pkg/util/counter"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 )
@@ -23,10 +26,20 @@ type VerifyOption struct {
 	KeyRef            string
 	AllowInsecure     bool
 	AllowHTTPRegistry bool
+
+	Report *report.Table
 }
 
 // VerifyOption wraps the cosign CLIs native code
-func (vo VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*registry.Image]bool, error) {
+func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*registry.Image]bool, error) {
+
+	if vo.Report == nil {
+		vo.Report = report.NewTable("Signature Overview For Images")
+	}
+
+	var sc counter.SafeCounter = counter.NewSafeCounter()
+
+	header := table.Row{"#", "Image"}
 
 	size := func() int {
 		size := 0
@@ -123,7 +136,15 @@ func (vo VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*reg
 			elem = make(map[*registry.Image]bool, 0)
 		}
 
+		// extend table for each registry
+		rn := r.GetName()
+		header = append(header, rn)
+
 		for i, b := range elem {
+			// add row to overview table
+			ref, _ := i.String()
+			row := table.Row{sc.Value("index_import"), ref}
+
 			if b || vo.VerifyExisting {
 
 				name, err := i.ImageName()
@@ -153,6 +174,9 @@ func (vo VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*reg
 					case "no signatures found":
 						elem[i] = true
 						_ = bar.Add(1)
+						row = append(row, terminal.StatusEmoji(false))
+						vo.Report.AddRow(row)
+						sc.Inc("index_import")
 						continue
 					default:
 						return make(map[*registry.Registry]map[*registry.Image]bool), err
@@ -160,10 +184,16 @@ func (vo VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*reg
 				}
 				elem[i] = false
 				_ = bar.Add(1)
+				row = append(row, terminal.StatusEmoji(true))
+				vo.Report.AddRow(row)
+				sc.Inc("index_import")
 			}
+
 		}
 		m[r] = elem
 	}
+
+	vo.Report.AddHeader(header)
 
 	_ = bar.Finish()
 

@@ -131,7 +131,8 @@ func (r Registry) Fetch(ctx context.Context, name string, tag string) (*v1.Descr
 		return nil, err
 	}
 
-	repo.PlainHTTP = r.PlainHTTP
+	repo.PlainHTTP =
+		r.PlainHTTP
 
 	// prepare authentication using Docker credentials
 	storeOpts := credentials.StoreOptions{}
@@ -213,7 +214,6 @@ func Exists(ctx context.Context, ref string, tag string, registries []*Registry)
 }
 
 func Exist(ctx context.Context, reference string, tag string, plainHTTP bool) (bool, error) {
-
 	reference, _ = strings.CutPrefix(reference, "oci://")
 
 	// 1. Connect to a remote repository
