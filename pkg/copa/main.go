@@ -82,11 +82,9 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 			_ = bar.Add(1)
 		}
 	}
-
 	_ = bar.Finish()
 
 	bar = myBar.New("Pushing images from tar...\r", size)
-
 	for r, m := range o.Data {
 		for i, b := range m {
 			if b {
@@ -147,8 +145,8 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 
 				i.Digest = manifest.Digest.String()
 			}
+			_ = bar.Add(1)
 		}
-		_ = bar.Add(1)
 	}
 
 	_ = bar.Finish()
