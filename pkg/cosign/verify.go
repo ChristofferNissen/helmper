@@ -151,6 +151,11 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*re
 				if err != nil {
 					return nil, err
 				}
+				if r.PrefixSource {
+					old := name
+					name = registry.UpdateNameWithPrefixSource(i)
+					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
+				}
 
 				if !b {
 					if i.Digest == "" {

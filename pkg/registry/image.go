@@ -9,6 +9,14 @@ import (
 	"golang.org/x/xerrors"
 )
 
+func UpdateNameWithPrefixSource(i *Image) string {
+	name, _ := i.ImageName()
+	reg, _, _ := i.Elements()
+	noPorts := strings.Split(reg, ":")[0]
+	noTLD := strings.Split(noPorts, ".")[0]
+	return noTLD + "/" + name
+}
+
 func RefToImage(r string) (Image, error) {
 	ref, err := reference.ParseAnyReference(r)
 	if err != nil {
@@ -111,10 +119,13 @@ func (i Image) Elements() (string, string, string) {
 		withoutDomain := strings.Replace(r.Name(), reference.Domain(r)+"/", "", 1)
 		s := strings.Split(withoutDomain, "/")
 		repository, name := func() (string, string) {
-			if len(s) == 1 {
+			switch {
+			case len(s) == 1:
 				return "library", s[0]
-			} else {
-				return s[0], s[1]
+			case len(s) > 1:
+				return strings.Join(s[:len(s)-1], "/"), s[len(s)-1]
+			default:
+				return "", ""
 			}
 		}()
 		return reference.Domain(r), repository, name

@@ -133,7 +133,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 
 	// STEP 3: Validate and correct image references from charts
 	slog.Debug("Checking presence of images from chart(s) in registries...")
-	io := helm.IdentityImportOption{
+	io := helm.IdentifyImportOption{
 		Registries:          registries,
 		ChartImageValuesMap: chartImageHelmValuesMap,
 

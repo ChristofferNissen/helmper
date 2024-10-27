@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -99,6 +100,12 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 					return err
 				}
 				i.Digest = manifest.Digest.String()
+
+				if r.PrefixSource {
+					old := name
+					name = registry.UpdateNameWithPrefixSource(i)
+					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
+				}
 
 				// Connect to a remote repository
 				url, _ := strings.CutPrefix(r.URL, "oci://")

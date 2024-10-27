@@ -116,7 +116,7 @@ func (c Chart) Push(settings *cli.EnvSettings, registry string, insecure bool, p
 	return chartFilePath, err
 }
 
-func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry string) (string, error) {
+func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry string, prefixSource bool) (string, error) {
 	chartFilePath, err := c.Locate(settings)
 	if err != nil {
 		return "", err
@@ -146,10 +146,8 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 	for _, d := range chartRef.Metadata.Dependencies {
 		switch {
 		case strings.HasPrefix(d.Repository, "file://"):
-			// d.Repository = filepath.Join(dir, c.Name, "charts", d.Name)
 			d.Repository = ""
 		case d.Repository != "":
-
 			// Change dependency ref to registry being imported to
 			d.Repository = newRegistry
 
@@ -184,7 +182,7 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 	}
 
 	// Replace Image References in values.yaml
-	replaceImageReferences(chartRef.Values, newRegistry)
+	replaceImageReferences(chartRef.Values, newRegistry, prefixSource)
 	for _, r := range chartRef.Raw {
 		if r.Name == "values.yaml" {
 			d, err := yaml.Marshal(chartRef.Values)
@@ -257,9 +255,9 @@ func removeLockFile(chartPath string) error {
 	return nil
 }
 
-func (c Chart) PushAndModify(settings *cli.EnvSettings, registry string, insecure bool, plainHTTP bool) (string, error) {
+func (c Chart) PushAndModify(settings *cli.EnvSettings, registry string, insecure bool, plainHTTP bool, prefixSource bool) (string, error) {
 	// Modify chart
-	modifiedPath, err := c.modifyRegistryReferences(settings, registry)
+	modifiedPath, err := c.modifyRegistryReferences(settings, registry, prefixSource)
 	if err != nil {
 		return "", err
 	}
@@ -297,10 +295,12 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 	tarPattern := fmt.Sprintf("%s-*%s*.tgz", chartPath, c.Version)
 
 	if file.FileExists(chartPath) {
+		slog.Info("Reusing existing archieve for chart", slog.String("chart", c.Name), slog.String("path", chartPath))
 		return chartPath, nil
 	}
 
 	if foundPath, ok := findFile(tarPattern); ok {
+		slog.Info("Reusing existing tar archieve for chart", slog.String("chart", c.Name), slog.String("path", foundPath))
 		return foundPath, nil
 	}
 
@@ -318,10 +318,12 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 			return "", err
 		}
 
+		opts := []registry.ClientOption{}
+		if c.PlainHTTP {
+			opts = append(opts, registry.ClientOptPlainHTTP())
+		}
 		rc, err := registry.NewClient(
-			registry.ClientOptDebug(true),
-			registry.ClientOptPlainHTTP(),
-			// registry.ClientOptInsecureSkipVerifyTLS(c.Repo.InsecureSkipTLSverify),
+			opts...,
 		)
 		if err != nil {
 			return "", err

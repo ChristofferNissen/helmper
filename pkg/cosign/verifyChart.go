@@ -143,7 +143,7 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 		header = append(header, rn)
 
 		for c, b := range elem {
-			row := table.Row{sc.Value("index_sign_charts"), c.Name, c.Version}
+			row := table.Row{sc.Value("index_sign_charts"), fmt.Sprintf("charts/%s", c.Name), c.Version}
 			if b || vo.VerifyExisting {
 
 				name := fmt.Sprintf("%s/%s", chartutil.ChartsDir, c.Name)

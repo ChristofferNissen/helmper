@@ -17,7 +17,7 @@ import (
 	"helm.sh/helm/v3/pkg/cli"
 )
 
-type IdentityImportOption struct {
+type IdentifyImportOption struct {
 	Registries          []*registry.Registry
 	ChartImageValuesMap ChartData
 
@@ -29,7 +29,7 @@ type IdentityImportOption struct {
 }
 
 // Converts data structure to pipeline parameters
-func (io *IdentityImportOption) Run(_ context.Context) (RegistryChartStatus, RegistryImageStatus, error) {
+func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, RegistryImageStatus, error) {
 
 	if io.ChartsOverview == nil {
 		io.ChartsOverview = report.NewTable("Registry Overview For Charts")
@@ -60,7 +60,7 @@ func (io *IdentityImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 		n := fmt.Sprintf("charts/%s", c.Name)
 		v := c.Version
 
-		row := table.Row{sc.Value("index_import_charts"), c.Name, c.Version}
+		row := table.Row{sc.Value("index_import_charts"), fmt.Sprintf("charts/%s", c.Name), c.Version}
 
 		for _, r := range io.Registries {
 			existsInRegistry := registry.Exists(context.TODO(), n, v, []*registry.Registry{r})[r.URL]
@@ -108,6 +108,11 @@ func (io *IdentityImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 			row := table.Row{sc.Value("index_import"), c.Name, c.Version, ref}
 
 			for _, r := range io.Registries {
+				if r.PrefixSource {
+					old := name
+					name = registry.UpdateNameWithPrefixSource(i)
+					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
+				}
 
 				// check if image exists in registry
 				registryImageStatusMap := registry.Exists(context.TODO(), name, i.Tag, []*registry.Registry{r})
@@ -254,7 +259,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 						}
 
 						if opt.ModifyRegistry {
-							res, err := c.PushAndModify(opt.Settings, r.URL, r.Insecure, r.PlainHTTP)
+							res, err := c.PushAndModify(opt.Settings, r.URL, r.Insecure, r.PlainHTTP, r.PrefixSource)
 							if err != nil {
 								return fmt.Errorf("helm: error pushing and modifying chart %s to registry %s :: %w", c.Name, r.URL, err)
 							}

@@ -65,10 +65,11 @@ type imageConfigSection struct {
 }
 
 type registryConfigSection struct {
-	Name      string `yaml:"name"`
-	URL       string `yaml:"url"`
-	Insecure  bool   `yaml:"insecure"`
-	PlainHTTP bool   `yaml:"plainHTTP"`
+	Name         string `yaml:"name"`
+	URL          string `yaml:"url"`
+	Insecure     bool   `yaml:"insecure"`
+	PlainHTTP    bool   `yaml:"plainHTTP"`
+	SourcePrefix bool   `yaml:"sourcePrefix"`
 }
 
 type ParserConfigSection struct {
@@ -237,10 +238,11 @@ copacetic:
 	for _, r := range conf.Registries {
 		rs = append(rs,
 			to.Ptr(registry.Registry{
-				Name:      r.Name,
-				URL:       r.URL,
-				PlainHTTP: r.PlainHTTP,
-				Insecure:  r.Insecure,
+				Name:         r.Name,
+				URL:          r.URL,
+				PlainHTTP:    r.PlainHTTP,
+				Insecure:     r.Insecure,
+				PrefixSource: r.SourcePrefix,
 			}))
 	}
 	state.SetValue(viper, "registries", rs)

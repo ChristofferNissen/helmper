@@ -2,6 +2,8 @@ package registry
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"strings"
 
 	v1_spec "github.com/google/go-containerregistry/pkg/v1"
@@ -15,10 +17,11 @@ import (
 )
 
 type Registry struct {
-	Name      string
-	URL       string
-	Insecure  bool
-	PlainHTTP bool
+	Name         string
+	URL          string
+	Insecure     bool
+	PlainHTTP    bool
+	PrefixSource bool
 }
 
 type Exister interface {
@@ -98,6 +101,13 @@ func (r Registry) Push(ctx context.Context, sourceURL string, name string, tag s
 	source.PlainHTTP = isLocalReference(sourceURL)
 
 	url, _ := strings.CutPrefix(r.URL, "oci://")
+	if r.PrefixSource {
+		noPorts := strings.Split(sourceURL, ":")[0]
+		noTLD := strings.Split(noPorts, ".")[0]
+		old := name
+		name = fmt.Sprintf("%s/%s", noTLD, name)
+		slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
+	}
 	target, err := setupRepository(url, name, credStore)
 	if err != nil {
 		return v1.Descriptor{}, err
@@ -131,8 +141,7 @@ func (r Registry) Fetch(ctx context.Context, name string, tag string) (*v1.Descr
 		return nil, err
 	}
 
-	repo.PlainHTTP =
-		r.PlainHTTP
+	repo.PlainHTTP = r.PlainHTTP
 
 	// prepare authentication using Docker credentials
 	storeOpts := credentials.StoreOptions{}

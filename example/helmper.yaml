@@ -94,3 +94,8 @@ registries:
   url: 0.0.0.0:5000
   insecure: true
   plainHTTP: true
+- name: registry
+  url: 0.0.0.0:5001
+  insecure: true
+  plainHTTP: true
+  sourcePrefix: true

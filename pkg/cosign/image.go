@@ -125,6 +125,11 @@ func (so SignOption) Run(ctx context.Context) error {
 					}
 					i.Digest = d.Digest.String()
 				}
+				if r.PrefixSource {
+					old := name
+					name = registry.UpdateNameWithPrefixSource(i)
+					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
+				}
 				url, _ := strings.CutPrefix(r.URL, "oci://")
 				url = strings.Replace(url, "0.0.0.0", "localhost", 1)
 				ref := fmt.Sprintf("%s/%s@%s", url, name, i.Digest)

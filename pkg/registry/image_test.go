@@ -34,6 +34,11 @@ func testBed() []Image {
 			Tag:        "1.14.1",
 			Digest:     "sha256:ca4ae4f37d71a4110889fc4add3c4abef8b96fa6ed977ed399d9b1c3bd7e608e",
 		},
+		{
+			Registry:   "public.ecr.aws",
+			Repository: "eks-distro/kubernetes-csi/livenessprobe",
+			Tag:        "v2.13.0-eks-1-30-8",
+		},
 	}
 
 	return images
@@ -159,6 +164,25 @@ func TestElements(t *testing.T) {
 	e4 = "sha256:ca4ae4f37d71a4110889fc4add3c4abef8b96fa6ed977ed399d9b1c3bd7e608e"
 	a1, a2, a3 = imgs[3].Elements()
 	a4, _ = imgs[3].TagOrDigest()
+	if a1 != e1 {
+		t.Errorf("want '%s' got '%s'", e1, a1)
+	}
+	if a2 != e2 {
+		t.Errorf("want '%s' got '%s'", e2, a2)
+	}
+	if a3 != e3 {
+		t.Errorf("want '%s' got '%s'", e3, a3)
+	}
+	if a4 != e4 {
+		t.Errorf("want '%s' got '%s'", e4, a4)
+	}
+
+	e1 = "public.ecr.aws"
+	e2 = "eks-distro/kubernetes-csi"
+	e3 = "livenessprobe"
+	e4 = "v2.13.0-eks-1-30-8"
+	a1, a2, a3 = imgs[6].Elements()
+	a4, _ = imgs[6].TagOrDigest()
 	if a1 != e1 {
 		t.Errorf("want '%s' got '%s'", e1, a1)
 	}
