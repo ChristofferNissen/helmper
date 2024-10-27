@@ -1155,7 +1155,7 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 	}
 
 	expectedChartCount := 1
-	expectedImageCount := 2
+	expectedImageCount := 3
 
 	// Act
 	data, err := co.Run(ctx)
