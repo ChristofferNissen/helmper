@@ -104,9 +104,8 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		Scanners:            types.AllScanners,
 		ImageConfigScanners: types.AllImageConfigScanners,
 		ScanRemovedPackages: false,
-		// ListAllPackages:     false,
-		FilePatterns:   nil,
-		IncludeDevDeps: false,
+		FilePatterns:        nil,
+		IncludeDevDeps:      false,
 	})
 	if err != nil {
 		slog.Error(fmt.Sprintf("ScanArtifact failed: %v", err), slog.Any("report", report))
@@ -114,13 +113,16 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	}
 
 	if opts.IgnoreUnfixed {
-		ignoreStatuses := lo.FilterMap(dbTypes.Statuses, func(s string, _ int) (dbTypes.Status, bool) {
-			fixed := dbTypes.StatusFixed
-			if s == fixed.String() {
-				return 0, false
-			}
-			return dbTypes.NewStatus(s), true
-		})
+		ignoreStatuses := lo.FilterMap(
+			dbTypes.Statuses,
+			func(s string, _ int) (dbTypes.Status, bool) {
+				fixed := dbTypes.StatusFixed
+				if s == fixed.String() {
+					return 0, false
+				}
+				return dbTypes.NewStatus(s), true
+			},
+		)
 
 		result.Filter(context.TODO(), report, result.FilterOptions{
 			Severities: []dbTypes.Severity{
