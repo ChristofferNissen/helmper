@@ -3,11 +3,13 @@ package helm
 import (
 	"context"
 	"fmt"
+
 	"log"
 	"log/slog"
 	"path/filepath"
 	"strings"
 
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
@@ -29,7 +31,7 @@ type ChartOption struct {
 	UseCustomValues bool
 
 	Mirrors []Mirror
-	Images  []registry.Image
+	Images  []image.Image
 
 	ChartTable *report.Table
 	ValueTable *report.Table
@@ -37,22 +39,17 @@ type ChartOption struct {
 	Settings *cli.EnvSettings
 }
 
-func determineTag(_ context.Context, img *registry.Image, plainHTTP bool) bool {
-	ctx := context.TODO()
-	reg, repo, name := img.Elements()
-	ref := fmt.Sprintf("%s/%s/%s", reg, repo, name)
-
-	tag := img.Tag
-	if img.Tag == "" {
-		tag = img.Digest
-	}
+func determineTag(ctx context.Context, img *image.Image, plainHTTP bool) bool {
+	ctx = context.WithoutCancel(ctx)
+	ref := img.String()
+	tag, _ := img.TagOrDigest()
 
 	available, _ := registry.Exist(ctx, ref, tag, plainHTTP)
 	if available {
 		return true
 	}
 
-	available, _ = registry.Exist(ctx, ref, "v"+img.Tag, plainHTTP)
+	available, _ = registry.Exist(ctx, ref, "v"+tag, plainHTTP)
 	if available {
 		img.Tag = "v" + img.Tag
 		return true
@@ -123,10 +120,7 @@ func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
 	// modify images according to user specification
 	for c, m := range *cm {
 		for i, vs := range m {
-			r, err := i.String()
-			if err != nil {
-				return err
-			}
+			r := i.String()
 
 			if c.Images != nil {
 				for _, e := range c.Images.Exclude {
@@ -150,7 +144,7 @@ func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
 						if strings.HasPrefix(r, modify.From) {
 							delete(m, i)
 
-							img, err := registry.RefToImage(
+							img, err := image.RefToImage(
 								strings.Replace(r, modify.From, modify.To, 1),
 							)
 							if err != nil {
@@ -164,10 +158,7 @@ func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
 
 							m[&img] = vs
 
-							newR, err := img.String()
-							if err != nil {
-								return err
-							}
+							newR := img.String()
 							slog.Info("modified image reference", slog.String("old_image", r), slog.String("new_image", newR))
 						}
 					}
@@ -379,11 +370,15 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 				eg, egCtx := errgroup.WithContext(egCtx)
 				for i, helmValuePaths := range imageMap {
-					func(i *registry.Image, helmValuePaths []string) {
+					func(i *image.Image, helmValuePaths []string) {
 						eg.Go(func() error {
 
+							if i.IsEmpty() {
+								return nil
+							}
+
 							// shuffle data (ensure all fields are populated in i)
-							reg, repo, name := i.Elements()
+							reg, repo, name, _ := i.Elements()
 							i.Registry = reg
 							i.Repository = fmt.Sprintf("%s/%s", repo, name)
 
@@ -427,13 +422,13 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 		for i := range imgs {
 			if !i.available {
-				str, _ := i.image.String()
+				str := i.image.String()
 				slog.Info("Image not available. will be excluded from import...", slog.String("image", str))
 				continue
 			}
 
 			// Add Helm values to image map
-			imageHelmValuesPathMap := make(map[*registry.Image][]string)
+			imageHelmValuesPathMap := make(map[*image.Image][]string)
 			switch imageHelmValuesPathMap[i.image] {
 			case nil:
 				imageHelmValuesPathMap[i.image] = *i.collection
@@ -442,7 +437,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 			}
 
 			// Add table row
-			ref, _ := i.image.String()
+			ref := i.image.String()
 			noSHA := strings.SplitN(ref, "@", 2)[0]
 			co.ValueTable.AddRow(table.Row{id, i.chart.Name, i.chart.Version, noSHA, strings.Join(*i.collection, "\n")})
 
@@ -486,7 +481,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 	if len(co.Images) > 0 {
 		// Add in images from config
 		placeHolder := Chart{Name: "images", Version: "0.0.0"}
-		m := map[*registry.Image][]string{}
+		m := map[*image.Image][]string{}
 		for _, i := range co.Images {
 			m[&i] = []string{}
 		}

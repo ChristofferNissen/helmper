@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/fsnotify/fsnotify"
@@ -248,9 +249,9 @@ copacetic:
 	state.SetValue(viper, "registries", rs)
 
 	// TODO. Concert config.Images to Image{}
-	is := []registry.Image{}
+	is := []image.Image{}
 	for _, i := range conf.Images {
-		img, err := registry.RefToImage(i.Ref)
+		img, err := image.RefToImage(i.Ref)
 		if err != nil {
 			return viper, err
 		}

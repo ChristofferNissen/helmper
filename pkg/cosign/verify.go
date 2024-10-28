@@ -3,10 +3,12 @@ package cosign
 import (
 	"context"
 	"fmt"
+
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
@@ -20,7 +22,7 @@ import (
 )
 
 type VerifyOption struct {
-	Data           map[*registry.Registry]map[*registry.Image]bool
+	Data           map[*registry.Registry]map[*image.Image]bool
 	VerifyExisting bool
 
 	KeyRef            string
@@ -31,7 +33,7 @@ type VerifyOption struct {
 }
 
 // VerifyOption wraps the cosign CLIs native code
-func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*registry.Image]bool, error) {
+func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*image.Image]bool, error) {
 
 	if vo.Report == nil {
 		vo.Report = report.NewTable("Signature Overview For Images")
@@ -56,7 +58,7 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*re
 	// Return early: no images to sign, or no registries to upload signature to
 	if !(size > 0) {
 		slog.Debug("No images or registries specified. Skipping verifying images...")
-		return make(map[*registry.Registry]map[*registry.Image]bool), nil
+		return make(map[*registry.Registry]map[*image.Image]bool), nil
 	}
 
 	bar := bar.New("Verifying signatures...\r", size)
@@ -89,12 +91,12 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*re
 
 	annotations, err := o.AnnotationsMap()
 	if err != nil {
-		return make(map[*registry.Registry]map[*registry.Image]bool), err
+		return make(map[*registry.Registry]map[*image.Image]bool), err
 	}
 
 	hashAlgorithm, err := o.SignatureDigest.HashAlgorithm()
 	if err != nil {
-		return make(map[*registry.Registry]map[*registry.Image]bool), err
+		return make(map[*registry.Registry]map[*image.Image]bool), err
 	}
 
 	v := &verify.VerifyCommand{
@@ -130,10 +132,10 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*re
 		ExperimentalOCI11:            o.CommonVerifyOptions.ExperimentalOCI11,
 	}
 
-	m := make(map[*registry.Registry]map[*registry.Image]bool, 0)
+	m := make(map[*registry.Registry]map[*image.Image]bool, 0)
 	for r, elem := range vo.Data {
 		if elem == nil {
-			elem = make(map[*registry.Image]bool, 0)
+			elem = make(map[*image.Image]bool, 0)
 		}
 
 		// extend table for each registry
@@ -142,7 +144,7 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*re
 
 		for i, b := range elem {
 			// add row to overview table
-			ref, _ := i.String()
+			ref := i.String()
 			row := table.Row{sc.Value("index_import"), ref}
 
 			if b || vo.VerifyExisting {
@@ -153,7 +155,7 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*re
 				}
 				if r.PrefixSource {
 					old := name
-					name = registry.UpdateNameWithPrefixSource(i)
+					name, _ = image.UpdateNameWithPrefixSource(i)
 					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
 				}
 
@@ -184,7 +186,7 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*re
 						sc.Inc("index_import")
 						continue
 					default:
-						return make(map[*registry.Registry]map[*registry.Image]bool), err
+						return make(map[*registry.Registry]map[*image.Image]bool), err
 					}
 				}
 				elem[i] = false

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
@@ -84,13 +85,13 @@ func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 		sc.Inc("index_import_charts")
 	}
 
-	var seenImages []registry.Image = make([]registry.Image, 0)
+	var seenImages []image.Image = make([]image.Image, 0)
 	for c, imageMap := range io.ChartImageValuesMap {
 
 		// Images
 		for i := range imageMap {
 			if i.In(seenImages) {
-				ref, _ := i.String()
+				ref := i.String()
 				log.Printf("Already parsed '%s', skipping...\n", ref)
 				continue
 			}
@@ -104,13 +105,13 @@ func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 			}
 
 			// add row to overview table
-			ref, _ := i.String()
+			ref := i.String()
 			row := table.Row{sc.Value("index_import"), c.Name, c.Version, ref}
 
 			for _, r := range io.Registries {
 				if r.PrefixSource {
 					old := name
-					name = registry.UpdateNameWithPrefixSource(i)
+					name, _ = image.UpdateNameWithPrefixSource(i)
 					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
 				}
 
@@ -124,7 +125,7 @@ func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 				elem := m2[r]
 				if elem == nil {
 					// init map
-					elem = make(map[*registry.Image]bool, 0)
+					elem = make(map[*image.Image]bool, 0)
 					m2[r] = elem
 				}
 				b := io.All || !imageExistsInRegistry

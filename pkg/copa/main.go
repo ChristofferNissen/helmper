@@ -3,11 +3,13 @@ package copa
 import (
 	"context"
 	"fmt"
+
 	"log"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	myBar "github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/aquasecurity/trivy/pkg/fanal/types"
@@ -23,7 +25,7 @@ import (
 )
 
 type PatchOption struct {
-	Data map[*registry.Registry]map[*registry.Image]bool
+	Data map[*registry.Registry]map[*image.Image]bool
 
 	TarFolder    string
 	ReportFolder string
@@ -39,7 +41,7 @@ type PatchOption struct {
 	Architecture *string
 }
 
-func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Image]string, outFilePaths map[*registry.Image]string) error {
+func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*image.Image]string, outFilePaths map[*image.Image]string) error {
 	size := func() int {
 		size := 0
 		for _, m := range o.Data {
@@ -58,13 +60,12 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 
 	bar := myBar.New("Patching images...\r", size)
 
-	seenImages := []registry.Image{}
+	seenImages := []image.Image{}
 	for _, m := range o.Data {
 		for i := range m {
-			ref, _ := i.String()
+			ref := i.String()
 
 			if i.In(seenImages) {
-				ref, _ := i.String()
 				log.Printf("Already patched '%s', skipping...\n", ref)
 				continue
 			}
@@ -103,7 +104,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*registry.Imag
 
 				if r.PrefixSource {
 					old := name
-					name = registry.UpdateNameWithPrefixSource(i)
+					name, _ = image.UpdateNameWithPrefixSource(i)
 					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
 				}
 

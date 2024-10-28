@@ -4,12 +4,14 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/ChristofferNissen/helmper/pkg/image"
+
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"golang.org/x/sync/errgroup"
 )
 
 type ImportOption struct {
-	Data map[*Registry]map[*Image]bool
+	Data map[*Registry]map[*image.Image]bool
 
 	Architecture *string
 	All          bool

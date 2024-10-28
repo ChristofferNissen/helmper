@@ -2,9 +2,11 @@ package helm
 
 import (
 	"fmt"
+
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/util/ternary"
 	"github.com/distribution/reference"
 )
@@ -29,10 +31,10 @@ func ConditionMet(condition string, values map[string]any) bool {
 }
 
 // traverse helm chart values data structure
-func findImageReferencesAcc(data map[string]any, values map[string]any, useCustomValues bool, acc string) map[*registry.Image][]string {
-	res := make(map[*registry.Image][]string)
+func findImageReferencesAcc(data map[string]any, values map[string]any, useCustomValues bool, acc string) map[*image.Image][]string {
+	res := make(map[*image.Image][]string)
 
-	i := registry.Image{}
+	i := to.Ptr(image.Image{})
 	for k, v := range data {
 		switch v := v.(type) {
 
@@ -123,7 +125,7 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, useCusto
 			}
 
 			if found {
-				res[&i] = append(res[&i], fmt.Sprintf("%s.%s", acc, k))
+				res[i] = append(res[i], fmt.Sprintf("%s.%s", acc, k))
 			}
 
 		// nested yaml object
@@ -157,7 +159,7 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, useCusto
 	return res
 }
 
-func findImageReferences(data map[string]any, values map[string]any, useCustomValues bool) map[*registry.Image][]string {
+func findImageReferences(data map[string]any, values map[string]any, useCustomValues bool) map[*image.Image][]string {
 	return findImageReferencesAcc(data, values, useCustomValues, "")
 }
 

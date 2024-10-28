@@ -3,10 +3,12 @@ package cosign
 import (
 	"context"
 	"fmt"
+
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -22,7 +24,7 @@ import (
 )
 
 type SignOption struct {
-	Data map[*registry.Registry]map[*registry.Image]bool
+	Data map[*registry.Registry]map[*image.Image]bool
 
 	KeyRef            string
 	KeyRefPass        string
@@ -127,7 +129,7 @@ func (so SignOption) Run(ctx context.Context) error {
 				}
 				if r.PrefixSource {
 					old := name
-					name = registry.UpdateNameWithPrefixSource(i)
+					name, _ = image.UpdateNameWithPrefixSource(i)
 					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
 				}
 				url, _ := strings.CutPrefix(r.URL, "oci://")

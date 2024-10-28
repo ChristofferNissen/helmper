@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"go.uber.org/fx"
 	"helm.sh/helm/v3/pkg/chart"
@@ -77,15 +78,15 @@ type chartInfo struct {
 type imageInfo struct {
 	available  bool
 	chart      *Chart
-	image      *registry.Image
+	image      *image.Image
 	collection *[]string
 }
 
-type ChartData map[Chart]map[*registry.Image][]string
+type ChartData map[Chart]map[*image.Image][]string
 
 type RegistryChartStatus map[*registry.Registry]map[*Chart]bool
 
-type RegistryImageStatus map[*registry.Registry]map[*registry.Image]bool
+type RegistryImageStatus map[*registry.Registry]map[*image.Image]bool
 
 type Mirror struct {
 	Registry string `yaml:"registry"`

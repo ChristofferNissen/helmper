@@ -11,6 +11,7 @@ import (
 	mySign "github.com/ChristofferNissen/helmper/pkg/cosign"
 	"github.com/ChristofferNissen/helmper/pkg/flow"
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
@@ -90,7 +91,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 		importConfig bootstrap.ImportConfigSection   = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
 		mirrorConfig []bootstrap.MirrorConfigSection = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
 		registries   []*registry.Registry            = state.GetValue[[]*registry.Registry](viper, "registries")
-		images       []registry.Image                = state.GetValue[[]registry.Image](viper, "images")
+		images       []image.Image                   = state.GetValue[[]image.Image](viper, "images")
 		charts       *helm.ChartCollection           = to.Ptr(state.GetValue[helm.ChartCollection](viper, "input"))
 		opts         []helm.Option                   = []helm.Option{
 			helm.K8SVersion(k8sVersion),

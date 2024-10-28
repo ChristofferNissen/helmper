@@ -4,19 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/copa"
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	myBar "github.com/ChristofferNissen/helmper/pkg/util/bar"
 )
 
 type SpsOption struct {
-	Data          map[*registry.Registry]map[*registry.Image]bool
+	Data          map[*registry.Registry]map[*image.Image]bool
 	All           bool
 	Architecture  *string
 	ReportsFolder string
@@ -31,7 +33,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 	// Count of images to import across registries
 	lenImages := func() int {
 		c := 0
-		seen := make([]registry.Image, 0)
+		seen := make([]image.Image, 0)
 		for _, m := range o.Data {
 			for i, b := range m {
 				if b {
@@ -52,8 +54,8 @@ func (o SpsOption) Run(ctx context.Context) error {
 
 	// Trivy scan
 	bar := myBar.New("Scanning images before patching...\r", lenImages)
-	prescan := func() (map[*registry.Registry]map[*registry.Image]bool, map[*registry.Registry]map[*registry.Image]bool, error) {
-		imgs := make([]*registry.Image, 0)
+	prescan := func() (map[*registry.Registry]map[*image.Image]bool, map[*registry.Registry]map[*image.Image]bool, error) {
+		imgs := make([]*image.Image, 0)
 		for _, m := range o.Data {
 			for i, b := range m {
 				if b {
@@ -65,23 +67,19 @@ func (o SpsOption) Run(ctx context.Context) error {
 			}
 		}
 
-		patch := make([]*registry.Image, 0)
-		push := make([]*registry.Image, 0)
+		patch := make([]*image.Image, 0)
+		push := make([]*image.Image, 0)
 		for _, i := range imgs {
 			if i.Patch != nil {
 				if !*i.Patch {
-					ref, _ := i.String()
+					ref := i.String()
 					slog.Debug("image should not be patched", slog.String("image", ref))
-					// pushRegistry[i] = true
 					push = append(push, i)
 					continue
 				}
 			}
 
-			ref, err := i.String()
-			if err != nil {
-				return nil, nil, err
-			}
+			ref := i.String()
 			r, err := o.ScanOption.Scan(ref)
 			if err != nil {
 				return nil, nil, err
@@ -122,17 +120,17 @@ func (o SpsOption) Run(ctx context.Context) error {
 		}
 
 		// filter images
-		patchM := make(map[*registry.Registry]map[*registry.Image]bool, 0)
-		pushM := make(map[*registry.Registry]map[*registry.Image]bool, 0)
+		patchM := make(map[*registry.Registry]map[*image.Image]bool, 0)
+		pushM := make(map[*registry.Registry]map[*image.Image]bool, 0)
 		for r, elem := range o.Data {
 			patchRegistry := patchM[r]
 			if patchRegistry == nil {
-				patchRegistry = make(map[*registry.Image]bool, 0)
+				patchRegistry = make(map[*image.Image]bool, 0)
 				patchM[r] = patchRegistry
 			}
 			pushRegistry := pushM[r]
 			if pushRegistry == nil {
-				pushRegistry = make(map[*registry.Image]bool, 0)
+				pushRegistry = make(map[*image.Image]bool, 0)
 				pushM[r] = pushRegistry
 			}
 
@@ -162,9 +160,9 @@ func (o SpsOption) Run(ctx context.Context) error {
 	_ = bar.Finish()
 
 	// Determine fully qualified output path for images
-	reportFilePaths := make(map[*registry.Image]string)
-	reportPostFilePaths := make(map[*registry.Image]string)
-	outFilePaths := make(map[*registry.Image]string)
+	reportFilePaths := make(map[*image.Image]string)
+	reportPostFilePaths := make(map[*image.Image]string)
+	outFilePaths := make(map[*image.Image]string)
 	for _, elem := range o.Data {
 		for i, b := range elem {
 			if b {
@@ -227,11 +225,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 		for _, m := range o.Data {
 			for i, b := range m {
 				if b {
-
-					ref, err := i.String()
-					if err != nil {
-						return err
-					}
+					ref := i.String()
 
 					slog.Default().With(slog.String("image", ref))
 
