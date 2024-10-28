@@ -45,8 +45,6 @@ registries:
 
 *or* use a cloud provider:
 
-<!-- TODO: Implement this feature. Optionally specify the part inside the registry you wish to store the OCI Artifacts -->
-
 ```yaml
 ...
 registries:

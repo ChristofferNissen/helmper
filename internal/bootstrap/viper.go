@@ -133,7 +133,7 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 	viper.SetDefault("all", false)
 	viper.SetDefault("verbose", false)
 	viper.SetDefault("update", false)
-	viper.SetDefault("k8s_version", "1.27.16")
+	viper.SetDefault("k8s_version", "1.31.1")
 
 	// Unmarshal charts config section
 	inputConf := helm.ChartCollection{}

@@ -65,7 +65,7 @@ Remember to change the user
 :::
 
 ```yaml title="$HOME/.config/helmper/helmper.yaml"
-k8s_version: 1.27.16
+k8s_version: 1.31.1
 charts:
 - name: prometheus
   version: 25.8.0
@@ -75,7 +75,7 @@ charts:
     url: https://prometheus-community.github.io/helm-charts/
 registries:
 - name: registry # `Helmper` picks up authentication from the environment automatically.
-  url: 0.0.0.0:5000
+  url: oci://0.0.0.0:5000
   insecure: true
   plainHTTP: true
 import:

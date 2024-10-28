@@ -35,7 +35,7 @@ sudo mv helmper-linux-amd64 /usr/local/bin/helmper
 Create the configuration file
 
 ```yaml title="$HOME/.config/helmper/helmper.yaml"
-k8s_version: 1.27.16
+k8s_version: 1.31.1
 import:
   enabled: true
 charts:
@@ -47,7 +47,7 @@ charts:
     url: https://prometheus-community.github.io/helm-charts/
 registries:
 - name: registry
-  url: 0.0.0.0:5000
+  url: oci://0.0.0.0:5000
   insecure: true
   plainHTTP: true
 ```
