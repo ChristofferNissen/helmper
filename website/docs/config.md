@@ -20,7 +20,7 @@ Helmper supports a single flag `--f` to specify the configuration file. When usi
 ## Example configuration
 
 ```yaml title="Example config"
-k8s_version: 1.27.16
+k8s_version: 1.31.1
 verbose: true
 update: false
 all: false
@@ -117,7 +117,7 @@ registries:
 
 | Key | Type  | Default | Required | Description |
 |-|-|-|-|-|
-| `k8s_version` | string       | "1.27.16" | false | Some charts use images eliciting their tag based on the kube-apiserver version. Therefore, tell Helmper which version you run to import the correct version. |
+| `k8s_version` | string       | "1.31.1" | false | Some charts use images eliciting their tag based on the kube-apiserver version. Therefore, tell Helmper which version you run to import the correct version. |
 | `verbose`     | bool         | false    |  false | Toggle verbose output |
 | `update`      | bool         | false    |  false | Toggle update to latest chart version for each specified chart in `charts` |
 | `all`         | bool         | false    |  false | Toggle import of all images regardless if they exist in the registries defined in `registries` |
@@ -144,6 +144,7 @@ registries:
 | `import.cosign.enabled`           | bool   | false   | false | Enables signing with Cosign |
 | `import.cosign.keyRef`            | string |         | true | Path to Cosign private key  |
 | `import.cosign.keyRefPass`        | string |         | true | Cosign private key password |
+| `import.cosign.pubKeyRef`         | string |         | false | Path to Cosign public key  |
 | `import.cosign.allowInsecure`     | bool   | false   | false | Disable TLS verification    |
 | `import.cosign.allowHTTPRegistry` | bool   | false   | false | Allow HTTP instead of HTTPS |
 | `charts`      | list(object) | [] | false | Defines which charts to target |
@@ -178,6 +179,7 @@ registries:
 | `registries[].url`       | string |         | true | URL to registry                     |
 | `registries[].insecure`  | bool   | false   | false | Disable SSL certificate validation  |
 | `registries[].plainHTTP` | bool   | false   | false | Enable use of HTTP instead of HTTPS |
+| `registries[].sourcePrefix` | bool   | false   | false | Append source registry name to source image repository |
 | `mirrors` | list(object)   | []   | false | Enable use of registry mirrors |
 | `mirrors.registry` | string   | "" | true | Registry to configure mirror for fx docker.io |
 | `mirrors.mirror` | string   | "" | true | Registry Mirror URL |
@@ -264,8 +266,14 @@ Read more in the official docs by [moby/buildkit](https://github.com/moby/buildk
 
 ### keyRef
 
-keyRef as support for local files, through remote protocols `<some provider>://<some key>` or environment variables `env://[ENV_VAR]`.
+`keyRef` as support for local files, through remote protocols `<some provider>://<some key>` or environment variables `env://[ENV_VAR]`.
 Read more about all options in the [Cosign Docs](https://docs.sigstore.dev/signing/signing_with_containers/#sign-with-a-key-pair-stored-elsewhere).
+
+### pubKeyRef
+
+`pubKeyRef` defines the path to the public key used to verify chart and image signatures.
+`pubKeyRef` can be omitted when using remote protocol for keyRef as remote KMS protocols usually works with key-pairs.
+If `keyRef` is a path to a local file, and `pubKeyRef` is not define, pubKeyRef will be set to the same path as `keyRef`, with `.pub` instead of `.key`, fx `/home/you/keypair/cosign.key` becomes `/home/you/keypair/cosign.pub`.
 
 #### local
 

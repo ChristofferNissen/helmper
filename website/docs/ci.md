@@ -45,7 +45,7 @@ steps:
     targetType: 'inline'
     script: |
       cat <<EOF >>helmper.config
-      k8s_version: 1.27.16
+      k8s_version: 1.31.1
       import:
         enabled: true
       charts:

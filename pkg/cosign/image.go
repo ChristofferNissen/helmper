@@ -1,16 +1,18 @@
 package cosign
 
 import (
+	"context"
 	"fmt"
+
 	"log/slog"
-	"os"
+	"strings"
 	"time"
 
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
 
@@ -22,8 +24,7 @@ import (
 )
 
 type SignOption struct {
-	Imgs       []*registry.Image
-	Registries []registry.Registry
+	Data map[*registry.Registry]map[*image.Image]bool
 
 	KeyRef            string
 	KeyRefPass        string
@@ -31,32 +32,29 @@ type SignOption struct {
 	AllowHTTPRegistry bool
 }
 
-// cosignAdapter wraps the cosign CLIs native code
-func (so SignOption) Run() error {
+// SignOption wraps the cosign CLIs native code
+func (so SignOption) Run(ctx context.Context) error {
+
+	// count number of images
+	size := func() int {
+		i := 0
+		for _, m := range so.Data {
+			for _, b := range m {
+				if b {
+					i++
+				}
+			}
+		}
+		return i
+	}()
 
 	// Return early i no images to sign, or no registries to upload signature to
-	if !(len(so.Imgs) > 0) || !(len(so.Registries) >= 0) {
+	if !(size > 0) {
 		slog.Debug("No images or registries specified. Skipping signing images...")
 		return nil
 	}
 
-	bar := progressbar.NewOptions(len(so.Imgs), progressbar.OptionSetWriter(ansi.NewAnsiStdout()), // "github.com/k0kubun/go-ansi"
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowCount(),
-		progressbar.OptionOnCompletion(func() {
-			fmt.Fprint(os.Stderr, "\n")
-		}),
-		progressbar.OptionSetWidth(15),
-		progressbar.OptionSetRenderBlankState(true),
-		progressbar.OptionSetDescription("Signing images...\r"),
-		progressbar.OptionShowDescriptionAtLineEnd(),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}))
+	bar := bar.New("Signing images...\r", size)
 
 	// Sign with cosign
 	timeout := 2 * time.Minute
@@ -117,12 +115,28 @@ func (so SignOption) Run() error {
 		IssueCertificateForExistingKey: signOpts.IssueCertificate,
 	}
 
-	for _, r := range so.Registries {
+	for r, m := range so.Data {
 		refs := []string{}
-		for _, i := range so.Imgs {
-			name, _ := i.ImageName()
-			ref := fmt.Sprintf("%s/%s@%s", r.URL, name, i.Digest)
-			refs = append(refs, ref)
+		for i, b := range m {
+			if b {
+				name, _ := i.ImageName()
+				if i.Digest == "" {
+					d, err := r.Fetch(ctx, name, i.Tag)
+					if err != nil {
+						return err
+					}
+					i.Digest = d.Digest.String()
+				}
+				if r.PrefixSource {
+					old := name
+					name, _ = image.UpdateNameWithPrefixSource(i)
+					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
+				}
+				url, _ := strings.CutPrefix(r.URL, "oci://")
+				url = strings.Replace(url, "0.0.0.0", "localhost", 1)
+				ref := fmt.Sprintf("%s/%s@%s", url, name, i.Digest)
+				refs = append(refs, ref)
+			}
 		}
 		if err := sign.SignCmd(&ro, ko, signOpts, refs); err != nil {
 			return err

@@ -1,4 +1,4 @@
-k8s_version: 1.27.16
+k8s_version: 1.31.1
 verbose: true
 update: false
 all: false
@@ -33,6 +33,7 @@ import:
         clean: true
   cosign:
     enabled: true
+    verifyExisting: false
     keyRef: /workspace/.devcontainer/cosign.key
     KeyRefPass: ""
     allowInsecure: true
@@ -90,6 +91,11 @@ images:
   patch: false
 registries:
 - name: registry
-  url: 0.0.0.0:5000
+  url: oci://0.0.0.0:5000
   insecure: true
   plainHTTP: true
+- name: registry
+  url: oci://0.0.0.0:5001
+  insecure: true
+  plainHTTP: true
+  sourcePrefix: true

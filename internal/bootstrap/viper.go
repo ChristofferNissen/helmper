@@ -3,14 +3,19 @@ package bootstrap
 import (
 	"log/slog"
 	"os"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+	"helm.sh/helm/v3/pkg/repo"
 )
 
 type ImportConfigSection struct {
@@ -45,8 +50,10 @@ type ImportConfigSection struct {
 		} `yaml:"copacetic"`
 		Cosign struct {
 			Enabled           bool    `yaml:"enabled"`
+			VerifyExisting    bool    `yaml:"verifyExisting"`
 			KeyRef            string  `yaml:"keyRef"`
 			KeyRefPass        *string `yaml:"keyRefPass"`
+			PubKeyRef         *string `yaml:"pubKeyRef"`
 			AllowHTTPRegistry bool    `yaml:"allowHTTPRegistry"`
 			AllowInsecure     bool    `yaml:"allowInsecure"`
 		} `yaml:"cosign"`
@@ -59,10 +66,11 @@ type imageConfigSection struct {
 }
 
 type registryConfigSection struct {
-	Name      string `yaml:"name"`
-	URL       string `yaml:"url"`
-	Insecure  bool   `yaml:"insecure"`
-	PlainHTTP bool   `yaml:"plainHTTP"`
+	Name         string `yaml:"name"`
+	URL          string `yaml:"url"`
+	Insecure     bool   `yaml:"insecure"`
+	PlainHTTP    bool   `yaml:"plainHTTP"`
+	SourcePrefix bool   `yaml:"sourcePrefix"`
 }
 
 type ParserConfigSection struct {
@@ -75,6 +83,17 @@ type MirrorConfigSection struct {
 	Mirror   string `yaml:"mirror"`
 }
 
+func ConvertToHelmMirrors(configs []MirrorConfigSection) []helm.Mirror {
+	var mirrors []helm.Mirror
+	for _, config := range configs {
+		mirrors = append(mirrors, helm.Mirror{
+			Registry: config.Registry,
+			Mirror:   config.Mirror,
+		})
+	}
+	return mirrors
+}
+
 type config struct {
 	Parser       ParserConfigSection     `yaml:"parser"`
 	ImportConfig ImportConfigSection     `yaml:"import"`
@@ -84,7 +103,7 @@ type config struct {
 }
 
 // Reads flags from user and sets state accordingly
-func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
+func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 	viper := viper.New()
 
 	pflag.String("f", "unused", "path to configuration file")
@@ -114,12 +133,19 @@ func LoadViperConfiguration(_ []string) (*viper.Viper, error) {
 	viper.SetDefault("all", false)
 	viper.SetDefault("verbose", false)
 	viper.SetDefault("update", false)
-	viper.SetDefault("k8s_version", "1.27.16")
+	viper.SetDefault("k8s_version", "1.31.1")
 
 	// Unmarshal charts config section
 	inputConf := helm.ChartCollection{}
 	if err := viper.Unmarshal(&inputConf); err != nil {
 		return nil, err
+	}
+
+	for _, c := range inputConf.Charts {
+		c.RegistryClient = rc
+		c.IndexFileLoader = &helm.FunctionLoader{
+			LoadFunc: repo.LoadIndexFile,
+		}
 	}
 	viper.Set("input", inputConf)
 
@@ -151,6 +177,14 @@ import:
 		v := os.Getenv("COSIGN_PASSWORD")
 		slog.Info("KeyRefPass is nil, using value of COSIGN_PASSWORD environment variable")
 		importConf.Import.Cosign.KeyRefPass = &v
+	}
+
+	if importConf.Import.Cosign.Enabled && importConf.Import.Cosign.PubKeyRef == nil {
+		keyRef := importConf.Import.Cosign.KeyRef
+		if strings.HasSuffix(keyRef, ".key") {
+			keyRef = strings.Replace(keyRef, ".key", ".pub", 1)
+		}
+		importConf.Import.Cosign.PubKeyRef = to.Ptr(keyRef)
 	}
 
 	if importConf.Import.Copacetic.Enabled {
@@ -201,22 +235,23 @@ copacetic:
 
 	viper.Set("importConfig", importConf)
 
-	rs := []registry.Registry{}
+	rs := []*registry.Registry{}
 	for _, r := range conf.Registries {
 		rs = append(rs,
-			registry.Registry{
-				Name:      r.Name,
-				URL:       r.URL,
-				PlainHTTP: r.PlainHTTP,
-				Insecure:  r.Insecure,
-			})
+			to.Ptr(registry.Registry{
+				Name:         r.Name,
+				URL:          r.URL,
+				PlainHTTP:    r.PlainHTTP,
+				Insecure:     r.Insecure,
+				PrefixSource: r.SourcePrefix,
+			}))
 	}
 	state.SetValue(viper, "registries", rs)
 
 	// TODO. Concert config.Images to Image{}
-	is := []registry.Image{}
+	is := []image.Image{}
 	for _, i := range conf.Images {
-		img, err := registry.RefToImage(i.Ref)
+		img, err := image.RefToImage(i.Ref)
 		if err != nil {
 			return viper, err
 		}
@@ -231,3 +266,8 @@ copacetic:
 
 	return viper, nil
 }
+
+// Viper module for Fx
+var ViperModule = fx.Provide(
+	LoadViperConfiguration,
+)

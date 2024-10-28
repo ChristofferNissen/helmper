@@ -2,9 +2,11 @@ package helm
 
 import (
 	"fmt"
+
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/util/ternary"
 	"github.com/distribution/reference"
 )
@@ -29,10 +31,10 @@ func ConditionMet(condition string, values map[string]any) bool {
 }
 
 // traverse helm chart values data structure
-func findImageReferencesAcc(data map[string]any, values map[string]any, useCustomValues bool, acc string) map[*registry.Image][]string {
-	res := make(map[*registry.Image][]string)
+func findImageReferencesAcc(data map[string]any, values map[string]any, useCustomValues bool, acc string) map[*image.Image][]string {
+	res := make(map[*image.Image][]string)
 
-	i := registry.Image{}
+	i := to.Ptr(image.Image{})
 	for k, v := range data {
 		switch v := v.(type) {
 
@@ -123,7 +125,7 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, useCusto
 			}
 
 			if found {
-				res[&i] = append(res[&i], fmt.Sprintf("%s.%s", acc, k))
+				res[i] = append(res[i], fmt.Sprintf("%s.%s", acc, k))
 			}
 
 		// nested yaml object
@@ -157,24 +159,17 @@ func findImageReferencesAcc(data map[string]any, values map[string]any, useCusto
 	return res
 }
 
-func findImageReferences(data map[string]any, values map[string]any, useCustomValues bool) map[*registry.Image][]string {
+func findImageReferences(data map[string]any, values map[string]any, useCustomValues bool) map[*image.Image][]string {
 	return findImageReferencesAcc(data, values, useCustomValues, "")
 }
 
 // traverse helm chart values data structure
-func replaceImageReferences(data map[string]any, reg string) {
+func replaceImageReferences(data map[string]any, reg string, prefixSource bool) {
 
 	// For images we do not use the prefix and suffix of the registry
 	reg, _ = strings.CutPrefix(reg, "oci://")
-	reg, _ = strings.CutSuffix(reg, "/charts")
 
-	_, ok := data["registry"].(string)
-	if ok {
-		data["registry"] = reg
-		return
-	}
-
-	f := func(val string) string {
+	convert := func(val string) string {
 		ref, err := reference.ParseAnyReference(val)
 		if err != nil {
 			return ""
@@ -182,8 +177,14 @@ func replaceImageReferences(data map[string]any, reg string) {
 		r := ref.(reference.Named)
 		dom := reference.Domain(r)
 
-		containsDomain := strings.Contains(val, dom)
-		if containsDomain {
+		source := strings.Split(dom, ":")[0]
+		source = strings.Split(source, ".")[0]
+		source = "/" + source
+		if prefixSource {
+			reg = reg + source
+		}
+
+		if strings.Contains(val, dom) {
 			return strings.Replace(ref.String(), dom, reg, 1)
 		} else {
 			if strings.HasPrefix(ref.String(), "docker.io/library/") {
@@ -193,15 +194,31 @@ func replaceImageReferences(data map[string]any, reg string) {
 		}
 	}
 
+	old, ok := data["registry"].(string)
+	if ok {
+		data["registry"] = reg
+		if prefixSource {
+			repository, ok := data["repository"].(string)
+			if ok {
+				source := strings.Split(old, ":")[0]
+				source = strings.Split(source, ".")[0]
+				old = source + "/" + repository
+
+				data["repository"] = old
+			}
+		}
+		return
+	}
+
 	image, ok := data["image"].(string)
 	if ok {
-		data["image"] = f(image)
+		data["image"] = convert(image)
 		return
 	}
 
 	repository, ok := data["repository"].(string)
 	if ok {
-		data["repository"] = f(repository)
+		data["repository"] = convert(repository)
 		return
 	}
 
@@ -209,7 +226,7 @@ func replaceImageReferences(data map[string]any, reg string) {
 		switch v.(type) {
 		// nested yaml object
 		case map[string]any:
-			replaceImageReferences(data[k].(map[string]any), reg)
+			replaceImageReferences(data[k].(map[string]any), reg, prefixSource)
 		}
 	}
 }
