@@ -152,11 +152,11 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 			row := rows[c.Name]
 			if row == nil {
 				row = to.Ptr(table.Row{sc.Value("index_sign_charts"), fmt.Sprintf("charts/%s", c.Name), c.Version})
+				rows[c.Name] = row
 				keys = append(keys, c.Name)
 			}
 
 			if b || vo.VerifyExisting {
-
 				name := fmt.Sprintf("%s/%s", chartutil.ChartsDir, c.Name)
 				d, err := r.Fetch(ctx, name, c.Version)
 				if err != nil {
@@ -180,23 +180,17 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 						fallthrough
 					case isImageWithoutSignatureErr(err):
 						elem[c] = true
-						_ = bar.Add(1)
-						*row = append(*row, terminal.StatusEmoji(false))
-						sc.Inc("index_sign_charts")
-						continue
 					default:
 						return make(map[*registry.Registry]map[*helm.Chart]bool), err
 					}
 				}
 
 				elem[c] = false
-				*row = append(*row, terminal.StatusEmoji(true))
-
+				*row = append(*row, terminal.StatusEmoji(!elem[c]))
 				sc.Inc("index_sign_charts")
 				_ = bar.Add(1)
 			}
 
-			rows[c.Name] = row
 		}
 
 		if len(elem) > 0 {
@@ -206,7 +200,10 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 
 	// Output table
 	for _, k := range keys {
-		vo.Report.AddRow(*rows[k])
+		valP := rows[k]
+		if valP != nil {
+			vo.Report.AddRow(*valP)
+		}
 	}
 	vo.Report.AddHeader(header)
 

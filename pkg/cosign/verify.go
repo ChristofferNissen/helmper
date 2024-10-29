@@ -154,18 +154,21 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 			row := rows[ref]
 			if row == nil {
 				row = to.Ptr(table.Row{sc.Value("index_import"), ref})
+				rows[ref] = row
 				keys = append(keys, ref)
 			}
 
 			if b || vo.VerifyExisting {
-
 				name, err := i.ImageName()
 				if err != nil {
 					return nil, err
 				}
 				if r.PrefixSource {
 					old := name
-					name, _ = image.UpdateNameWithPrefixSource(i)
+					name, err = image.UpdateNameWithPrefixSource(i)
+					if err != nil {
+						return nil, err
+					}
 					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
 				}
 
@@ -195,23 +198,16 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 						fallthrough
 					case isImageWithoutSignatureErr(err):
 						elem[i] = true
-						_ = bar.Add(1)
-						*row = append(*row, terminal.StatusEmoji(false))
-						sc.Inc("index_import")
-						continue
 					default:
 						return make(map[*registry.Registry]map[*image.Image]bool), err
 					}
 				}
 
 				elem[i] = false
-				*row = append(*row, terminal.StatusEmoji(true))
-
+				*row = append(*row, terminal.StatusEmoji(!elem[i]))
 				sc.Inc("index_import")
 				_ = bar.Add(1)
 			}
-
-			rows[ref] = row
 
 		}
 		m[r] = elem
@@ -219,7 +215,10 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 
 	// Output table
 	for _, k := range keys {
-		vo.Report.AddRow(*rows[k])
+		valP := rows[k]
+		if valP != nil {
+			vo.Report.AddRow(*valP)
+		}
 	}
 	vo.Report.AddHeader(header)
 
