@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/report"
@@ -132,6 +133,9 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 		ExperimentalOCI11:            o.CommonVerifyOptions.ExperimentalOCI11,
 	}
 
+	keys := make([]string, 0)
+	rows := make(map[string]*table.Row)
+
 	m := make(map[*registry.Registry]map[*helm.Chart]bool, 0)
 	for r, elem := range vo.Data {
 		if elem == nil {
@@ -143,7 +147,14 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 		header = append(header, rn)
 
 		for c, b := range elem {
-			row := table.Row{sc.Value("index_sign_charts"), fmt.Sprintf("charts/%s", c.Name), c.Version}
+
+			// Check for existing row for Chart Name
+			row := rows[c.Name]
+			if row == nil {
+				row = to.Ptr(table.Row{sc.Value("index_sign_charts"), fmt.Sprintf("charts/%s", c.Name), c.Version})
+				keys = append(keys, c.Name)
+			}
+
 			if b || vo.VerifyExisting {
 
 				name := fmt.Sprintf("%s/%s", chartutil.ChartsDir, c.Name)
@@ -160,31 +171,43 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 					return err
 				})
 				slog.Debug(out)
+
 				if err != nil {
-					switch err.Error() {
-					case "no signatures found":
+					switch {
+					case isNoCertificateFoundOnSignatureErr(err):
+						fallthrough
+					case isNoMatchingSignatureErr(err):
+						fallthrough
+					case isImageWithoutSignatureErr(err):
 						elem[c] = true
-						row = append(row, terminal.StatusEmoji(false))
-						vo.Report.AddRow(row)
-						sc.Inc("index_sign_charts")
 						_ = bar.Add(1)
+						*row = append(*row, terminal.StatusEmoji(false))
+						sc.Inc("index_sign_charts")
 						continue
 					default:
 						return make(map[*registry.Registry]map[*helm.Chart]bool), err
 					}
 				}
+
 				elem[c] = false
-				row = append(row, terminal.StatusEmoji(true))
-				vo.Report.AddRow(row)
+				*row = append(*row, terminal.StatusEmoji(true))
+
 				sc.Inc("index_sign_charts")
 				_ = bar.Add(1)
 			}
+
+			rows[c.Name] = row
 		}
+
 		if len(elem) > 0 {
 			m[r] = elem
 		}
 	}
 
+	// Output table
+	for _, k := range keys {
+		vo.Report.AddRow(*rows[k])
+	}
 	vo.Report.AddHeader(header)
 
 	_ = bar.Finish()

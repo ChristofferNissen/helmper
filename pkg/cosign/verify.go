@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/report"
@@ -132,6 +133,9 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 		ExperimentalOCI11:            o.CommonVerifyOptions.ExperimentalOCI11,
 	}
 
+	keys := make([]string, 0)
+	rows := make(map[string]*table.Row)
+
 	m := make(map[*registry.Registry]map[*image.Image]bool, 0)
 	for r, elem := range vo.Data {
 		if elem == nil {
@@ -145,7 +149,13 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 		for i, b := range elem {
 			// add row to overview table
 			ref := i.String()
-			row := table.Row{sc.Value("index_import"), ref}
+
+			// Check for existing row for Chart Name
+			row := rows[ref]
+			if row == nil {
+				row = to.Ptr(table.Row{sc.Value("index_import"), ref})
+				keys = append(keys, ref)
+			}
 
 			if b || vo.VerifyExisting {
 
@@ -176,30 +186,41 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 					return v.Exec(ctx, []string{s})
 				})
 				slog.Debug(out)
+
 				if err != nil {
-					switch err.Error() {
-					case "no signatures found":
+					switch {
+					case isNoCertificateFoundOnSignatureErr(err):
+						fallthrough
+					case isNoMatchingSignatureErr(err):
+						fallthrough
+					case isImageWithoutSignatureErr(err):
 						elem[i] = true
 						_ = bar.Add(1)
-						row = append(row, terminal.StatusEmoji(false))
-						vo.Report.AddRow(row)
+						*row = append(*row, terminal.StatusEmoji(false))
 						sc.Inc("index_import")
 						continue
 					default:
 						return make(map[*registry.Registry]map[*image.Image]bool), err
 					}
 				}
+
 				elem[i] = false
-				_ = bar.Add(1)
-				row = append(row, terminal.StatusEmoji(true))
-				vo.Report.AddRow(row)
+				*row = append(*row, terminal.StatusEmoji(true))
+
 				sc.Inc("index_import")
+				_ = bar.Add(1)
 			}
+
+			rows[ref] = row
 
 		}
 		m[r] = elem
 	}
 
+	// Output table
+	for _, k := range keys {
+		vo.Report.AddRow(*rows[k])
+	}
 	vo.Report.AddHeader(header)
 
 	_ = bar.Finish()
