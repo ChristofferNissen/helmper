@@ -174,7 +174,7 @@ func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
 			}
 
 			if len(ms) > 0 {
-				i.Registry = ms[0].Mirror
+				_ = i.ReplaceRegistry(ms[0].Mirror)
 			}
 		}
 	}

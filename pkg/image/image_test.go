@@ -262,3 +262,34 @@ func TestIn_NullCases(t *testing.T) {
 	resultP := img.InP(nil)
 	assert.False(t, resultP, "Expected false for nil images slice")
 }
+
+func TestReplaceRegistry(t *testing.T) {
+	tests := []struct {
+		img            Image
+		newRegistry    string
+		expectedString string
+	}{
+		{
+			Image{Registry: "docker.io", Repository: "library/hello-world", Tag: "latest"},
+			"quay.io",
+			"quay.io/library/hello-world:latest",
+		},
+		{
+			Image{Registry: "gcr.io", Repository: "k8s-artifacts-prod/gce", Tag: "v1.0.0"},
+			"eu.gcr.io",
+			"eu.gcr.io/k8s-artifacts-prod/gce:v1.0.0",
+		},
+		{
+			Image{Registry: "docker.io", Repository: "library/busybox", Tag: "1.31"},
+			"registry.hub.docker.com",
+			"registry.hub.docker.com/library/busybox:1.31",
+		},
+	}
+
+	for _, tt := range tests {
+		result := tt.img.ReplaceRegistry(tt.newRegistry)
+		assert.Equal(t, tt.expectedString, result)
+		assert.Equal(t, tt.newRegistry, tt.img.Registry)
+		assert.Equal(t, result, *tt.img.parsedRef)
+	}
+}

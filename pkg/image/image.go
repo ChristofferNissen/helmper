@@ -194,3 +194,9 @@ func (i *Image) InP(s []*Image) bool {
 	}
 	return false
 }
+
+func (i *Image) ReplaceRegistry(new string) string {
+	i.Registry = new
+	i.parsedRef = nil
+	return i.String()
+}
