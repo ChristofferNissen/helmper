@@ -142,6 +142,11 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 	}
 
 	for _, c := range inputConf.Charts {
+		rc, _ = helm.NewRegistryClient(c.PlainHTTP, false)
+		if strings.HasPrefix(c.Repo.URL, "oci://") {
+			rc = helm.NewOCIRegistryClient(rc, c.PlainHTTP)
+		}
+
 		c.RegistryClient = rc
 		c.IndexFileLoader = &helm.FunctionLoader{
 			LoadFunc: repo.LoadIndexFile,

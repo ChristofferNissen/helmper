@@ -201,9 +201,10 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 					default:
 						return make(map[*registry.Registry]map[*image.Image]bool), err
 					}
+				} else {
+					elem[i] = false
 				}
 
-				elem[i] = false
 				*row = append(*row, terminal.StatusEmoji(!elem[i]))
 				sc.Inc("index_import")
 				_ = bar.Add(1)

@@ -183,9 +183,10 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 					default:
 						return make(map[*registry.Registry]map[*helm.Chart]bool), err
 					}
+				} else {
+					elem[c] = false
 				}
 
-				elem[c] = false
 				*row = append(*row, terminal.StatusEmoji(!elem[c]))
 				sc.Inc("index_sign_charts")
 				_ = bar.Add(1)
