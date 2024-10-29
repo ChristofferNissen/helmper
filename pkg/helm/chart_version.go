@@ -9,10 +9,6 @@ import (
 	"golang.org/x/xerrors"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/repo"
-	"oras.land/oras-go/v2/registry/remote"
-	"oras.land/oras-go/v2/registry/remote/auth"
-	"oras.land/oras-go/v2/registry/remote/credentials"
-	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 func VersionsInRange(r semver.Range, c Chart) ([]string, error) {
@@ -46,7 +42,6 @@ func VersionsInRange(r semver.Range, c Chart) ([]string, error) {
 }
 
 func (c Chart) ResolveVersions(settings *cli.EnvSettings) ([]string, error) {
-	// prefixV := strings.Contains(c.Version, "v")
 	version := strings.ReplaceAll(c.Version, "v", "")
 	r, err := semver.ParseRange(version)
 	if err != nil {
@@ -55,9 +50,36 @@ func (c Chart) ResolveVersions(settings *cli.EnvSettings) ([]string, error) {
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
-		versionsInRange, err := c.RegistryClient.Tags(url)
+		tags, err := c.RegistryClient.Tags(url)
 		if err != nil {
 			return nil, err
+		}
+
+		vs := []semver.Version{}
+		for _, t := range tags {
+			s, err := semver.ParseTolerant(t)
+			if err != nil {
+				// non semver tag
+				continue
+			}
+			vs = append(vs, s)
+		}
+
+		semver.Sort(vs)
+
+		prefixV := strings.Contains(c.Version, "v")
+		versionsInRange := []string{}
+		for _, v := range vs {
+			if len(v.Pre) > 0 {
+				continue
+			}
+			if r(v) {
+				s := v.String()
+				if prefixV {
+					s = "v" + s
+				}
+				versionsInRange = append(versionsInRange, s)
+			}
 		}
 		return versionsInRange, nil
 	}
@@ -133,23 +155,6 @@ func (c Chart) LatestVersion(settings *cli.EnvSettings) (string, error) {
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
-		repo, err := remote.NewRepository(url)
-		if err != nil {
-			return "", err
-		}
-		repo.PlainHTTP = c.PlainHTTP
-
-		storeOpts := credentials.StoreOptions{}
-		credStore, err := credentials.NewStoreFromDocker(storeOpts)
-		if err != nil {
-			return "", err
-		}
-		repo.Client = &auth.Client{
-			Client:     retry.DefaultClient,
-			Cache:      auth.NewCache(),
-			Credential: credentials.Credential(credStore),
-		}
-
 		vPrefix := strings.Contains(c.Version, "v")
 		vs, err := c.RegistryClient.Tags(url)
 

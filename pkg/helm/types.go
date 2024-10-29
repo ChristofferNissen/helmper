@@ -3,9 +3,7 @@ package helm
 import (
 	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
-	"go.uber.org/fx"
 	"helm.sh/helm/v3/pkg/chart"
-	helm_registry "helm.sh/helm/v3/pkg/registry"
 	"helm.sh/helm/v3/pkg/repo"
 )
 
@@ -22,35 +20,6 @@ type Images struct {
 		To            string `json:"to"`
 	} `json:"modify"`
 }
-
-type IndexFileLoader interface {
-	LoadIndexFile(indexFilePath string) (*repo.IndexFile, error)
-}
-
-type DefaultIndexFileLoader struct{}
-
-func (d *DefaultIndexFileLoader) LoadIndexFile(indexFilePath string) (*repo.IndexFile, error) {
-	return repo.LoadIndexFile(indexFilePath)
-}
-
-var IndexFileLoaderModule = fx.Provide(FunctionLoader{LoadFunc: repo.LoadIndexFile})
-
-// Define the interface for the registry client
-type RegistryClient interface {
-	Pull(ref string, opts ...helm_registry.PullOption) (*helm_registry.PullResult, error)
-	Push(chart []byte, destination string, opts ...helm_registry.PushOption) (*helm_registry.PushResult, error)
-	Tags(ref string) ([]string, error)
-}
-
-// Default registry client provider
-func NewDefaultRegistryClient() (RegistryClient, error) {
-	return helm_registry.NewClient(
-		helm_registry.ClientOptDebug(true),
-		helm_registry.ClientOptPlainHTTP(),
-	)
-}
-
-var RegistryModule = fx.Provide(NewDefaultRegistryClient)
 
 type Chart struct {
 	Name            string     `json:"name"`
