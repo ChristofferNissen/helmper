@@ -106,15 +106,38 @@ func (c Chart) ResolveVersion(settings *cli.EnvSettings) (string, error) {
 
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
-		vs, err := c.RegistryClient.Tags(url)
+		tags, err := c.RegistryClient.Tags(url)
 		if err != nil {
 			return "", err
 		}
 
-		if len(vs) > 0 {
-			return vs[len(vs)-1], nil
+		vs := []semver.Version{}
+		for _, t := range tags {
+			s, err := semver.ParseTolerant(t)
+			if err != nil {
+				// non semver tag
+				continue
+			}
+			vs = append(vs, s)
 		}
-		return "", xerrors.Errorf("Not found")
+
+		semver.Sort(vs)
+
+		vs2 := []string{}
+		for _, v := range vs {
+			if len(v.Pre) > 0 {
+				continue
+			}
+			if r(v) {
+				vs2 = append(vs2, v.String())
+			}
+		}
+
+		prefixV := strings.Contains(c.Version, "v")
+		if prefixV {
+			return "v" + vs2[len(vs2)-1], nil
+		}
+		return vs2[len(vs2)-1], nil
 	}
 
 	update, err := c.addToHelmRepositoryFile(settings)
@@ -156,16 +179,27 @@ func (c Chart) LatestVersion(settings *cli.EnvSettings) (string, error) {
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
 		vPrefix := strings.Contains(c.Version, "v")
-		vs, err := c.RegistryClient.Tags(url)
-
+		tags, err := c.RegistryClient.Tags(url)
 		if err != nil {
 			return "", err
 		}
-		l := vs[len(vs)-1]
-		if vPrefix {
-			l = "v" + l
+
+		vs := []semver.Version{}
+		for _, t := range tags {
+			s, err := semver.ParseTolerant(t)
+			if err != nil {
+				// non semver tag
+				continue
+			}
+			vs = append(vs, s)
 		}
-		return l, nil
+
+		semver.Sort(vs)
+
+		if vPrefix {
+			return "v" + vs[len(vs)-1].String(), nil
+		}
+		return vs[len(vs)-1].String(), nil
 	}
 
 	indexPath := fmt.Sprintf("%s/%s-index.yaml", settings.RepositoryCache, c.Repo.Name)
