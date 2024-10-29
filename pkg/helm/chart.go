@@ -26,6 +26,15 @@ import (
 )
 
 func DependencyToChart(d *chart.Dependency, p *Chart) *Chart {
+	// Backwards compatibility with Charts pushed with helmper 0.1.x
+	if strings.HasPrefix(d.Repository, "oci://") {
+		if !strings.HasSuffix(d.Repository, d.Name) {
+			if strings.HasSuffix(d.Repository, "/charts") {
+				d.Repository = d.Repository + "/" + d.Name
+			}
+		}
+	}
+
 	return &Chart{
 		Name: d.Name,
 		Repo: repo.Entry{
