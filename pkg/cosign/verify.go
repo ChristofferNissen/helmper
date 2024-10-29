@@ -176,9 +176,14 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 					return v.Exec(ctx, []string{s})
 				})
 				slog.Debug(out)
+
 				if err != nil {
-					switch err.Error() {
-					case "no signatures found":
+					switch {
+					case isNoCertificateFoundOnSignatureErr(err):
+						fallthrough
+					case isNoMatchingSignatureErr(err):
+						fallthrough
+					case isImageWithoutSignatureErr(err):
 						elem[i] = true
 						_ = bar.Add(1)
 						row = append(row, terminal.StatusEmoji(false))
@@ -189,6 +194,7 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 						return make(map[*registry.Registry]map[*image.Image]bool), err
 					}
 				}
+
 				elem[i] = false
 				_ = bar.Add(1)
 				row = append(row, terminal.StatusEmoji(true))

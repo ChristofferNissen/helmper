@@ -160,19 +160,25 @@ func (vo *VerifyChartOption) Run(ctx context.Context) (map[*registry.Registry]ma
 					return err
 				})
 				slog.Debug(out)
+
 				if err != nil {
-					switch err.Error() {
-					case "no signatures found":
+					switch {
+					case isNoCertificateFoundOnSignatureErr(err):
+						fallthrough
+					case isNoMatchingSignatureErr(err):
+						fallthrough
+					case isImageWithoutSignatureErr(err):
 						elem[c] = true
+						_ = bar.Add(1)
 						row = append(row, terminal.StatusEmoji(false))
 						vo.Report.AddRow(row)
 						sc.Inc("index_sign_charts")
-						_ = bar.Add(1)
 						continue
 					default:
 						return make(map[*registry.Registry]map[*helm.Chart]bool), err
 					}
 				}
+
 				elem[c] = false
 				row = append(row, terminal.StatusEmoji(true))
 				vo.Report.AddRow(row)
