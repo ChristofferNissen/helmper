@@ -303,8 +303,6 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 	tarPattern := fmt.Sprintf("%s-*%s*.tgz", chartPath, c.Version)
 
 	if file.FileExists(chartPath) {
-		slog.Info("Reusing existing archieve for chart", slog.String("chart", c.Name), slog.String("path", chartPath))
-
 		path := filepath.Join(chartPath, chartutil.ChartsDir, c.Name, chartutil.ChartfileName)
 		if file.FileExists(path) {
 			// Check chart is the correct version
@@ -314,12 +312,14 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 			}
 
 			if meta.Version == c.Version {
+				slog.Info("Reusing existing achieve for chart", slog.String("chart", c.Name), slog.String("path", chartPath))
 				return chartPath, nil
-			} else {
-				err = os.RemoveAll(chartPath)
-				if err != nil {
-					return "", err
-				}
+			}
+
+			slog.Info("Deleting existing achieve for chart", slog.String("chart", c.Name), slog.String("desired version", c.Version), slog.String("found version", meta.Version), slog.String("path", chartPath))
+			err = os.RemoveAll(chartPath)
+			if err != nil {
+				return "", err
 			}
 		}
 	}
