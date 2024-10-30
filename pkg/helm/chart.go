@@ -76,7 +76,6 @@ func (c Chart) addToHelmRepositoryFile(settings *cli.EnvSettings) (bool, error) 
 }
 
 func (c Chart) CountDependencies(settings *cli.EnvSettings) (int, error) {
-
 	HelmDriver := "configmap"
 	actionConfig := new(action.Configuration)
 	if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), HelmDriver, slog.Info); err != nil {
@@ -305,7 +304,19 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 
 	if file.FileExists(chartPath) {
 		slog.Info("Reusing existing archieve for chart", slog.String("chart", c.Name), slog.String("path", chartPath))
-		return chartPath, nil
+
+		// Check chart is the correct version
+		if meta, err := chartutil.LoadChartfile(filepath.Join(chartPath, chartutil.ChartsDir, c.Name, chartutil.ChartfileName)); err != nil {
+			if meta.Version == c.Version {
+				return chartPath, nil
+			}
+
+			err = os.RemoveAll(chartPath)
+			if err != nil {
+				return "", err
+			}
+		}
+
 	}
 
 	if foundPath, ok := findFile(tarPattern); ok {
