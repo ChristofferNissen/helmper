@@ -64,17 +64,16 @@ func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 		row := table.Row{sc.Value("index_import_charts"), fmt.Sprintf("charts/%s", c.Name), c.Version}
 
 		for _, r := range io.Registries {
-			existsInRegistry := registry.Exists(context.TODO(), n, v, []*registry.Registry{r})[r.URL]
-
 			elem := m1[r]
 			if elem == nil {
 				// init map
 				elem = make(map[*Chart]bool, 0)
 				m1[r] = elem
 			}
+
+			existsInRegistry := registry.Exists(context.TODO(), n, v, []*registry.Registry{r})[r.URL]
 			b := io.All || !existsInRegistry
 			elem[&c] = b
-
 			if b {
 				sc.Inc(r.URL + "charts")
 			}
