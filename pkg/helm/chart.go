@@ -305,18 +305,23 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 	if file.FileExists(chartPath) {
 		slog.Info("Reusing existing archieve for chart", slog.String("chart", c.Name), slog.String("path", chartPath))
 
-		// Check chart is the correct version
-		if meta, err := chartutil.LoadChartfile(filepath.Join(chartPath, chartutil.ChartsDir, c.Name, chartutil.ChartfileName)); err != nil {
-			if meta.Version == c.Version {
-				return chartPath, nil
-			}
-
-			err = os.RemoveAll(chartPath)
+		path := filepath.Join(chartPath, chartutil.ChartsDir, c.Name, chartutil.ChartfileName)
+		if file.FileExists(path) {
+			// Check chart is the correct version
+			meta, err := chartutil.LoadChartfile(path)
 			if err != nil {
 				return "", err
 			}
-		}
 
+			if meta.Version == c.Version {
+				return chartPath, nil
+			} else {
+				err = os.RemoveAll(chartPath)
+				if err != nil {
+					return "", err
+				}
+			}
+		}
 	}
 
 	if foundPath, ok := findFile(tarPattern); ok {
