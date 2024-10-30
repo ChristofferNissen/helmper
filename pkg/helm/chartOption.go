@@ -488,5 +488,12 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 		cd[placeHolder] = m
 	}
 
+	// Make sure we parse Charts with no images as well
+	for _, c := range co.ChartCollection.Charts {
+		if cd[*c] == nil {
+			cd[*c] = make(map[*image.Image][]string)
+		}
+	}
+
 	return cd, nil
 }

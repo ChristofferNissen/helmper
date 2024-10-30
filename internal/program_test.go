@@ -1089,7 +1089,7 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 		t.Error(err)
 	}
 
-	expectedChartCount := 1
+	expectedChartCount := 2
 	expectedImageCount := 10
 
 	// Act
