@@ -31,6 +31,8 @@ func DependencyToChart(d *chart.Dependency, p *Chart) *Chart {
 		if !strings.HasSuffix(d.Repository, d.Name) {
 			if strings.HasSuffix(d.Repository, "/charts") {
 				d.Repository = d.Repository + "/" + d.Name
+			} else {
+				d.Repository = d.Repository + "/charts/" + d.Name
 			}
 		}
 	}
@@ -157,7 +159,7 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 			d.Repository = ""
 		case d.Repository != "":
 			// Change dependency ref to registry being imported to
-			d.Repository = newRegistry
+			d.Repository = newRegistry + "/charts/" + d.Name
 
 			if strings.Contains(d.Version, "*") || strings.Contains(d.Version, "x") {
 				chart := DependencyToChart(d, c)
