@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"sort"
+	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
@@ -248,6 +249,15 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 						if c.Name == "images" {
 							return nil
 						}
+
+						// Create new client for target
+						c.RegistryClient = func() RegistryClient {
+							if strings.HasPrefix(r.URL, "oci://") {
+								rc, _ := NewRegistryClient(r.PlainHTTP, false)
+								return NewOCIRegistryClient(rc, r.PlainHTTP)
+							}
+							return c.RegistryClient
+						}()
 
 						if !opt.All {
 							_, err := r.Exist(egCtx, "charts/"+c.Name, c.Version)

@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"strings"
 
 	v1_spec "github.com/google/go-containerregistry/pkg/v1"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
@@ -84,6 +86,38 @@ func parsePlatform(arch string) (*v1.Platform, error) {
 		OSFeatures:   v.OSFeatures,
 		Variant:      v.Variant,
 	}, nil
+}
+
+func (r Registry) PushTar(ctx context.Context, store *oci.ReadOnlyStore, name string, tag string, arch *string) (v1.Descriptor, error) {
+	credStore, err := newDockerCredentialsStore()
+	if err != nil {
+		return v1.Descriptor{}, err
+	}
+
+	url, _ := strings.CutPrefix(r.URL, "oci://")
+
+	target, err := setupRepository(url, name, credStore)
+	if err != nil {
+		return v1.Descriptor{}, err
+	}
+
+	target.PlainHTTP = r.PlainHTTP
+
+	opts := oras.DefaultCopyOptions
+	if arch != nil {
+		platform, err := parsePlatform(*arch)
+		if err != nil {
+			return v1.Descriptor{}, err
+		}
+		opts.WithTargetPlatform(platform)
+	}
+
+	manifest, err := oras.Copy(ctx, store, tag, target, tag, opts)
+	if err != nil {
+		return v1.Descriptor{}, err
+	}
+
+	return manifest, nil
 }
 
 // Push pushes an image to the registry.
@@ -191,6 +225,47 @@ func (r Registry) Pull(ctx context.Context, name string, tag string) (*v1.Descri
 
 	// 2. Copy from the remote repository to the OCI layout store
 	d, err := oras.Copy(ctx, repo, tag, store, tag, oras.DefaultCopyOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	return &d, nil
+}
+
+// PullTar pulls an image from the registry and saves it as a tar file in the specified destination folder.
+func PullOCI(ctx context.Context, ref string, tag string, destination string, plainHTTP bool) (*v1.Descriptor, error) {
+	// Save the image as a tar file in the specified destination folder
+	imageName := strings.ReplaceAll(ref, "/", "_")
+	imageName = strings.ReplaceAll(imageName, ":", "_")
+	path := filepath.Join(destination, fmt.Sprintf("%s-%s", imageName, tag))
+	dst, err := oci.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Connect to a remote repository
+	// ref := strings.Join([]string{r.URL, name}, "/")
+	repo, err := remote.NewRepository(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	repo.PlainHTTP = plainHTTP
+
+	// Prepare authentication using Docker credentials
+	storeOpts := credentials.StoreOptions{}
+	credStore, err := credentials.NewStoreFromDocker(storeOpts)
+	if err != nil {
+		return nil, err
+	}
+	repo.Client = &auth.Client{
+		Client:     retry.DefaultClient,
+		Cache:      auth.NewCache(),
+		Credential: credentials.Credential(credStore), // Use the credentials store
+	}
+
+	// Copy from the remote repository to the OCI layout store
+	d, err := oras.Copy(ctx, repo, tag, dst, tag, oras.DefaultCopyOptions)
 	if err != nil {
 		return nil, err
 	}

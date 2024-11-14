@@ -30,8 +30,8 @@ type Chart struct {
 	Images          *Images `json:"images"`
 	PlainHTTP       bool    `json:"plainHTTP"`
 	DepsCount       int
-	RegistryClient  RegistryClient
-	IndexFileLoader IndexFileLoader
+	RegistryClient  RegistryClient  `json:"-" yaml:"-"`
+	IndexFileLoader IndexFileLoader `json:"-" yaml:"-"`
 }
 
 type ChartCollection struct {

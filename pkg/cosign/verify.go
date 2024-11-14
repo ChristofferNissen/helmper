@@ -172,14 +172,12 @@ func (vo *VerifyOption) Run(ctx context.Context) (map[*registry.Registry]map[*im
 					slog.Info("registry has PrefixSource enabled", slog.String("old", old), slog.String("new", name))
 				}
 
-				if !b {
-					if i.Digest == "" {
-						d, err := r.Fetch(ctx, name, i.Tag)
-						if err != nil {
-							return nil, err
-						}
-						i.Digest = d.Digest.String()
+				if i.Digest == "" {
+					d, err := r.Fetch(ctx, name, i.Tag)
+					if err != nil {
+						return nil, err
 					}
+					i.Digest = d.Digest.String()
 				}
 
 				out, err := terminal.CaptureOutput(func() error {

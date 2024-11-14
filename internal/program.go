@@ -119,8 +119,9 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 		IdentifyImages:  !parserConfig.DisableImageDetection,
 		UseCustomValues: parserConfig.UseCustomValues,
 
-		Mirrors: bootstrap.ConvertToHelmMirrors(mirrorConfig),
-		Images:  images,
+		Mirrors:  bootstrap.ConvertToHelmMirrors(mirrorConfig),
+		Images:   images,
+		Settings: settings,
 	}
 	chartImageHelmValuesMap, err := co.Run(ctx, opts...)
 	if err != nil {
@@ -156,6 +157,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 			Data:           mCharts,
 			All:            all,
 			ModifyRegistry: importConfig.Import.ReplaceRegistryReferences,
+			Settings:       settings,
 		}.Run(ctx, opts...)
 		if err != nil {
 			return fmt.Errorf("internal: error importing chart to registry: %w", err)

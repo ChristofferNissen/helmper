@@ -295,6 +295,91 @@ func findFile(pattern string) (string, bool) {
 	return "", false
 }
 
+func (c Chart) PullTar(settings *cli.EnvSettings, destination string) (string, error) {
+	u, err := url.Parse(c.Repo.URL)
+	if err != nil {
+		return "", err
+	}
+
+	tarPattern := fmt.Sprintf("%s/%s-*%s*.tgz", destination, c.Name, c.Version)
+
+	if foundPath, ok := findFile(tarPattern); ok {
+		slog.Info("Reusing existing tar archieve for chart", slog.String("chart", c.Name), slog.String("path", foundPath))
+		return foundPath, nil
+	}
+
+	ref := func() string {
+		url, _ := strings.CutPrefix(c.Repo.URL, "oci://")
+		if strings.HasSuffix(url, c.Name) {
+			return url + ":" + c.Version
+		} else {
+			return url + "/" + c.Name + ":" + c.Version
+		}
+	}()
+
+	if strings.HasPrefix(c.Repo.URL, "oci://") {
+		if err := os.Setenv("HELM_EXPERIMENTAL_OCI", "1"); err != nil {
+			return "", err
+		}
+
+		opts := []registry.ClientOption{}
+		if c.PlainHTTP {
+			opts = append(opts, registry.ClientOptPlainHTTP())
+		}
+		rc, err := registry.NewClient(
+			opts...,
+		)
+		if err != nil {
+			return "", err
+		}
+
+		p, err := rc.Pull(ref)
+		if err != nil {
+			return "", err
+		}
+
+		tarPath := fmt.Sprintf("%s/%s-%s.tgz", destination, c.Name, c.Version)
+
+		err = file.Write(tarPath, p.Chart.Data)
+		if err != nil {
+			return "", err
+		}
+
+		return tarPath, nil
+
+	} else {
+		co := action.ChartPathOptions{
+			CaFile:                c.Repo.CAFile,
+			CertFile:              c.Repo.CertFile,
+			KeyFile:               c.Repo.KeyFile,
+			InsecureSkipTLSverify: c.Repo.InsecureSkipTLSverify,
+			PlainHTTP:             u.Scheme == "http",
+			RepoURL:               c.Repo.URL,
+			Username:              c.Repo.Username,
+			Password:              c.Repo.Password,
+			Version:               c.Version,
+		}
+		actionConfig := new(action.Configuration)
+		if err := actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), "configmap", log.Printf); err != nil {
+			return "", err
+		}
+
+		pull := action.NewPullWithOpts(action.WithConfig(actionConfig))
+		pull.ChartPathOptions = co
+		pull.Settings = settings
+		pull.DestDir = destination
+		p, err := pull.Run(c.Name)
+		if err != nil {
+			slog.Info(p)
+			slog.Error(err.Error())
+			return "", err
+		}
+
+		slog.Info("Chart pulled successfully", slog.String("chart", c.Name), slog.String("dest", destination))
+		return filepath.Join(destination, c.Name+"-"+c.Version+".tar"), nil
+	}
+}
+
 func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 	u, err := url.Parse(c.Repo.URL)
 	if err != nil {
