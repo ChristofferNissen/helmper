@@ -1,0 +1,16 @@
+name: "cli"
+version: "0.2.0"
+usage: "run Helmper"
+description: "Identity images in Helm Charts and import to OCI registry"
+ignoreFlags: false
+command: "$HELM_BIN --host $TILLER_HOST list --short --max 1 --date -r"
+# platformCommand:
+#   - os: linux
+#     arch: i386
+#     command: "$HELM_BIN list --short --max 1 --date -r"
+#   - os: linux
+#     arch: amd64
+#     command: "$HELM_BIN list --short --max 1 --date -r"
+#   - os: windows
+#     arch: amd64
+#     command: "$HELM_BIN list --short --max 1 --date -r"

@@ -1,0 +1,122 @@
+charts:
+- name: kubescape-operator
+  version: 1.22.5
+  valuesfilepath: ""
+  repo:
+    name: kubescape
+    url: https://kubescape.github.io/helm-charts/
+    username: ""
+    password: ""
+    certfile: ""
+    keyfile: ""
+    cafile: ""
+    insecureskiptlsverify: false
+    passcredentialsall: false
+  parent: null
+  images: null
+  plainhttp: false
+  depscount: 0
+- name: dynatrace-operator
+  version: 1.2.2
+  valuesfilepath: ""
+  repo:
+    name: dynatrace
+    url: https://raw.githubusercontent.com/Dynatrace/dynatrace-operator/main/config/helm/repos/stable
+    username: ""
+    password: ""
+    certfile: ""
+    keyfile: ""
+    cafile: ""
+    insecureskiptlsverify: false
+    passcredentialsall: false
+  parent: null
+  images:
+    exclude: []
+    excludecopacetic: []
+    modify:
+    - from: ""
+      fromvaluepath: imageRef.repository
+      to: public.ecr.aws/dynatrace/dynatrace-operator
+    - from: ""
+      fromvaluepath: imageRef.tag
+      to: v{.version}
+  plainhttp: false
+  depscount: 0
+- name: kyverno
+  version: 3.2.8
+  valuesfilepath: ""
+  repo:
+    name: kyverno
+    url: https://kyverno.github.io/kyverno/
+    username: ""
+    password: ""
+    certfile: ""
+    keyfile: ""
+    cafile: ""
+    insecureskiptlsverify: false
+    passcredentialsall: false
+  parent: null
+  images: null
+  plainhttp: false
+  depscount: 0
+images:
+- quay.io/kubescape/kubescape:v3.0.18
+- quay.io/kubescape/synchronizer:v0.0.86
+- docker.io/otel/opentelemetry-collector:0.108.0
+- quay.io/kubescape/http-request:v0.2.9
+- quay.io/kubescape/klamav:1.3.1-34_base
+- quay.io/kubescape/prometheus-exporter:v0.0.131
+- quay.io/kubescape/operator:v0.2.34
+- quay.io/kubescape/host-scanner:v1.0.68
+- docker.io/bitnami/kubectl:1.30.3
+- quay.io/kubescape/helm-release-upgrader:v0.1.0
+- quay.io/kubescape/kubevuln:v0.3.34
+- quay.io/kubescape/kollector:v0.1.45
+- quay.io/kubescape/node-agent:v0.2.161
+- quay.io/kubescape/storage:v0.0.127
+- quay.io/kubescape/gateway:v0.1.32
+- public.ecr.aws/dynatrace/dynatrace-operator:v1.2.2
+- ghcr.io/kyverno/kyvernopre:v1.12.6
+- ghcr.io/kyverno/reports-controller:v1.12.6
+- ghcr.io/kyverno/background-controller:v1.12.6
+- ghcr.io/kyverno/kyverno:v1.12.6
+- docker.io/bitnami/kubectl:1.28.5
+- ghcr.io/kyverno/cleanup-controller:v1.12.6
+- ghcr.io/kyverno/kyverno-cli:v1.12.6
+- docker.io/library/busybox:1.35
+mapping:
+  https:/kubescape.github.io/helm-charts/kubescape-operator/1.22.5:
+  - quay.io/kubescape/kubescape:v3.0.18
+  - quay.io/kubescape/synchronizer:v0.0.86
+  - docker.io/otel/opentelemetry-collector:0.108.0
+  - quay.io/kubescape/http-request:v0.2.9
+  - quay.io/kubescape/klamav:1.3.1-34_base
+  - quay.io/kubescape/prometheus-exporter:v0.0.131
+  - quay.io/kubescape/operator:v0.2.34
+  - quay.io/kubescape/http-request:v0.2.9
+  - quay.io/kubescape/http-request:v0.2.9
+  - quay.io/kubescape/host-scanner:v1.0.68
+  - docker.io/bitnami/kubectl:1.30.3
+  - quay.io/kubescape/helm-release-upgrader:v0.1.0
+  - quay.io/kubescape/kubevuln:v0.3.34
+  - quay.io/kubescape/kollector:v0.1.45
+  - quay.io/kubescape/node-agent:v0.2.161
+  - quay.io/kubescape/storage:v0.0.127
+  - quay.io/kubescape/http-request:v0.2.9
+  - quay.io/kubescape/gateway:v0.1.32
+  https:/kyverno.github.io/kyverno/kyverno/3.2.8:
+  - ghcr.io/kyverno/kyvernopre:v1.12.6
+  - ghcr.io/kyverno/reports-controller:v1.12.6
+  - ghcr.io/kyverno/background-controller:v1.12.6
+  - ghcr.io/kyverno/kyverno:v1.12.6
+  - docker.io/bitnami/kubectl:1.28.5
+  - docker.io/bitnami/kubectl:1.28.5
+  - docker.io/bitnami/kubectl:1.28.5
+  - ghcr.io/kyverno/cleanup-controller:v1.12.6
+  - ghcr.io/kyverno/kyverno-cli:v1.12.6
+  - docker.io/bitnami/kubectl:1.28.5
+  - docker.io/library/busybox:1.35
+  - docker.io/bitnami/kubectl:1.28.5
+  - docker.io/bitnami/kubectl:1.28.5
+  https:/raw.githubusercontent.com/Dynatrace/dynatrace-operator/main/config/helm/repos/stable/dynatrace-operator/1.2.2:
+  - public.ecr.aws/dynatrace/dynatrace-operator:v1.2.2

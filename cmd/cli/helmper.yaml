@@ -1,0 +1,56 @@
+k8s_version: 1.30.1
+verbose: false
+all: false
+import:
+  enabled: true
+  replaceRegistryReferences: false
+  copacetic:
+    enabled: false
+    ignoreErrors: true
+    buildkitd:
+      addr: tcp://0.0.0.0:8888
+    trivy:
+      addr: http://0.0.0.0:8887
+      insecure: true
+      ignoreUnfixed: true
+    output:
+      tars:
+        folder: /home/cn/.config/helmper/out/tars
+        clean: true
+      reports:
+        folder: /home/cn/.config/helmper/out/reports
+        clean: true
+  cosign:
+    enabled: true
+    verifyExisting: true
+    keyRef: /home/cn/.config/helmper/in/cosign-keys/cosign.key
+    keyRefPass: ""
+    allowInsecure: true
+    allowHTTPRegistry: true
+charts:
+- name: "dynatrace-operator"
+  version: "1.2.2"
+  repo:
+    name: dynatrace
+    url: "https://raw.githubusercontent.com/Dynatrace/dynatrace-operator/main/config/helm/repos/stable"
+  images:
+    modify:
+    - fromValuePath: imageRef.repository
+      to: "public.ecr.aws/dynatrace/dynatrace-operator"
+    - fromValuePath: imageRef.tag
+      to: "v{.version}"
+- name: kyverno
+  version: "3.2.*"
+  repo:
+    name: kyverno
+    url: https://kyverno.github.io/kyverno/
+- name: kubescape-operator
+  version: 1.22.5
+  repo:
+    name: kubescape
+    url: https://kubescape.github.io/helm-charts/
+registries:
+- name: registry
+  url: oci://0.0.0.0:5000
+  insecure: true
+  plainHTTP: true

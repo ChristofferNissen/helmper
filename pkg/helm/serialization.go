@@ -12,29 +12,57 @@ import (
 	"helm.sh/helm/v3/pkg/repo"
 )
 
+type Output struct {
+	Charts  []Chart               `yaml:"charts"`
+	Images  []string              `yaml:"images"`
+	Mapping SerializableChartData `yaml:"mapping"`
+}
+
 type SerializableChartData map[string][]string
 type SerializableCharts map[string]Chart
 
-func toSerializable(data ChartData) (SerializableCharts, SerializableChartData) {
-	serializableCharts := make(SerializableCharts)
-	serializableData := make(SerializableChartData)
+func toSerializable(data ChartData) Output {
+	// serializableCharts := make(SerializableCharts)
+	charts := make([]Chart, 0)
+	imgs := make([]string, 0)
+	serializableMapping := make(SerializableChartData)
 
+	seen := make([]*image.Image, 0)
 	for chart, imageMap := range data {
 		serializableImages := make([]string, 0)
 		for img := range imageMap {
-			serializableImages = append(serializableImages, img.String())
+			s := img.String()
+			if !img.InP(seen) {
+				seen = append(seen, img)
+				imgs = append(imgs, s)
+			}
+			serializableImages = append(serializableImages, s)
 		}
 		key := filepath.Join(chart.Repo.URL, chart.Name, chart.Version)
-		serializableCharts[key] = chart
-		serializableData[key] = serializableImages
+		// serializableCharts[key] = chart
+		serializableMapping[key] = serializableImages
+		charts = append(charts, chart)
 	}
-	return serializableCharts, serializableData
+	return Output{Charts: charts, Images: imgs, Mapping: serializableMapping}
 }
 
-func fromSerializable(charts SerializableCharts, data SerializableChartData, rc RegistryClient) ChartData {
+func fromSerializable(output Output, rc RegistryClient) ChartData {
 	originalData := make(ChartData)
-	for chart, serializableImages := range data {
-		chart := charts[chart]
+
+	data := output.Charts
+	mapping := output.Mapping
+
+	for key, serializableImages := range mapping {
+		chart := func() Chart {
+			for _, c := range data {
+				s := filepath.Join(c.Repo.URL, c.Name, c.Version)
+				if key == s {
+					return c
+				}
+			}
+			return Chart{}
+		}()
+
 		imageMap := make(map[*image.Image][]string)
 		for _, imgStr := range serializableImages {
 			img, _ := image.RefToImage(imgStr)
@@ -54,27 +82,16 @@ func fromSerializable(charts SerializableCharts, data SerializableChartData, rc 
 }
 
 func WriteYAMLToFile(filename string, data ChartData) error {
-	chartsFile := filename + "-charts.yaml"
-	imagesFile := filename + "-images.yaml"
+	fp := filename + ".yaml"
 
-	serializableCharts, serializableData := toSerializable(data)
+	output := toSerializable(data)
 
 	// Write charts
-	chartsData, err := yaml.Marshal(serializableCharts)
+	chartsData, err := yaml.Marshal(output)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(chartsFile, chartsData, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Write images
-	imagesData, err := yaml.Marshal(serializableData)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(imagesFile, imagesData, 0644)
+	err = os.WriteFile(fp, chartsData, 0644)
 	if err != nil {
 		return err
 	}
@@ -83,44 +100,46 @@ func WriteYAMLToFile(filename string, data ChartData) error {
 }
 
 func ReadYAMLFromFile(filename string, rc RegistryClient) (ChartData, error) {
-	chartsFile := filename + "-charts.yaml"
-	imagesFile := filename + "-images.yaml"
+	fp := filename + ".yaml"
 
 	// Read charts
-	var serializableCharts SerializableCharts
-	chartsData, err := os.ReadFile(chartsFile)
+	var output Output
+	chartsData, err := os.ReadFile(fp)
 	if err != nil {
 		return nil, err
 	}
-	err = yaml.Unmarshal(chartsData, &serializableCharts)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read images
-	var serializableData SerializableChartData
-	imagesData, err := os.ReadFile(imagesFile)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(imagesData, &serializableData)
+	err = yaml.Unmarshal(chartsData, &output)
 	if err != nil {
 		return nil, err
 	}
 
-	return fromSerializable(serializableCharts, serializableData, rc), nil
+	return fromSerializable(output, rc), nil
 }
 
-func WriteRegistryChartStatusToYAML(filename string, data RegistryChartStatus) error {
-	statusFile := filename + "-status.yaml"
-	chartsFile := filename + "-charts-index.yaml"
-	registryFile := filename + "-registry-index.yaml"
+type StatusOutput struct {
+	ChartStatus RegistryChartStatusOutput     `yaml:"chartStatus"`
+	ImageStatus RegistryImageStatusOutput     `yaml:"imageStatus"`
+	Registries  map[string]*registry.Registry `yaml:"registries"`
+}
 
-	// Split data
-	serializableStatus := make(map[string]map[string]bool)
-	serializableCharts := make(map[string]*Chart)
+type RegistryChartStatusOutput struct {
+	Status map[string]map[string]bool `yaml:"status"`
+	Charts map[string]*Chart          `yaml:"charts"`
+}
+
+type RegistryImageStatusOutput struct {
+	Status map[string]map[string]bool `yaml:"status"`
+	Images map[string]*image.Image    `yaml:"images"`
+}
+
+func WriteStatusOutputToYAML(filename string, chartStatus RegistryChartStatus, imageStatus RegistryImageStatus) error {
+
 	serializableRegistries := make(map[string]*registry.Registry)
-	for registry, chartMap := range data {
+
+	// Split chart status data
+	serializableChartStatus := make(map[string]map[string]bool)
+	serializableCharts := make(map[string]*Chart)
+	for registry, chartMap := range chartStatus {
 		registryKey := registry.Name + ":" + registry.URL
 		serializableRegistries[registryKey] = registry
 		serializableChartMap := make(map[string]bool)
@@ -129,52 +148,13 @@ func WriteRegistryChartStatusToYAML(filename string, data RegistryChartStatus) e
 			serializableChartMap[chartKey] = status
 			serializableCharts[chartKey] = chart
 		}
-		serializableStatus[registryKey] = serializableChartMap
+		serializableChartStatus[registryKey] = serializableChartMap
 	}
 
-	// Write status
-	statusData, err := yaml.Marshal(serializableStatus)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(statusFile, statusData, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Write charts
-	chartsData, err := yaml.Marshal(serializableCharts)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(chartsFile, chartsData, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Write registries
-	registryData, err := yaml.Marshal(serializableRegistries)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(registryFile, registryData, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func WriteRegistryImageStatusToYAML(filename string, data RegistryImageStatus) error {
-	statusFile := filename + "-status.yaml"
-	imagesFile := filename + "-images-index.yaml"
-	registryFile := filename + "-registry-index.yaml"
-
-	// Split data
-	serializableStatus := make(map[string]map[string]bool)
+	// Split image status data
+	serializableImageStatus := make(map[string]map[string]bool)
 	serializableImages := make(map[string]*image.Image)
-	serializableRegistries := make(map[string]*registry.Registry)
-	for registry, imageMap := range data {
+	for registry, imageMap := range imageStatus {
 		registryKey := registry.Name + ":" + registry.URL
 		serializableRegistries[registryKey] = registry
 		serializableImageMap := make(map[string]bool)
@@ -183,35 +163,27 @@ func WriteRegistryImageStatusToYAML(filename string, data RegistryImageStatus) e
 			serializableImageMap[imageKey] = status
 			serializableImages[imageKey] = img
 		}
-		serializableStatus[registryKey] = serializableImageMap
+		serializableImageStatus[registryKey] = serializableImageMap
+	}
+
+	output := StatusOutput{
+		ChartStatus: RegistryChartStatusOutput{
+			Status: serializableChartStatus,
+			Charts: serializableCharts,
+		},
+		ImageStatus: RegistryImageStatusOutput{
+			Status: serializableImageStatus,
+			Images: serializableImages,
+		},
+		Registries: serializableRegistries,
 	}
 
 	// Write status
-	statusData, err := yaml.Marshal(serializableStatus)
+	statusData, err := yaml.Marshal(output)
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(statusFile, statusData, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Write images
-	imagesData, err := yaml.Marshal(serializableImages)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(imagesFile, imagesData, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Write registries
-	registryData, err := yaml.Marshal(serializableRegistries)
-	if err != nil {
-		return err
-	}
-	err = os.WriteFile(registryFile, registryData, 0644)
+	err = os.WriteFile(filename, statusData, 0644)
 	if err != nil {
 		return err
 	}
@@ -219,108 +191,42 @@ func WriteRegistryImageStatusToYAML(filename string, data RegistryImageStatus) e
 	return nil
 }
 
-func ReadRegistryChartStatusFromYAML(filename string) (RegistryChartStatus, error) {
-	statusFile := filename + "-status.yaml"
-	chartsFile := filename + "-charts-index.yaml"
-	registryFile := filename + "-registry-index.yaml"
+func ReadStatusOutputFromYAML(filename string) (RegistryChartStatus, RegistryImageStatus, error) {
 
 	// Read status
-	var serializableStatus map[string]map[string]bool
-	statusData, err := os.ReadFile(statusFile)
+	var output StatusOutput
+	statusData, err := os.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	err = yaml.Unmarshal(statusData, &serializableStatus)
+	err = yaml.Unmarshal(statusData, &output)
 	if err != nil {
-		return nil, err
-	}
-
-	// Read charts
-	var serializableCharts map[string]*Chart
-	chartsData, err := os.ReadFile(chartsFile)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(chartsData, &serializableCharts)
-	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Read registries
-	var serializableRegistries map[string]*registry.Registry
-	registryData, err := os.ReadFile(registryFile)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(registryData, &serializableRegistries)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert back to original type
-	data := make(RegistryChartStatus)
-	for registryKey, serializableChartMap := range serializableStatus {
-		registry := serializableRegistries[registryKey]
+	// Convert chart status back to original type
+	chartStatus := make(RegistryChartStatus)
+	for registryKey, serializableChartMap := range output.ChartStatus.Status {
+		registry := output.Registries[registryKey]
 		chartMap := make(map[*Chart]bool)
 		for chartKey, status := range serializableChartMap {
-			chart := serializableCharts[chartKey]
+			chart := output.ChartStatus.Charts[chartKey]
 			chartMap[chart] = status
 		}
-		data[registry] = chartMap
+		chartStatus[registry] = chartMap
 	}
 
-	return data, nil
-}
-
-func ReadRegistryImageStatusFromYAML(filename string) (RegistryImageStatus, error) {
-	statusFile := filename + "-status.yaml"
-	imagesFile := filename + "-images-index.yaml"
-	registryFile := filename + "-registry-index.yaml"
-
-	// Read status
-	var serializableStatus map[string]map[string]bool
-	statusData, err := os.ReadFile(statusFile)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(statusData, &serializableStatus)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read images
-	var serializableImages map[string]*image.Image
-	imagesData, err := os.ReadFile(imagesFile)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(imagesData, &serializableImages)
-	if err != nil {
-		return nil, err
-	}
-
-	// Read registries
-	var serializableRegistries map[string]*registry.Registry
-	registryData, err := os.ReadFile(registryFile)
-	if err != nil {
-		return nil, err
-	}
-	err = yaml.Unmarshal(registryData, &serializableRegistries)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert back to original type
-	data := make(RegistryImageStatus)
-	for registryKey, serializableImageMap := range serializableStatus {
-		registry := serializableRegistries[registryKey]
+	// Convert image status back to original type
+	imageStatus := make(RegistryImageStatus)
+	for registryKey, serializableImageMap := range output.ImageStatus.Status {
+		registry := output.Registries[registryKey]
 		imageMap := make(map[*image.Image]bool)
 		for imageKey, status := range serializableImageMap {
-			img := serializableImages[imageKey]
+			img := output.ImageStatus.Images[imageKey]
 			imageMap[img] = status
 		}
-		data[registry] = imageMap
+		imageStatus[registry] = imageMap
 	}
 
-	return data, nil
+	return chartStatus, imageStatus, nil
 }

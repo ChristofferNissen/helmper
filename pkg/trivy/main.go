@@ -29,9 +29,10 @@ type ScanOption struct {
 	Insecure      bool
 	IgnoreUnfixed bool
 	Architecture  *string
+	Local         bool
 }
 
-func (opts ScanOption) Scan(reference string) (types.Report, error) {
+func (opts ScanOption) Scan(reference string) (*types.Report, error) {
 
 	platform := ftypes.Platform{}
 	if opts.Architecture != nil {
@@ -46,21 +47,39 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		Insecure:  opts.Insecure,
 	}, []client.Option(nil)...)
 
-	typesImage, cleanup, err := image.NewContainerImage(context.TODO(), reference, ftypes.ImageOptions{
-		RegistryOptions: ftypes.RegistryOptions{
-			Insecure: opts.Insecure,
-			Platform: platform,
-		},
-		DockerOptions: ftypes.DockerOptions{
-			Host: opts.DockerHost,
-		},
-		ImageSources: []ftypes.ImageSource{ftypes.RemoteImageSource},
-	})
-	if err != nil {
-		slog.Error("NewContainerImage failed: %v", err)
-		return types.Report{}, err
+	var typesImage ftypes.Image
+	if opts.Local {
+		img, err := image.NewArchiveImage(reference)
+		if err != nil {
+			slog.Error("NewArchiveImage failed: %v", err)
+			return nil, err
+		}
+		typesImage = img
+		// configFile, err := img.ConfigFile()
+		// if err != nil {
+		// 	slog.Error("ConfigFile failed: %v", err)
+		// 	return types.Report{}, err
+		// }
+		// slog.Info(fmt.Sprintf("Image reference: %s", configFile.Config.Labels["org.opencontainers.image.ref.name"]))
+
+	} else {
+		ti, cleanup, err := image.NewContainerImage(context.TODO(), reference, ftypes.ImageOptions{
+			RegistryOptions: ftypes.RegistryOptions{
+				Insecure: opts.Insecure,
+				Platform: platform,
+			},
+			DockerOptions: ftypes.DockerOptions{
+				Host: opts.DockerHost,
+			},
+			ImageSources: []ftypes.ImageSource{ftypes.RemoteImageSource},
+		})
+		if err != nil {
+			slog.Error("NewContainerImage failed: %v", err)
+			return nil, err
+		}
+		typesImage = ti
+		defer cleanup()
 	}
-	defer cleanup()
 
 	cache := tcache.NewRemoteCache(
 		tcache.RemoteOptions{
@@ -95,7 +114,7 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	})
 	if err != nil {
 		slog.Error("NewArtifact failed: %v", err)
-		return types.Report{}, err
+		return nil, err
 	}
 
 	scannerScanner := scanner.NewScanner(clientScanner, artifactArtifact)
@@ -109,7 +128,7 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	})
 	if err != nil {
 		slog.Error(fmt.Sprintf("ScanArtifact failed: %v", err), slog.Any("report", report))
-		return types.Report{}, err
+		return nil, err
 	}
 
 	if opts.IgnoreUnfixed {
@@ -133,6 +152,6 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		})
 	}
 
-	return report, nil
+	return &report, nil
 
 }

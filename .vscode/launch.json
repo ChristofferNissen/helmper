@@ -6,7 +6,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "cmd/cli/main.go",
-            "args": ["status"]
+            "args": ["patch"]
         }
     ]
 }

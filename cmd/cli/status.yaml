@@ -1,0 +1,273 @@
+chartStatus:
+  status:
+    registry:oci://0.0.0.0:5000:
+      dynatrace-operator:1.2.2: true
+      kubescape-operator:1.22.5: true
+      kyverno:3.2.8: true
+  charts:
+    dynatrace-operator:1.2.2:
+      name: dynatrace-operator
+      version: 1.2.2
+      valuesfilepath: ""
+      repo:
+        name: dynatrace
+        url: https://raw.githubusercontent.com/Dynatrace/dynatrace-operator/main/config/helm/repos/stable
+        username: ""
+        password: ""
+        certfile: ""
+        keyfile: ""
+        cafile: ""
+        insecureskiptlsverify: false
+        passcredentialsall: false
+      parent: null
+      images:
+        exclude: []
+        excludecopacetic: []
+        modify:
+        - from: ""
+          fromvaluepath: imageRef.repository
+          to: public.ecr.aws/dynatrace/dynatrace-operator
+        - from: ""
+          fromvaluepath: imageRef.tag
+          to: v{.version}
+      plainhttp: false
+      depscount: 0
+    kubescape-operator:1.22.5:
+      name: kubescape-operator
+      version: 1.22.5
+      valuesfilepath: ""
+      repo:
+        name: kubescape
+        url: https://kubescape.github.io/helm-charts/
+        username: ""
+        password: ""
+        certfile: ""
+        keyfile: ""
+        cafile: ""
+        insecureskiptlsverify: false
+        passcredentialsall: false
+      parent: null
+      images: null
+      plainhttp: false
+      depscount: 0
+    kyverno:3.2.8:
+      name: kyverno
+      version: 3.2.8
+      valuesfilepath: ""
+      repo:
+        name: kyverno
+        url: https://kyverno.github.io/kyverno/
+        username: ""
+        password: ""
+        certfile: ""
+        keyfile: ""
+        cafile: ""
+        insecureskiptlsverify: false
+        passcredentialsall: false
+      parent: null
+      images: null
+      plainhttp: false
+      depscount: 0
+imageStatus:
+  status:
+    registry:oci://0.0.0.0:5000:
+      docker.io/bitnami/kubectl:1.28.5: true
+      docker.io/bitnami/kubectl:1.30.3: true
+      docker.io/library/busybox:1.35: true
+      docker.io/otel/opentelemetry-collector:0.108.0: true
+      ghcr.io/kyverno/background-controller:v1.12.6: true
+      ghcr.io/kyverno/cleanup-controller:v1.12.6: true
+      ghcr.io/kyverno/kyverno-cli:v1.12.6: true
+      ghcr.io/kyverno/kyverno:v1.12.6: true
+      ghcr.io/kyverno/kyvernopre:v1.12.6: true
+      ghcr.io/kyverno/reports-controller:v1.12.6: true
+      public.ecr.aws/dynatrace/dynatrace-operator:v1.2.2: true
+      quay.io/kubescape/gateway:v0.1.32: true
+      quay.io/kubescape/helm-release-upgrader:v0.1.0: true
+      quay.io/kubescape/host-scanner:v1.0.68: true
+      quay.io/kubescape/http-request:v0.2.9: true
+      quay.io/kubescape/klamav:1.3.1-34_base: true
+      quay.io/kubescape/kollector:v0.1.45: true
+      quay.io/kubescape/kubescape:v3.0.18: true
+      quay.io/kubescape/kubevuln:v0.3.34: true
+      quay.io/kubescape/node-agent:v0.2.161: true
+      quay.io/kubescape/operator:v0.2.34: true
+      quay.io/kubescape/prometheus-exporter:v0.0.131: true
+      quay.io/kubescape/storage:v0.0.127: true
+      quay.io/kubescape/synchronizer:v0.0.86: true
+  images:
+    docker.io/bitnami/kubectl:1.28.5:
+      registry: docker.io
+      repository: bitnami/kubectl
+      tag: 1.28.5
+      digest: ""
+      usedigest: false
+      patch: null
+    docker.io/bitnami/kubectl:1.30.3:
+      registry: docker.io
+      repository: bitnami/kubectl
+      tag: 1.30.3
+      digest: ""
+      usedigest: false
+      patch: null
+    docker.io/library/busybox:1.35:
+      registry: docker.io
+      repository: library/busybox
+      tag: "1.35"
+      digest: ""
+      usedigest: false
+      patch: null
+    docker.io/otel/opentelemetry-collector:0.108.0:
+      registry: docker.io
+      repository: otel/opentelemetry-collector
+      tag: 0.108.0
+      digest: ""
+      usedigest: false
+      patch: null
+    ghcr.io/kyverno/background-controller:v1.12.6:
+      registry: ghcr.io
+      repository: kyverno/background-controller
+      tag: v1.12.6
+      digest: ""
+      usedigest: false
+      patch: null
+    ghcr.io/kyverno/cleanup-controller:v1.12.6:
+      registry: ghcr.io
+      repository: kyverno/cleanup-controller
+      tag: v1.12.6
+      digest: ""
+      usedigest: false
+      patch: null
+    ghcr.io/kyverno/kyverno-cli:v1.12.6:
+      registry: ghcr.io
+      repository: kyverno/kyverno-cli
+      tag: v1.12.6
+      digest: ""
+      usedigest: false
+      patch: null
+    ghcr.io/kyverno/kyverno:v1.12.6:
+      registry: ghcr.io
+      repository: kyverno/kyverno
+      tag: v1.12.6
+      digest: ""
+      usedigest: false
+      patch: null
+    ghcr.io/kyverno/kyvernopre:v1.12.6:
+      registry: ghcr.io
+      repository: kyverno/kyvernopre
+      tag: v1.12.6
+      digest: ""
+      usedigest: false
+      patch: null
+    ghcr.io/kyverno/reports-controller:v1.12.6:
+      registry: ghcr.io
+      repository: kyverno/reports-controller
+      tag: v1.12.6
+      digest: ""
+      usedigest: false
+      patch: null
+    public.ecr.aws/dynatrace/dynatrace-operator:v1.2.2:
+      registry: public.ecr.aws
+      repository: dynatrace/dynatrace-operator
+      tag: v1.2.2
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/gateway:v0.1.32:
+      registry: quay.io
+      repository: kubescape/gateway
+      tag: v0.1.32
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/helm-release-upgrader:v0.1.0:
+      registry: quay.io
+      repository: kubescape/helm-release-upgrader
+      tag: v0.1.0
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/host-scanner:v1.0.68:
+      registry: quay.io
+      repository: kubescape/host-scanner
+      tag: v1.0.68
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/http-request:v0.2.9:
+      registry: quay.io
+      repository: kubescape/http-request
+      tag: v0.2.9
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/klamav:1.3.1-34_base:
+      registry: quay.io
+      repository: kubescape/klamav
+      tag: 1.3.1-34_base
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/kollector:v0.1.45:
+      registry: quay.io
+      repository: kubescape/kollector
+      tag: v0.1.45
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/kubescape:v3.0.18:
+      registry: quay.io
+      repository: kubescape/kubescape
+      tag: v3.0.18
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/kubevuln:v0.3.34:
+      registry: quay.io
+      repository: kubescape/kubevuln
+      tag: v0.3.34
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/node-agent:v0.2.161:
+      registry: quay.io
+      repository: kubescape/node-agent
+      tag: v0.2.161
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/operator:v0.2.34:
+      registry: quay.io
+      repository: kubescape/operator
+      tag: v0.2.34
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/prometheus-exporter:v0.0.131:
+      registry: quay.io
+      repository: kubescape/prometheus-exporter
+      tag: v0.0.131
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/storage:v0.0.127:
+      registry: quay.io
+      repository: kubescape/storage
+      tag: v0.0.127
+      digest: ""
+      usedigest: false
+      patch: null
+    quay.io/kubescape/synchronizer:v0.0.86:
+      registry: quay.io
+      repository: kubescape/synchronizer
+      tag: v0.0.86
+      digest: ""
+      usedigest: false
+      patch: null
+registries:
+  registry:oci://0.0.0.0:5000:
+    name: registry
+    url: oci://0.0.0.0:5000
+    insecure: true
+    plainhttp: true
+    prefixsource: false
