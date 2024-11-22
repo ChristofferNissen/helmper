@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
 	"sort"
 
 	"github.com/ChristofferNissen/helmper/pkg/image"
@@ -264,6 +265,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 								return fmt.Errorf("helm: error pushing and modifying chart %s to registry %s :: %w", c.Name, r.URL, err)
 							}
 							slog.Debug(res)
+							defer os.RemoveAll(res)
 							_ = bar.Add(1)
 							return nil
 						}
