@@ -63,6 +63,11 @@ type Image struct {
 	parsedRef  *string
 }
 
+func (i *Image) ResetParsedRef() {
+	// Remove the assignment to i.parsedRef
+	i.parsedRef = nil
+}
+
 // IsEmpty determines if an image is empty (i.e., registry, repository, and name are empty).
 func (i Image) IsEmpty() bool {
 	return i.Registry == "" && i.Repository == "" && i.Tag == ""

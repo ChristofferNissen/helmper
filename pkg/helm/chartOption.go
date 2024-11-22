@@ -42,7 +42,10 @@ type ChartOption struct {
 func determineTag(ctx context.Context, img *image.Image, plainHTTP bool) bool {
 	ctx = context.WithoutCancel(ctx)
 	ref := img.String()
-	tag, _ := img.TagOrDigest()
+	tag, err := img.TagOrDigest()
+	if err != nil {
+		return false
+	}
 
 	available, _ := registry.Exist(ctx, ref, tag, plainHTTP)
 	if available {
@@ -394,6 +397,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 							plainHTTP := strings.Contains(i.Registry, "localhost") || strings.Contains(i.Registry, "0.0.0.0")
 							available := determineTag(egCtx, i, plainHTTP)
+							i.ResetParsedRef()
 
 							// send availability response
 							channel <- &imageInfo{available, c, i, &helmValuePaths}
