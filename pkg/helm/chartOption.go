@@ -26,10 +26,9 @@ import (
 )
 
 type ChartOption struct {
-	ChartCollection     *ChartCollection
-	IdentifyImages      bool
-	UseCustomValues     bool
-	FailOnMissingValues bool
+	ChartCollection *ChartCollection
+	IdentifyImages  bool
+	UseCustomValues bool
 
 	Mirrors []Mirror
 	Images  []image.Image
@@ -245,11 +244,6 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 					return err
 				}
 				valuesType := report.DeterminePathType(c.ValuesFilePath)
-				if co.FailOnMissingValues {
-					if valuesType == "default" && c.ValuesFilePath != "" {
-						return fmt.Errorf("values file not found: %s (chart: %s)", c.ValuesFilePath, c.Name)
-					}
-				}
 
 				bar.ChangeMax(bar.GetMax() + len(chartRef.Metadata.Dependencies))
 
