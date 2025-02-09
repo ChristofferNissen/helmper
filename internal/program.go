@@ -6,6 +6,12 @@ import (
 	"log/slog"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/common-nighthawk/go-figure"
+	"github.com/spf13/viper"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
+	"helm.sh/helm/v3/pkg/cli"
+
 	"github.com/ChristofferNissen/helmper/internal/bootstrap"
 	"github.com/ChristofferNissen/helmper/pkg/copa"
 	mySign "github.com/ChristofferNissen/helmper/pkg/cosign"
@@ -16,11 +22,6 @@ import (
 	"github.com/ChristofferNissen/helmper/pkg/trivy"
 	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
-	"github.com/common-nighthawk/go-figure"
-	"github.com/spf13/viper"
-	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
-	"helm.sh/helm/v3/pkg/cli"
 )
 
 var (

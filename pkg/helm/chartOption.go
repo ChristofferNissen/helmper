@@ -3,18 +3,11 @@ package helm
 import (
 	"context"
 	"fmt"
-
 	"log"
 	"log/slog"
 	"path/filepath"
 	"strings"
 
-	"github.com/ChristofferNissen/helmper/pkg/image"
-	"github.com/ChristofferNissen/helmper/pkg/registry"
-	"github.com/ChristofferNissen/helmper/pkg/report"
-	"github.com/ChristofferNissen/helmper/pkg/util/bar"
-	"github.com/ChristofferNissen/helmper/pkg/util/counter"
-	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 	"github.com/bobg/go-generics/slices"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"golang.org/x/sync/errgroup"
@@ -23,6 +16,13 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
+
+	"github.com/ChristofferNissen/helmper/pkg/image"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/report"
+	"github.com/ChristofferNissen/helmper/pkg/util/bar"
+	"github.com/ChristofferNissen/helmper/pkg/util/counter"
+	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
 )
 
 type ChartOption struct {
@@ -143,7 +143,6 @@ func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
 				}
 				for _, modify := range c.Images.Modify {
 					if modify.From != "" {
-
 						if strings.HasPrefix(r, modify.From) {
 							delete(m, i)
 
@@ -185,7 +184,6 @@ func replaceWithMirrors(cm *ChartData, mirrorConfig []Mirror) error {
 }
 
 func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, error) {
-
 	// Default Options
 	args := &Options{
 		Verbose:    false,
@@ -212,7 +210,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 	co.ChartTable.AddHeader(table.Row{"#", "Type", "Chart", "Version", "Latest Version", "Latest", "Values", "SubChart", "Version", "Condition", "Enabled"})
 	co.ValueTable.AddHeader(table.Row{"#", "Helm Chart", "Chart Version", "Image", "Helm Value Path(s)"})
 
-	var sc counter.SafeCounter = counter.NewSafeCounter()
+	sc := counter.NewSafeCounter()
 
 	eg, egCtx := errgroup.WithContext(ctx)
 
@@ -246,6 +244,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 					return err
 				}
 				valuesType := report.DeterminePathType(c.ValuesFilePath)
+
 				bar.ChangeMax(bar.GetMax() + len(chartRef.Metadata.Dependencies))
 
 				co.ChartTable.AddRow(table.Row{sc.Value("charts"), "Chart", c.Name, c.Version, latest, terminal.StatusEmoji(c.Version == latest), valuesType, "", "", "", ""})
@@ -313,7 +312,6 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 			}
 
 			return bar.Finish()
-
 		})
 
 		return channel
@@ -375,7 +373,6 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 				for i, helmValuePaths := range imageMap {
 					func(i *image.Image, helmValuePaths []string) {
 						eg.Go(func() error {
-
 							if i.IsEmpty() {
 								return nil
 							}

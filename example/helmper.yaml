@@ -5,6 +5,7 @@ all: false
 parser:
   disableImageDetection: false
   useCustomValues: false
+  failOnMissingValues: false
 mirrors:
   - registry: docker.io
     mirror: example.azurecr.io/docker/

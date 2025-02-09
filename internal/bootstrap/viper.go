@@ -6,16 +6,18 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/ChristofferNissen/helmper/pkg/helm"
-	"github.com/ChristofferNissen/helmper/pkg/image"
-	"github.com/ChristofferNissen/helmper/pkg/registry"
-	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"helm.sh/helm/v3/pkg/repo"
+
+	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/image"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/file"
+	"github.com/ChristofferNissen/helmper/pkg/util/state"
 )
 
 type ImportConfigSection struct {
@@ -76,6 +78,7 @@ type registryConfigSection struct {
 type ParserConfigSection struct {
 	DisableImageDetection bool `yaml:"disableImageDetection"`
 	UseCustomValues       bool `yaml:"useCustomValues"`
+	FailOnMissingValues   bool `yaml:"failOnMissingValues"`
 }
 
 type MirrorConfigSection struct {
@@ -135,6 +138,15 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 	viper.SetDefault("update", false)
 	viper.SetDefault("k8s_version", "1.31.1")
 
+	// Unmarshal registries config section
+	conf := config{}
+	if err := viper.Unmarshal(&conf); err != nil {
+		return nil, err
+	}
+	viper.Set("config", conf)
+	viper.Set("parserConfig", conf.Parser)
+	viper.Set("mirrorConfig", conf.Mirrors)
+
 	// Unmarshal charts config section
 	inputConf := helm.ChartCollection{}
 	if err := viper.Unmarshal(&inputConf); err != nil {
@@ -151,17 +163,17 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 		c.IndexFileLoader = &helm.FunctionLoader{
 			LoadFunc: repo.LoadIndexFile,
 		}
+
+		if conf.Parser.FailOnMissingValues {
+			if c.ValuesFilePath == "" {
+				continue
+			}
+			if !file.Exists(c.ValuesFilePath) {
+				return nil, xerrors.Errorf("values file %s does not exist", c.ValuesFilePath)
+			}
+		}
 	}
 	viper.Set("input", inputConf)
-
-	// Unmarshal registries config section
-	conf := config{}
-	if err := viper.Unmarshal(&conf); err != nil {
-		return nil, err
-	}
-	viper.Set("config", conf)
-	viper.Set("parserConfig", conf.Parser)
-	viper.Set("mirrorConfig", conf.Mirrors)
 
 	importConf := ImportConfigSection{}
 	if err := viper.Unmarshal(&importConf); err != nil {
