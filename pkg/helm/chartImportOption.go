@@ -8,15 +8,16 @@ import (
 	"os"
 	"sort"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"golang.org/x/sync/errgroup"
+	"helm.sh/helm/v3/pkg/cli"
+
 	"github.com/ChristofferNissen/helmper/pkg/image"
 	"github.com/ChristofferNissen/helmper/pkg/registry"
 	"github.com/ChristofferNissen/helmper/pkg/report"
 	"github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/ChristofferNissen/helmper/pkg/util/counter"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
-	"github.com/jedib0t/go-pretty/v6/table"
-	"golang.org/x/sync/errgroup"
-	"helm.sh/helm/v3/pkg/cli"
 )
 
 type IdentifyImportOption struct {
@@ -32,7 +33,6 @@ type IdentifyImportOption struct {
 
 // Converts data structure to pipeline parameters
 func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, RegistryImageStatus, error) {
-
 	if io.ChartsOverview == nil {
 		io.ChartsOverview = report.NewTable("Registry Overview For Charts")
 	}
@@ -87,7 +87,6 @@ func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 
 	var seenImages []image.Image = make([]image.Image, 0)
 	for c, imageMap := range io.ChartImageValuesMap {
-
 		// Images
 		for i := range imageMap {
 			if i.In(seenImages) {
@@ -177,7 +176,6 @@ type ChartImportOption struct {
 }
 
 func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
-
 	// Default Options
 	args := &Options{
 		Verbose:    false,
@@ -205,7 +203,7 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 		return size
 	}()
 
-	if !(size > 0) {
+	if size <= 0 {
 		return nil
 	}
 
@@ -219,7 +217,6 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 			charts := []*Chart{}
 
 			eg.Go(func() error {
-
 				for c, b := range m {
 					if b {
 						chartRef, err := c.ChartRef(opt.Settings)
@@ -243,7 +240,6 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 					c := c
 
 					eg.Go(func() error {
-
 						slog.With(slog.String("chart", c.Name))
 
 						if c.Name == "images" {
@@ -270,6 +266,11 @@ func (opt ChartImportOption) Run(ctx context.Context, setters ...Option) error {
 							return nil
 						}
 
+						client, err := NewRegistryClient(r.PlainHTTP, false)
+						if err != nil {
+							return fmt.Errorf("helm: error creating registry client :: %w", err)
+						}
+						c.RegistryClient = client
 						res, err := c.Push(opt.Settings, r.URL, r.Insecure, r.PlainHTTP)
 						if err != nil {
 							return fmt.Errorf("helm: error pushing chart %s to registry %s :: %w", c.Name, r.URL, err)
