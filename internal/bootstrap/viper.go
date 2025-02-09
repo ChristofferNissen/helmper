@@ -79,6 +79,7 @@ type ParserConfigSection struct {
 	DisableImageDetection bool `yaml:"disableImageDetection"`
 	UseCustomValues       bool `yaml:"useCustomValues"`
 	FailOnMissingValues   bool `yaml:"failOnMissingValues"`
+	FailOnMissingImages   bool `yaml:"failOnMissingImages"`
 }
 
 type MirrorConfigSection struct {
