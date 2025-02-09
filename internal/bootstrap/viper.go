@@ -6,16 +6,17 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/ChristofferNissen/helmper/pkg/helm"
-	"github.com/ChristofferNissen/helmper/pkg/image"
-	"github.com/ChristofferNissen/helmper/pkg/registry"
-	"github.com/ChristofferNissen/helmper/pkg/util/state"
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 	"helm.sh/helm/v3/pkg/repo"
+
+	"github.com/ChristofferNissen/helmper/pkg/helm"
+	"github.com/ChristofferNissen/helmper/pkg/image"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
+	"github.com/ChristofferNissen/helmper/pkg/util/state"
 )
 
 type ImportConfigSection struct {
@@ -76,6 +77,7 @@ type registryConfigSection struct {
 type ParserConfigSection struct {
 	DisableImageDetection bool `yaml:"disableImageDetection"`
 	UseCustomValues       bool `yaml:"useCustomValues"`
+	FailOnMissingValues   bool `yaml:"failOnMissingValues"`
 }
 
 type MirrorConfigSection struct {
