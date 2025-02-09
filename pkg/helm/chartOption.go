@@ -26,9 +26,10 @@ import (
 )
 
 type ChartOption struct {
-	ChartCollection *ChartCollection
-	IdentifyImages  bool
-	UseCustomValues bool
+	ChartCollection     *ChartCollection
+	IdentifyImages      bool
+	UseCustomValues     bool
+	FailOnMissingImages bool
 
 	Mirrors []Mirror
 	Images  []image.Image
@@ -417,7 +418,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 		return channel
 	}
 
-	imageCollector := func(imgs <-chan *imageInfo) ChartData {
+	imageCollector := func(imgs <-chan *imageInfo) (ChartData, error) {
 		chartImageHelmValuesMap := make(ChartData)
 		id := 0
 
@@ -425,6 +426,9 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 			if !i.available {
 				str := i.image.String()
 				slog.Info("Image not available. will be excluded from import...", slog.String("image", str))
+				if co.FailOnMissingImages {
+					return nil, xerrors.New("image not available")
+				}
 				continue
 			}
 
@@ -453,10 +457,10 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 			id = id + 1
 		}
 
-		return chartImageHelmValuesMap
+		return chartImageHelmValuesMap, nil
 	}
 
-	workload := func(c *ChartCollection) ChartData {
+	workload := func(c *ChartCollection) (ChartData, error) {
 		if co.IdentifyImages {
 			return imageCollector(
 				imageGenerator(
@@ -464,19 +468,22 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 				),
 			)
 		}
-		return chartCollector(chartGenerator(c))
+		return chartCollector(chartGenerator(c)), nil
 	}
 
-	cd := workload(co.ChartCollection)
+	cd, err := workload(co.ChartCollection)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := eg.Wait(); err != nil {
-		return ChartData{}, err
+		return nil, err
 	}
 
 	// Replace mirrors for further processing
-	err := replaceWithMirrors(&cd, co.Mirrors)
+	err = replaceWithMirrors(&cd, co.Mirrors)
 	if err != nil {
-		return ChartData{}, err
+		return nil, err
 	}
 
 	if len(co.Images) > 0 {

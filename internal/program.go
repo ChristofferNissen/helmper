@@ -116,9 +116,10 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 	// STEP 2: Find images in Helm Charts and dependencies
 	slog.Debug("Starting parsing user specified chart(s) for images..")
 	co := helm.ChartOption{
-		ChartCollection: charts,
-		IdentifyImages:  !parserConfig.DisableImageDetection,
-		UseCustomValues: parserConfig.UseCustomValues,
+		ChartCollection:     charts,
+		IdentifyImages:      !parserConfig.DisableImageDetection,
+		UseCustomValues:     parserConfig.UseCustomValues,
+		FailOnMissingImages: parserConfig.FailOnMissingImages,
 
 		Mirrors: bootstrap.ConvertToHelmMirrors(mirrorConfig),
 		Images:  images,
@@ -152,7 +153,6 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 
 	// Step 4: Import charts to registries
 	if importConfig.Import.Enabled {
-		ctx := context.WithoutCancel(ctx)
 		err := helm.ChartImportOption{
 			Data:           mCharts,
 			All:            all,
