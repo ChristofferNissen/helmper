@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/ChristofferNissen/helmper/pkg/util/terminal"
+	"github.com/jinzhu/copier"
 	"helm.sh/helm/v3/pkg/cli"
 )
 
@@ -83,9 +84,13 @@ func (collection ChartCollection) SetupHelm(settings *cli.EnvSettings, setters .
 		}
 
 		for _, v := range vs {
-			c := c
-			c.Version = v
-			res = append(res, c)
+			cv := &Chart{}
+			err := copier.Copy(&cv, &c)
+			if err != nil {
+				return nil, err
+			}
+			cv.Version = v
+			res = append(res, cv)
 		}
 	}
 	collection.Charts = res

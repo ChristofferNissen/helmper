@@ -14,6 +14,7 @@ require (
 	github.com/enescakir/emoji v1.0.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/jedib0t/go-pretty/v6 v6.6.0
+	github.com/jinzhu/copier v0.4.0
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/moby/buildkit v0.15.1
 	github.com/project-copacetic/copacetic v0.7.1-0.20240723231147-beb8c86673a8
