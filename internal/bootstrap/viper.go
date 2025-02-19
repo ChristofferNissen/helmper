@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"encoding/json"
 	"log/slog"
 	"os"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/repo"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
@@ -163,6 +165,36 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 		c.RegistryClient = rc
 		c.IndexFileLoader = &helm.FunctionLoader{
 			LoadFunc: repo.LoadIndexFile,
+		}
+
+		if c.ValuesFilePath != "" && len(c.Values) > 0 {
+			return nil, xerrors.Errorf("invalid chart configuration: cannot have both ValuesFilePath and Values defined at the same time")
+		}
+
+		if c.ValuesFilePath == "" && len(c.Values) > 0 {
+			// write c.Values into a temp file and set c.ValuesFilePath to its path
+
+			var data any
+			if err := json.Unmarshal(c.Values, &data); err != nil {
+				return nil, xerrors.Errorf("failed to unmarshal values from JSON: %w", err)
+			}
+
+			yamlBytes, err := yaml.Marshal(data)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to marshal values to YAML: %w", err)
+			}
+
+			tmpValuesFile, err := os.CreateTemp("", "chart_values_*.yaml")
+			if err != nil {
+				return nil, xerrors.Errorf("failed to create temp file: %w", err)
+			}
+			defer tmpValuesFile.Close()
+
+			if _, err := tmpValuesFile.Write(yamlBytes); err != nil {
+				return nil, xerrors.Errorf("failed to write YAML to temp file: %w", err)
+			}
+
+			c.ValuesFilePath = tmpValuesFile.Name()
 		}
 
 		if conf.Parser.FailOnMissingValues {

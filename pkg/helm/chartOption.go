@@ -341,7 +341,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 				c, chart := chart.Chart, chart.chartRef
 
 				// Get custom Helm values
-				values, err := c.Values(co.Settings)
+				values, err := c.GetValues(co.Settings)
 				if err != nil {
 					return err
 				}

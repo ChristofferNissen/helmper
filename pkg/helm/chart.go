@@ -46,6 +46,7 @@ func DependencyToChart(d *chart.Dependency, p *Chart) *Chart {
 		Version:        d.Version,
 		Parent:         p,
 		ValuesFilePath: p.ValuesFilePath,
+		Values:         p.Values,
 		DepsCount:      0,
 		PlainHTTP:      p.PlainHTTP,
 		RegistryClient: p.RegistryClient,
@@ -57,7 +58,6 @@ func DependencyToChart(d *chart.Dependency, p *Chart) *Chart {
 
 // addToHelmRepositoryFile adds repository to Helm repository.yml to enable querying/pull
 func (c Chart) addToHelmRepositoryFile(settings *cli.EnvSettings) (bool, error) {
-
 	var f *repo.File = repo.NewFile()
 	if file.Exists(settings.RepositoryConfig) {
 		file, err := repo.LoadFile(settings.RepositoryConfig)
@@ -66,12 +66,12 @@ func (c Chart) addToHelmRepositoryFile(settings *cli.EnvSettings) (bool, error) 
 		}
 		f = file
 	} else {
-		f.WriteFile(settings.RepositoryConfig, 0644)
+		f.WriteFile(settings.RepositoryConfig, 0o644)
 	}
 
 	if !f.Has(c.Repo.Name) {
 		f.Update(&c.Repo)
-		return true, f.WriteFile(settings.RepositoryConfig, 0644)
+		return true, f.WriteFile(settings.RepositoryConfig, 0o644)
 	}
 
 	return false, nil
@@ -226,7 +226,7 @@ func (c *Chart) modifyRegistryReferences(settings *cli.EnvSettings, newRegistry 
 
 	// Write the lock file to the chart path
 	lockFilePath := filepath.Join(dir, c.Name, "Chart.lock")
-	if err := os.WriteFile(lockFilePath, data, 0644); err != nil {
+	if err := os.WriteFile(lockFilePath, data, 0o644); err != nil {
 		return "", fmt.Errorf("failed to write lock file: %w", err)
 	}
 
@@ -410,7 +410,6 @@ func (c Chart) Pull(settings *cli.EnvSettings) (string, error) {
 }
 
 func (c Chart) Locate(settings *cli.EnvSettings) (string, error) {
-
 	// Check if the repository URL is an OCI URL
 	if strings.HasPrefix(c.Repo.URL, "oci://") {
 		// Pull the chart from OCI
@@ -440,7 +439,7 @@ func (c Chart) Locate(settings *cli.EnvSettings) (string, error) {
 	return chartPath, nil
 }
 
-func (c Chart) Values(settings *cli.EnvSettings) (map[string]any, error) {
+func (c Chart) GetValues(settings *cli.EnvSettings) (map[string]any, error) {
 	// Get detailed information about the chart
 	chartRef, err := c.ChartRef(settings)
 	if err != nil {
@@ -448,15 +447,13 @@ func (c Chart) Values(settings *cli.EnvSettings) (map[string]any, error) {
 	}
 
 	// Check if file exists, or use default values
-	var values chartutil.Values
+	var values chartutil.Values = chartRef.Values
 	if file.Exists(c.ValuesFilePath) {
 		valuesFromFile, err := chartutil.ReadValuesFile(c.ValuesFilePath)
 		if err != nil {
 			return nil, err
 		}
 		values = valuesFromFile.AsMap()
-	} else {
-		values = chartRef.Values
 	}
 
 	vs, err := chartutil.CoalesceValues(chartRef, values)
@@ -465,7 +462,7 @@ func (c Chart) Values(settings *cli.EnvSettings) (map[string]any, error) {
 	}
 
 	if c.Parent != nil {
-		pv, err := c.Parent.Values(settings)
+		pv, err := c.Parent.GetValues(settings)
 		if err != nil {
 			return nil, err
 		}
@@ -510,7 +507,7 @@ func (c *Chart) Read(settings *cli.EnvSettings, update bool) (string, *chart.Cha
 	}
 
 	// Get custom Helm values
-	values, err := c.Values(settings)
+	values, err := c.GetValues(settings)
 	if err != nil {
 		return "", nil, nil, err
 	}
