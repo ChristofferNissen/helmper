@@ -7,7 +7,7 @@ sidebar_position: 4
 
 ## Location
 
-The configuration file `helmper.yaml` can be placed in: 
+The configuration file `helmper.yaml` can be placed in:
 
 - Current directory (`.`)
 - `$HOME/.config/helmper/`
@@ -70,7 +70,9 @@ charts:
       pass_credentials_all: false
   - name: kyverno
     version: 3.1.1
-    valuesFilePath: /workspace/.in/values/kyverno/values.yaml
+    values:
+      namespaceOverride: system
+      registry: customer-registry.io/
     repo:
       name: kyverno
       url: https://kyverno.github.io/kyverno/
@@ -94,7 +96,7 @@ charts:
       - ref: quay.io/cilium/cilium-envoy
       excludeCopacetic:
       - ref: quay.io/cilium/startup-script
-      modify: 
+      modify:
       - fromValuePath: operator.image.repository
         to: quay.io/cilium/operator-generic
   - name: prometheus
@@ -152,6 +154,7 @@ registries:
 | `charts[].version`        | string |         | true | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0) |
 | `charts[].plainHTTP`        | bool | false   | false | Use HTTP instead of HTTPS for repository protocol |
 | `charts[].valuesFilePath` | string | ""      | false | Path to custom values.yaml to customize importing   |
+| `charts[].values` | object | nil      | false | Inline values to customize importing (cannot be used together with `charts[].valuesFilePath`)   |
 | `charts[].images`                         | object        | nil    | false | Customization options for images in chart  |
 | `charts[].images.exclude`                 | list(object)  | []     | false | Defines which images to exclude from processing |
 | `charts[].images.exclude[].ref`           | string        | ""     | false | Container Image reference |
@@ -193,6 +196,7 @@ The `charts` configuration option defines which charts to import.
 | `charts[].name`                           | string        |        | true  | Chart name                                          |
 | `charts[].version`                        | string        |        | true  | Desired version of chart. Supports semver literal or semver ranges (semantic version spec 2.0)   |
 | `charts[].valuesFilePath`                 | string        | ""     | false | Path to custom values.yaml to customize importing   |
+| `charts[].values`                         | object        | nil    | false | Inline values to customize importing (cannot be used together with `charts[].valuesFilePath`)   |
 | `charts[].images`                         | object        | nil    | false | Customization options for images in chart  |
 | `charts[].images.exclude`                 | list(object)  | []     | false | Defines which images to exclude from processing |
 | `charts[].images.exclude.ref`             | string        | ""     | false | Container Image reference |
@@ -240,15 +244,15 @@ Simply define the additional images in the `images` configuration option.
 
 Here are the supported formats for `import.copacetic.buildkit.addr` configuration option:
 
-* `unix:///path/to/buildkit.sock` - Connect to buildkit over unix socket.
-* `tcp://$BUILDKIT_ADDR:$PORT` - Connect to buildkit over TCP. (not recommended for security reasons)
-* `docker://<docker connection spec>` - Connect to docker, currently only unix sockets are supported, e.g. `docker://unix:///var/run/docker.sock` (or just `docker://`).
-* `docker-container://my-buildkit-container` - Connect to a buildkitd running in a docker container.
-* `buildx://my-builder` - Connect to a buildx builder (or `buildx://` for the currently selected builder). *Note: only container-backed buildx instances are currently supported*
-* `nerdctl-container://my-container-name` - Similar to `docker-container` but uses `nerdctl`.
-* `podman-container://my-container-name` - Similar to `docker-container` but uses `podman`.
-* `ssh://myhost` - Connect to a buildkit instance over SSH. Format of the host spec should mimic the SSH command.
-* `kubepod://mypod` - Connect to buildkit running in a Kubernetes pod. Can also specify kubectl context and pod namespace (`kubepod://mypod?context=foo&namespace=notdefault`).
+- `unix:///path/to/buildkit.sock` - Connect to buildkit over unix socket.
+- `tcp://$BUILDKIT_ADDR:$PORT` - Connect to buildkit over TCP. (not recommended for security reasons)
+- `docker://<docker connection spec>` - Connect to docker, currently only unix sockets are supported, e.g. `docker://unix:///var/run/docker.sock` (or just `docker://`).
+- `docker-container://my-buildkit-container` - Connect to a buildkitd running in a docker container.
+- `buildx://my-builder` - Connect to a buildx builder (or `buildx://` for the currently selected builder). *Note: only container-backed buildx instances are currently supported*
+- `nerdctl-container://my-container-name` - Similar to `docker-container` but uses `nerdctl`.
+- `podman-container://my-container-name` - Similar to `docker-container` but uses `podman`.
+- `ssh://myhost` - Connect to a buildkit instance over SSH. Format of the host spec should mimic the SSH command.
+- `kubepod://mypod` - Connect to buildkit running in a Kubernetes pod. Can also specify kubectl context and pod namespace (`kubepod://mypod?context=foo&namespace=notdefault`).
 
 See more details in the [Copacetic Documentation](https://project-copacetic.github.io/copacetic/website/custom-address)
 
@@ -256,9 +260,9 @@ See more details in the [Copacetic Documentation](https://project-copacetic.gith
 
 Helmper supports setting required configuration options for enabling mTLS with an expose Buildkit instance over TCP, although the following configuration options:
 
-* `import.copacetic.buildkitd.CACertPath`
-* `import.copacetic.buildkitd.certPath`
-* `import.copacetic.buildkitd.keyPath`
+- `import.copacetic.buildkitd.CACertPath`
+- `import.copacetic.buildkitd.certPath`
+- `import.copacetic.buildkitd.keyPath`
 
 Read more in the official docs by [moby/buildkit](https://github.com/moby/buildkit?tab=readme-ov-file#expose-buildkit-as-a-tcp-service).
 
