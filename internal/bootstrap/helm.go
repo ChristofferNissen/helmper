@@ -20,7 +20,6 @@ type ChartSetupper interface {
 
 // Add Helm repos to user's local helm configuration file, Optionupdate all existing repos and pulls charts
 func SetupHelm(settings *cli.EnvSettings, charts ChartSetupper, setters ...helm.Option) (*helm.ChartCollection, error) {
-
 	// Default Options
 	args := &helm.Options{
 		Verbose:    false,
@@ -34,7 +33,7 @@ func SetupHelm(settings *cli.EnvSettings, charts ChartSetupper, setters ...helm.
 
 	// Set up Helm action configuration
 	if err := setEnv("HELM_EXPERIMENTAL_OCI", "1"); err != nil {
-		slog.Error("Error setting OCI environment variable: %v", err)
+		slog.Error("Error setting OCI environment variable", slog.Any("error", err))
 		os.Exit(1)
 	}
 

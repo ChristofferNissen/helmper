@@ -109,7 +109,7 @@ type config struct {
 }
 
 // Reads flags from user and sets state accordingly
-func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
+func LoadViperConfiguration() (*viper.Viper, error) {
 	viper := viper.New()
 
 	pflag.String("f", "unused", "path to configuration file")
@@ -157,7 +157,7 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 	}
 
 	for _, c := range inputConf.Charts {
-		rc, _ = helm.NewRegistryClient(c.PlainHTTP, false)
+		rc, _ := helm.NewRegistryClient(c.PlainHTTP, false)
 		if strings.HasPrefix(c.Repo.URL, "oci://") {
 			rc = helm.NewOCIRegistryClient(rc, c.PlainHTTP)
 		}
