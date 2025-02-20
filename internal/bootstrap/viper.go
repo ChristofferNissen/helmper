@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/repo"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
@@ -107,7 +108,7 @@ type config struct {
 }
 
 // Reads flags from user and sets state accordingly
-func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
+func LoadViperConfiguration() (*viper.Viper, error) {
 	viper := viper.New()
 
 	pflag.String("f", "unused", "path to configuration file")
@@ -155,7 +156,7 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 	}
 
 	for _, c := range inputConf.Charts {
-		rc, _ = helm.NewRegistryClient(c.PlainHTTP, false)
+		rc, _ := helm.NewRegistryClient(c.PlainHTTP, false)
 		if strings.HasPrefix(c.Repo.URL, "oci://") {
 			rc = helm.NewOCIRegistryClient(rc, c.PlainHTTP)
 		}
@@ -163,6 +164,31 @@ func LoadViperConfiguration(rc helm.RegistryClient) (*viper.Viper, error) {
 		c.RegistryClient = rc
 		c.IndexFileLoader = &helm.FunctionLoader{
 			LoadFunc: repo.LoadIndexFile,
+		}
+
+		if c.ValuesFilePath != "" && len(c.Values) > 0 {
+			return nil, xerrors.Errorf("invalid chart configuration: cannot have both ValuesFilePath and Values defined at the same time")
+		}
+
+		if c.ValuesFilePath == "" && len(c.Values) > 0 {
+			// write c.Values into a temp file and set c.ValuesFilePath to its path
+
+			yamlBytes, err := yaml.Marshal(c.Values)
+			if err != nil {
+				return nil, xerrors.Errorf("failed to marshal values to YAML: %w", err)
+			}
+
+			tmpValuesFile, err := os.CreateTemp("", "chart_values_*.yaml")
+			if err != nil {
+				return nil, xerrors.Errorf("failed to create temp file: %w", err)
+			}
+			defer tmpValuesFile.Close()
+
+			if _, err := tmpValuesFile.Write(yamlBytes); err != nil {
+				return nil, xerrors.Errorf("failed to write YAML to temp file: %w", err)
+			}
+
+			c.ValuesFilePath = tmpValuesFile.Name()
 		}
 
 		if conf.Parser.FailOnMissingValues {

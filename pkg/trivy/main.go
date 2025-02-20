@@ -32,7 +32,6 @@ type ScanOption struct {
 }
 
 func (opts ScanOption) Scan(reference string) (types.Report, error) {
-
 	platform := ftypes.Platform{}
 	if opts.Architecture != nil {
 		p, _ := v1.ParsePlatform(*opts.Architecture)
@@ -57,7 +56,7 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		ImageSources: []ftypes.ImageSource{ftypes.RemoteImageSource},
 	})
 	if err != nil {
-		slog.Error("NewContainerImage failed: %v", err)
+		slog.Error("NewContainerImage failed", slog.Any("error", err))
 		return types.Report{}, err
 	}
 	defer cleanup()
@@ -94,7 +93,7 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 		},
 	})
 	if err != nil {
-		slog.Error("NewArtifact failed: %v", err)
+		slog.Error("NewArtifact failed: %v", slog.Any("error", err))
 		return types.Report{}, err
 	}
 
@@ -134,5 +133,4 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	}
 
 	return report, nil
-
 }

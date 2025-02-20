@@ -322,7 +322,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 		chartImageHelmValuesMap := make(ChartData)
 
 		for c := range charts {
-			chartImageHelmValuesMap[*c.Chart] = nil
+			chartImageHelmValuesMap[c.Chart] = nil
 		}
 
 		return chartImageHelmValuesMap
@@ -341,7 +341,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 				c, chart := chart.Chart, chart.chartRef
 
 				// Get custom Helm values
-				values, err := c.Values(co.Settings)
+				values, err := c.GetValues(co.Settings)
 				if err != nil {
 					return err
 				}
@@ -448,10 +448,10 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 			// Add image map to chart map
 			switch {
-			case chartImageHelmValuesMap[*i.chart] == nil:
-				chartImageHelmValuesMap[*i.chart] = imageHelmValuesPathMap
-			case chartImageHelmValuesMap[*i.chart][i.image] == nil:
-				chartImageHelmValuesMap[*i.chart][i.image] = imageHelmValuesPathMap[i.image]
+			case chartImageHelmValuesMap[i.chart] == nil:
+				chartImageHelmValuesMap[i.chart] = imageHelmValuesPathMap
+			case chartImageHelmValuesMap[i.chart][i.image] == nil:
+				chartImageHelmValuesMap[i.chart][i.image] = imageHelmValuesPathMap[i.image]
 			}
 
 			id = id + 1
@@ -488,7 +488,7 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 	if len(co.Images) > 0 {
 		// Add in images from config
-		placeHolder := Chart{Name: "images", Version: "0.0.0"}
+		placeHolder := &Chart{Name: "images", Version: "0.0.0"}
 		m := map[*image.Image][]string{}
 		for _, i := range co.Images {
 			m[&i] = []string{}
@@ -498,8 +498,8 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 
 	// Make sure we parse Charts with no images as well
 	for _, c := range co.ChartCollection.Charts {
-		if cd[*c] == nil {
-			cd[*c] = make(map[*image.Image][]string)
+		if cd[c] == nil {
+			cd[c] = make(map[*image.Image][]string)
 		}
 	}
 

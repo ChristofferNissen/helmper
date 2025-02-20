@@ -22,10 +22,11 @@ type Images struct {
 }
 
 type Chart struct {
-	Name            string     `json:"name"`
-	Version         string     `json:"version"`
-	ValuesFilePath  string     `json:"valuesFilePath"`
-	Repo            repo.Entry `json:"repo"`
+	Name            string         `json:"name"`
+	Version         string         `json:"version"`
+	ValuesFilePath  string         `json:"valuesFilePath"`
+	Values          map[string]any `json:"values,omitempty"`
+	Repo            repo.Entry     `json:"repo"`
 	Parent          *Chart
 	Images          *Images `json:"images"`
 	PlainHTTP       bool    `json:"plainHTTP"`
@@ -51,7 +52,7 @@ type imageInfo struct {
 	collection *[]string
 }
 
-type ChartData map[Chart]map[*image.Image][]string
+type ChartData map[*Chart]map[*image.Image][]string
 
 type RegistryChartStatus map[*registry.Registry]map[*Chart]bool
 
