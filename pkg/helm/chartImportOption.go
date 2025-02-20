@@ -74,7 +74,7 @@ func (io *IdentifyImportOption) Run(_ context.Context) (RegistryChartStatus, Reg
 
 			existsInRegistry := registry.Exists(context.TODO(), n, v, []*registry.Registry{r})[r.URL]
 			b := io.All || !existsInRegistry
-			elem[&c] = b
+			elem[c] = b
 			if b {
 				sc.Inc(r.URL + "charts")
 			}

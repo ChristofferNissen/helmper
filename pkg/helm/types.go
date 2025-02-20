@@ -54,7 +54,7 @@ type imageInfo struct {
 	collection *[]string
 }
 
-type ChartData map[Chart]map[*image.Image][]string
+type ChartData map[*Chart]map[*image.Image][]string
 
 type RegistryChartStatus map[*registry.Registry]map[*Chart]bool
 
