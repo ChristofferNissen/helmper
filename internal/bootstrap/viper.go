@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"encoding/json"
 	"log/slog"
 	"os"
 	"strings"
@@ -174,12 +173,7 @@ func LoadViperConfiguration() (*viper.Viper, error) {
 		if c.ValuesFilePath == "" && len(c.Values) > 0 {
 			// write c.Values into a temp file and set c.ValuesFilePath to its path
 
-			var data any
-			if err := json.Unmarshal(c.Values, &data); err != nil {
-				return nil, xerrors.Errorf("failed to unmarshal values from JSON: %w", err)
-			}
-
-			yamlBytes, err := yaml.Marshal(data)
+			yamlBytes, err := yaml.Marshal(c.Values)
 			if err != nil {
 				return nil, xerrors.Errorf("failed to marshal values to YAML: %w", err)
 			}
