@@ -134,7 +134,7 @@ func (c Chart) ResolveVersion(settings *cli.EnvSettings) (string, error) {
 		}
 
 		if len(vs2) == 0 {
-			return nil, fmt.Errorf("failed to resolve version for %s range; available tags: %+v", c.Version, tags)
+			return "", fmt.Errorf("failed to resolve version for %s range; available tags: %+v", c.Version, tags)
 		}
 		
 		prefixV := strings.Contains(c.Version, "v")
