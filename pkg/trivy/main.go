@@ -2,25 +2,15 @@ package trivy
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"log/slog"
+	"os/exec"
 
-	tcache "github.com/aquasecurity/trivy/pkg/cache"
-	"github.com/aquasecurity/trivy/pkg/fanal/analyzer"
-	"github.com/aquasecurity/trivy/pkg/fanal/artifact"
-	image2 "github.com/aquasecurity/trivy/pkg/fanal/artifact/image"
-	"github.com/aquasecurity/trivy/pkg/fanal/image"
-	ftypes "github.com/aquasecurity/trivy/pkg/fanal/types"
 	"github.com/aquasecurity/trivy/pkg/result"
-	"github.com/aquasecurity/trivy/pkg/rpc/client"
-	"github.com/aquasecurity/trivy/pkg/scanner"
 	"github.com/aquasecurity/trivy/pkg/types"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/samber/lo"
 
 	dbTypes "github.com/aquasecurity/trivy-db/pkg/types"
-
-	_ "modernc.org/sqlite" // sqlite driver for RPM DB and Java DB
 )
 
 type ScanOption struct {
@@ -32,82 +22,37 @@ type ScanOption struct {
 }
 
 func (opts ScanOption) Scan(reference string) (types.Report, error) {
-	platform := ftypes.Platform{}
+	args := []string{"image", "--format", "json"}
+
 	if opts.Architecture != nil {
-		p, _ := v1.ParsePlatform(*opts.Architecture)
-		platform = ftypes.Platform{
-			Platform: p,
-		}
+		args = append(args, "--platform", *opts.Architecture)
 	}
 
-	clientScanner := client.NewScanner(client.ScannerOption{
-		RemoteURL: opts.TrivyServer,
-		Insecure:  opts.Insecure,
-	}, []client.Option(nil)...)
-
-	typesImage, cleanup, err := image.NewContainerImage(context.TODO(), reference, ftypes.ImageOptions{
-		RegistryOptions: ftypes.RegistryOptions{
-			Insecure: opts.Insecure,
-			Platform: platform,
-		},
-		DockerOptions: ftypes.DockerOptions{
-			Host: opts.DockerHost,
-		},
-		ImageSources: []ftypes.ImageSource{ftypes.RemoteImageSource},
-	})
-	if err != nil {
-		slog.Error("NewContainerImage failed", slog.Any("error", err))
-		return types.Report{}, err
+	if opts.TrivyServer != "" {
+		args = append(args, "--server", opts.TrivyServer)
 	}
-	defer cleanup()
 
-	cache := tcache.NewRemoteCache(
-		tcache.RemoteOptions{
-			ServerAddr: opts.TrivyServer,
-			Insecure:   opts.Insecure,
-		})
-	// cache := tcache.NopCache(remoteCache)
+	if opts.Insecure {
+		args = append(args, "--insecure")
+	}
 
-	artifactArtifact, err := image2.NewArtifact(typesImage, cache, artifact.Option{
-		DisabledAnalyzers: []analyzer.Type{
-			analyzer.TypeJar,
-			analyzer.TypePom,
-			analyzer.TypeGradleLock,
-			analyzer.TypeSbtLock,
-		},
-		DisabledHandlers: nil,
-		FilePatterns:     nil,
-		NoProgress:       false,
-		Insecure:         opts.Insecure,
-		SBOMSources:      nil,
-		RekorURL:         "https://rekor.sigstore.dev",
-		ImageOption: ftypes.ImageOptions{
-			RegistryOptions: ftypes.RegistryOptions{
-				Insecure: opts.Insecure,
-				Platform: platform,
-			},
-			DockerOptions: ftypes.DockerOptions{
-				Host: opts.DockerHost,
-			},
-			ImageSources: []ftypes.ImageSource{ftypes.RemoteImageSource},
-		},
-	})
+	if opts.IgnoreUnfixed {
+		args = append(args, "--ignore-unfixed")
+	}
+
+	args = append(args, reference)
+
+	cmd := exec.Command("trivy", args...)
+	output, err := cmd.Output()
 	if err != nil {
-		slog.Error("NewArtifact failed: %v", slog.Any("error", err))
+		slog.Error("Trivy CLI execution failed", slog.Any("error", err))
 		return types.Report{}, err
 	}
 
-	scannerScanner := scanner.NewScanner(clientScanner, artifactArtifact)
-	report, err := scannerScanner.ScanArtifact(context.TODO(), types.ScanOptions{
-		PkgTypes:            []string{types.PkgTypeOS},
-		Scanners:            types.AllScanners,
-		ImageConfigScanners: types.AllImageConfigScanners,
-		ScanRemovedPackages: false,
-		FilePatterns:        nil,
-		IncludeDevDeps:      false,
-	})
+	var report types.Report
+	err = json.Unmarshal(output, &report)
 	if err != nil {
-		slog.Error(fmt.Sprintf("ScanArtifact failed: %v", err), slog.Any("report", report))
+		slog.Error("Failed to parse Trivy CLI output", slog.Any("error", err))
 		return types.Report{}, err
 	}
 

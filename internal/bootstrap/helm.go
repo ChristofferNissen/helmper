@@ -4,9 +4,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"go.uber.org/fx"
 	"helm.sh/helm/v3/pkg/cli"
+
+	"github.com/ChristofferNissen/helmper/pkg/helm"
 )
 
 // EnvironmentSetter is a function type for setting environment variables

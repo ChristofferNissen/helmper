@@ -9,9 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ChristofferNissen/helmper/pkg/image"
-	"github.com/ChristofferNissen/helmper/pkg/registry"
-	myBar "github.com/ChristofferNissen/helmper/pkg/util/bar"
 	"github.com/aquasecurity/trivy/pkg/fanal/types"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	v1_spec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -22,6 +19,10 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
+
+	"github.com/ChristofferNissen/helmper/pkg/image"
+	"github.com/ChristofferNissen/helmper/pkg/registry"
+	myBar "github.com/ChristofferNissen/helmper/pkg/util/bar"
 )
 
 type PatchOption struct {
@@ -54,7 +55,7 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*image.Image]s
 		return size
 	}()
 
-	if !(size > 0) {
+	if size <= 0 {
 		return nil
 	}
 

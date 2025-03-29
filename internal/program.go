@@ -84,17 +84,17 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 	slog.Info("Helmper", slog.String("version", version), slog.String("commit", commit), slog.String("date", date))
 
 	var (
-		k8sVersion   string                          = state.GetValue[string](viper, "k8s_version")
-		verbose      bool                            = state.GetValue[bool](viper, "verbose")
-		update       bool                            = state.GetValue[bool](viper, "update")
-		all          bool                            = state.GetValue[bool](viper, "all")
-		parserConfig bootstrap.ParserConfigSection   = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
-		importConfig bootstrap.ImportConfigSection   = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
-		mirrorConfig []bootstrap.MirrorConfigSection = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
-		registries   []*registry.Registry            = state.GetValue[[]*registry.Registry](viper, "registries")
-		images       []image.Image                   = state.GetValue[[]image.Image](viper, "images")
-		charts       *helm.ChartCollection           = to.Ptr(state.GetValue[helm.ChartCollection](viper, "input"))
-		opts         []helm.Option                   = []helm.Option{
+		k8sVersion   = state.GetValue[string](viper, "k8s_version")
+		verbose      = state.GetValue[bool](viper, "verbose")
+		update       = state.GetValue[bool](viper, "update")
+		all          = state.GetValue[bool](viper, "all")
+		parserConfig = state.GetValue[bootstrap.ParserConfigSection](viper, "parserConfig")
+		importConfig = state.GetValue[bootstrap.ImportConfigSection](viper, "importConfig")
+		mirrorConfig = state.GetValue[[]bootstrap.MirrorConfigSection](viper, "mirrorConfig")
+		registries   = state.GetValue[[]*registry.Registry](viper, "registries")
+		images       = state.GetValue[[]image.Image](viper, "images")
+		charts       = to.Ptr(state.GetValue[helm.ChartCollection](viper, "input"))
+		opts         = []helm.Option{
 			helm.K8SVersion(k8sVersion),
 			helm.Verbose(verbose),
 			helm.Update(update),
