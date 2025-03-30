@@ -48,7 +48,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 		return c
 	}()
 
-	if !(lenImages > 0) {
+	if lenImages <= 0 {
 		return nil
 	}
 

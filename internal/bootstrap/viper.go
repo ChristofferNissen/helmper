@@ -292,7 +292,7 @@ copacetic:
 	}
 	state.SetValue(viper, "registries", rs)
 
-	// TODO. Concert config.Images to Image{}
+	// Convert config.Images to Image{}
 	is := []image.Image{}
 	for _, i := range conf.Images {
 		img, err := image.RefToImage(i.Ref)
