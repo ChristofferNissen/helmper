@@ -1,16 +1,11 @@
 package trivy
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"os/exec"
 
-	"github.com/aquasecurity/trivy/pkg/result"
 	"github.com/aquasecurity/trivy/pkg/types"
-	"github.com/samber/lo"
-
-	dbTypes "github.com/aquasecurity/trivy-db/pkg/types"
 )
 
 type ScanOption struct {
@@ -54,27 +49,6 @@ func (opts ScanOption) Scan(reference string) (types.Report, error) {
 	if err != nil {
 		slog.Error("Failed to parse Trivy CLI output", slog.Any("error", err))
 		return types.Report{}, err
-	}
-
-	if opts.IgnoreUnfixed {
-		ignoreStatuses := lo.FilterMap(
-			dbTypes.Statuses,
-			func(s string, _ int) (dbTypes.Status, bool) {
-				fixed := dbTypes.StatusFixed
-				if s == fixed.String() {
-					return 0, false
-				}
-				return dbTypes.NewStatus(s), true
-			},
-		)
-
-		result.Filter(context.TODO(), report, result.FilterOptions{
-			Severities: []dbTypes.Severity{
-				dbTypes.SeverityCritical,
-				dbTypes.SeverityHigh,
-			},
-			IgnoreStatuses: ignoreStatuses,
-		})
 	}
 
 	return report, nil

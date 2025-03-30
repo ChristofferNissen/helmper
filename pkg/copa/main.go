@@ -3,16 +3,13 @@ package copa
 import (
 	"context"
 	"fmt"
-
 	"log"
 	"log/slog"
+	"os/exec"
 	"strings"
-	"time"
 
-	"github.com/aquasecurity/trivy/pkg/fanal/types"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	v1_spec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/project-copacetic/copacetic/pkg/buildkit"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry/remote"
@@ -73,13 +70,35 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*image.Image]s
 			// make sure we don't parse again
 			seenImages = append(seenImages, *i)
 
-			if err := Patch(ctx, 30*time.Minute, ref, reportFilePaths[i], i.Tag, "", "trivy", "openvex", "", o.IgnoreErrors, buildkit.Opts{
-				Addr:       o.Buildkit.Addr,
-				CACertPath: o.Buildkit.CACertPath,
-				CertPath:   o.Buildkit.CertPath,
-				KeyPath:    o.Buildkit.KeyPath,
-			}, outFilePaths[i]); err != nil {
-				return fmt.Errorf("error patching image %s :: %w ", ref, err)
+			cmdArgs := []string{"patch", "--timeout", "30m", "--image", ref, "--report", reportFilePaths[i], "--tag", i.Tag}
+			// TODO: Figure out if we need to remove this and associated config in viper
+			// if o.IgnoreErrors {
+			// 	cmdArgs = append(cmdArgs, "--ignore-errors")
+			// }
+			if o.Buildkit.Addr != "" {
+				cmdArgs = append(cmdArgs, "--addr", o.Buildkit.Addr)
+			}
+			if o.Buildkit.CACertPath != "" {
+				cmdArgs = append(cmdArgs, "--cacert", o.Buildkit.CACertPath)
+			}
+			if o.Buildkit.CertPath != "" {
+				cmdArgs = append(cmdArgs, "--cert", o.Buildkit.CertPath)
+			}
+			if o.Buildkit.KeyPath != "" {
+				cmdArgs = append(cmdArgs, "--key", o.Buildkit.KeyPath)
+			}
+
+			cmd := exec.CommandContext(ctx, "copa", cmdArgs...)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("error patching image %s :: %w :: %s", ref, err, string(output))
+			}
+
+			// Save the patched image to a tar file
+			cmd = exec.CommandContext(ctx, "docker", "save", "-o", outFilePaths[i], ref)
+			output, err = cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("error saving image %s to tar :: %w :: %s", i.Tag, err, string(output))
 			}
 
 			_ = bar.Add(1)
@@ -161,17 +180,4 @@ func (o PatchOption) Run(ctx context.Context, reportFilePaths map[*image.Image]s
 	_ = bar.Finish()
 
 	return nil
-}
-
-func SupportedOS(os *types.OS) bool {
-	if os == nil {
-		return true
-	}
-
-	switch os.Family {
-	case "photon":
-		return false
-	default:
-		return true
-	}
 }
