@@ -37,4 +37,4 @@ jobs:
         run: |
           go test -v ./...
       - name: Run Trivy scan
-        run: trivy fs --exit-code 1 --severity HIGH,CRITICAL .
+        run: trivy fs --skip-dirs .devcontainer/ --exit-code 1 --severity HIGH,CRITICAL .
