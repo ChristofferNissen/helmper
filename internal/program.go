@@ -223,9 +223,11 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 			Data:           mCharts,
 			VerifyExisting: importConfig.Import.Cosign.VerifyExisting,
 
-			KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
-			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			CommonOption: mySign.CommonOption{
+				KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
+				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			},
 		}
 		charts, err := vco.Run(context.WithoutCancel(ctx))
 		if err != nil {
@@ -235,10 +237,12 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 		sco := mySign.SignChartOption{
 			Data: charts,
 
-			KeyRef:            importConfig.Import.Cosign.KeyRef,
-			KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
-			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			CommonOption: mySign.CommonOption{
+				KeyRef:            importConfig.Import.Cosign.KeyRef,
+				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
+				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			},
 		}
 		if err := sco.Run(); err != nil {
 			slog.Error("Error signing with Cosign")
@@ -246,26 +250,29 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 		}
 
 		// Images
-		vo := mySign.VerifyOption{
+		vo := mySign.VerifyImageOption{
 			Data:           mImgs,
 			VerifyExisting: importConfig.Import.Cosign.VerifyExisting,
-
-			KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
-			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			CommonOption: mySign.CommonOption{
+				KeyRef:            *importConfig.Import.Cosign.PubKeyRef,
+				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			},
 		}
 		imgs, err := vo.Run(context.WithoutCancel(ctx))
 		if err != nil {
 			return err
 		}
 		vo.Report.Render()
-		so := mySign.SignOption{
+		so := mySign.SignImageOption{
 			Data: imgs,
 
-			KeyRef:            importConfig.Import.Cosign.KeyRef,
-			KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
-			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
-			AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			CommonOption: mySign.CommonOption{
+				KeyRef:            importConfig.Import.Cosign.KeyRef,
+				KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
+				AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
+				AllowHTTPRegistry: importConfig.Import.Cosign.AllowHTTPRegistry,
+			},
 		}
 		if err := so.Run(ctx); err != nil {
 			return err
