@@ -9,17 +9,11 @@ import (
 	"strings"
 
 	"github.com/ChristofferNissen/helmper/pkg/helm"
-	"github.com/ChristofferNissen/helmper/pkg/image"
-	"github.com/ChristofferNissen/helmper/pkg/registry"
 )
 
 type ExportOption struct {
 	Image helm.RegistryImageStatus   
-	Chart helm.RegistryChartStatus                 // image data
-	Data2     map[*registry.Registry]map[*helm.Chart]bool // chart data
-	ChartData helm.ChartData
-	RegistryImage map[*helm.Chart]map[*image.Image][]bool
-	Registries    []*registry.Registry
+	Chart helm.RegistryChartStatus                
 }
 
 type ChartArtifact struct {
