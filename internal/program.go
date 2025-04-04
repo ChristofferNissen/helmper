@@ -271,12 +271,11 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 			return err
 		}
 	}
-	// Step 7: Export and output artifacts
-
-	if importConfig.Import.Artifacts.Enabled {
+	// Step 7: Export artifacts to json
+	if importConfig.Export.Artifacts.Enabled {
 		eo := exportArtifacts.ExportOption{
-			Data:  mImgs,
-			Data2: mCharts,
+			Image:  mImgs,
+			Chart: mCharts,
 		}
 		_, _, err = eo.Run(context.WithoutCancel(ctx))
 		if err != nil {

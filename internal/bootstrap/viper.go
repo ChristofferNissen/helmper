@@ -26,11 +26,7 @@ type ImportConfigSection struct {
 		Enabled                   bool    `yaml:"enabled"`
 		Architecture              *string `yaml:"architecture"`
 		ReplaceRegistryReferences bool    `yaml:"replaceRegistryReferences"`
-		Artifacts                 struct {
-			Enabled bool   `yaml:"enabled"`
-			Folder  string `yaml:"folder"`
-		} `yaml:"artifacts"`
-		Copacetic struct {
+		Copacetic                 struct {
 			Enabled      bool `yaml:"enabled"`
 			IgnoreErrors bool `yaml:"ignoreErrors"`
 			Buildkitd    struct {
@@ -65,6 +61,12 @@ type ImportConfigSection struct {
 			AllowInsecure     bool    `yaml:"allowInsecure"`
 		} `yaml:"cosign"`
 	} `yaml:"import"`
+	Export struct {
+		Artifacts struct {
+			Enabled bool   `yaml:"enabled"`
+			Folder  string `yaml:"folder"`
+		} `yaml:"artifacts"`
+	} `yaml:"export"`
 }
 
 type imageConfigSection struct {
@@ -143,7 +145,7 @@ func LoadViperConfiguration() (*viper.Viper, error) {
 	viper.SetDefault("verbose", false)
 	viper.SetDefault("update", false)
 	viper.SetDefault("k8s_version", "1.31.1")
-	viper.SetDefault("import.artifacts.enabled", false)
+	viper.SetDefault("export.artifacts.enabled", false)
 
 	// Unmarshal registries config section
 	conf := config{}
@@ -279,9 +281,9 @@ copacetic:
 `
 			return nil, xerrors.Errorf("You have enabled copacetic patching but did not specify the path to the tars output folder'. Please add the value and try again\nExample:\n%s", s)
 		}
-		if importConf.Import.Artifacts.Enabled && importConf.Import.Artifacts.Folder == "" {
+		if importConf.Export.Artifacts.Enabled && importConf.Export.Artifacts.Folder == "" {
 			s := `
-import:
+export:
 	artifacts:
 		enabled: true
 		folder: /workspace/.out/artifacts  <---
