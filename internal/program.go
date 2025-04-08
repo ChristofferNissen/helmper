@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/common-nighthawk/go-figure"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -273,12 +274,15 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 	}
 	// Step 7: Export artifacts to json
 	if importConfig.Export.Artifacts.Enabled {
+		folder := importConfig.Export.Artifacts.Folder
 		eo := exportArtifacts.ExportOption{
-			Image:  mImgs,
+			Fs:    afero.NewOsFs(),
+			Image: mImgs,
 			Chart: mCharts,
 		}
-		_, _, err = eo.Run(context.WithoutCancel(ctx))
+		_, _, err = eo.Run(context.WithoutCancel(ctx), folder)
 		if err != nil {
+			slog.Error("Error generating artifacts file.")
 			return err
 		}
 	}
