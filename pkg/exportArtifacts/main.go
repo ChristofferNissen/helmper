@@ -80,10 +80,15 @@ func (eo *ExportOption) Run(ctx context.Context, folder string) ([]ImageArtifact
 	
 	destPath := "artifacts.json"
 	if folder != "" {
+		err = eo.Fs.MkdirAll(folder, 0755)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to save file in location %s: %w", folder, err)
+			slog.Error("Failed to create directory", slog.String("folder", folder), slog.String("error", err.Error()))
+			return nil, nil, fmt.Errorf("failed to save file in the specified location %s: %w", folder, err)
 		}
 		destPath = fmt.Sprintf("%s/%s", folder, destPath)
+	} else {
+		destPath = "./" + destPath
+		slog.Info("No folder specified, saving in the root directory")
 	}
 	
 	err = afero.WriteFile(eo.Fs, destPath, jsonData, 0644)
