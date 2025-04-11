@@ -101,3 +101,7 @@ registries:
     insecure: true
     plainHTTP: true
     sourcePrefix: true
+export: 
+  artifacts:
+    enabled: true
+    folder: /workspace/.out/artifacts

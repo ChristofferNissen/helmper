@@ -7,6 +7,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/common-nighthawk/go-figure"
+	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -15,6 +16,7 @@ import (
 	"github.com/ChristofferNissen/helmper/internal/bootstrap"
 	"github.com/ChristofferNissen/helmper/pkg/copa"
 	mySign "github.com/ChristofferNissen/helmper/pkg/cosign"
+	"github.com/ChristofferNissen/helmper/pkg/exportArtifacts"
 	"github.com/ChristofferNissen/helmper/pkg/flow"
 	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"github.com/ChristofferNissen/helmper/pkg/image"
@@ -260,8 +262,7 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 		}
 		vo.Report.Render()
 		so := mySign.SignOption{
-			Data: imgs,
-
+			Data:              imgs,
 			KeyRef:            importConfig.Import.Cosign.KeyRef,
 			KeyRefPass:        *importConfig.Import.Cosign.KeyRefPass,
 			AllowInsecure:     importConfig.Import.Cosign.AllowInsecure,
@@ -271,6 +272,19 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 			return err
 		}
 	}
-
+	// Step 7: Export artifacts to json
+	if importConfig.Export.Artifacts.Enabled {
+		folder := importConfig.Export.Artifacts.Folder
+		eo := exportArtifacts.ExportOption{
+			Fs:    afero.NewOsFs(),
+			Image: mImgs,
+			Chart: mCharts,
+		}
+		_, _, err = eo.Run(context.WithoutCancel(ctx), folder)
+		if err != nil {
+			slog.Error("Error generating artifacts file.")
+			return err
+		}
+	}
 	return nil
 }

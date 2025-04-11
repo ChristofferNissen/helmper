@@ -61,6 +61,12 @@ type ImportConfigSection struct {
 			AllowInsecure     bool    `yaml:"allowInsecure"`
 		} `yaml:"cosign"`
 	} `yaml:"import"`
+	Export struct {
+		Artifacts struct {
+			Enabled bool   `yaml:"enabled"`
+			Folder  string `yaml:"folder"`
+		} `yaml:"artifacts"`
+	} `yaml:"export"`
 }
 
 type imageConfigSection struct {
@@ -139,6 +145,7 @@ func LoadViperConfiguration() (*viper.Viper, error) {
 	viper.SetDefault("verbose", false)
 	viper.SetDefault("update", false)
 	viper.SetDefault("k8s_version", "1.31.1")
+	viper.SetDefault("export.artifacts.enabled", false)
 
 	// Unmarshal registries config section
 	conf := config{}
@@ -274,7 +281,15 @@ copacetic:
 `
 			return nil, xerrors.Errorf("You have enabled copacetic patching but did not specify the path to the tars output folder'. Please add the value and try again\nExample:\n%s", s)
 		}
-
+		if importConf.Export.Artifacts.Enabled && importConf.Export.Artifacts.Folder == "" {
+			s := `
+export:
+	artifacts:
+		enabled: true
+		folder: /workspace/.out/artifacts  <---
+`
+			return nil, xerrors.Errorf("You have enabled artifacts output but did not specify the output path. Please add the value and try again...\nExample config:\n%s", s)
+		}
 	}
 
 	viper.Set("importConfig", importConf)

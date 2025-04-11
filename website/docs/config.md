@@ -113,6 +113,10 @@ registries:
     url: 0.0.0.0:5000
     insecure: true
     plainHTTP: true
+export: 
+  artifacts:
+    enabled: true
+    folder: /workspace/.out/artifacts
 ```
 
 ## Configuration options
@@ -186,6 +190,9 @@ registries:
 | `mirrors` | list(object)   | []   | false | Enable use of registry mirrors |
 | `mirrors.registry` | string   | "" | true | Registry to configure mirror for fx docker.io |
 | `mirrors.mirror` | string   | "" | true | Registry Mirror URL |
+| `export` | object | nil | false | Configuration for exporting artifacts |
+| `export.artifacts.enabled` | bool | false | false | Enable exporting of charts and images overview to json |
+| `export.artifacts.folder` | string | "" | true | Path to the folder where artifacts will be exported |
 
 ## Charts
 
