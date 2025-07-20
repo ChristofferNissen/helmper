@@ -15,7 +15,7 @@
     <a href="https://github.com/ChristofferNissen/helmper/releases/latest">Latest release</a>
   </p>
 
-  [![Go Report Card](https://goreportcard.com/badge/github.com/ChristofferNissen/helmper)](https://goreportcard.com/report/github.com/ChristofferNissen/helmper) 
+  [![Go Report Card](https://goreportcard.com/badge/github.com/ChristofferNissen/helmper)](https://goreportcard.com/report/github.com/ChristofferNissen/helmper)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/ChristofferNissen/helmper/blob/main/LICENSE)
 
 </p>
@@ -30,8 +30,7 @@ _DISCLAIMER: helmper is in beta, so stuff may change._
 
 `helmper` is built with [Helm](<https://github.com/helm/helm>), [Oras](<https://github.com/oras-project/oras-go>), [Trivy](https://github.com/aquasecurity/trivy), [Copacetic](https://github.com/project-copacetic/copacetic) ([Buildkit](https://github.com/moby/buildkitd)) and [Cosign](https://github.com/sigstore/cosign).
 
-
-Helmper connects via gRPC to Trivy and Buildkit so you can run `helmper` without root privileges wherever you want. 
+Helmper connects via gRPC to Trivy and Buildkit so you can run `helmper` without root privileges wherever you want.
 
 `helmper` demonstrates exceptional proficiency in operating within controlled environments that might require Change Management and/or air-gapped networks. This expertise is particularly beneficial in industries subject to stringent regulations, such as Medical and Banking. `helmper` aims to ensure binary reproducibility of Helm Charts by storing all necessary artifacts in your registries.
 
@@ -74,7 +73,7 @@ Helmper will import the charts, the charts listed as dependencies including all 
 
 **Note** Authentication
 
-Helmper utilizes well known configuration options to interact with registries. 
+Helmper utilizes well known configuration options to interact with registries.
 
 When using the Helm SDK, Helmper will utilize the file defined by `HELM_REGISTRY_CONFIG` for picking up authentication credentials for registries
 
@@ -148,7 +147,7 @@ The full documentation for Helmper can be found at [christoffernissen.github.io/
 
 Helmper utilizes the Helm SDK to maintain full compatibility with both Helm Repositories and OCI registries for storing Helm Charts.
 
-In practice, Helmper currently pushes charts and images to the same destination registry, so it must be OCI compliant. 
+In practice, Helmper currently pushes charts and images to the same destination registry, so it must be OCI compliant.
 
 Helmper utilizes `oras-go` to push OCI artifacts. Helmper utilizes the Helm SDK to push Helm Charts, as the Helm SDK sets the correct metadata attributes.
 
@@ -171,9 +170,35 @@ For testing, Helmper is using the [CNCF Distribution]() registry.
 
 ## Install
 
+### Helm plugin
+
+#### Prerequisites
+
+- Helm v3.x
+
+#### Prerequisites for specific functionalities
+
+- Copa - For image patching
+- Trivy - For image scanning and patching
+- Cosign - For image signing
+
+#### Installation
+
+```bash
+helm plugin install https://github.com/ChristofferNissen/helmper
+```
+
+#### Usage
+
+```bash
+helm helmper -f <config> 
+```
+
+### Binary
+
 Simply pick the binary for your platform from the Release section on GitHub.
 
-### Linux
+#### Linux
 
 ```bash
 VERSION=$(curl -Lso /dev/null -w %{url_effective} https://github.com/christoffernissen/helmper/releases/latest | grep -o '[^/]*$')
@@ -182,7 +207,7 @@ chmod +x helmper-linux-amd64
 sudo mv helmper-linux-amd64 /usr/local/bin/helmper
 ```
 
-### Mac OS
+#### Mac OS
 
 ```bash
 VERSION=$(curl -Lso /dev/null -w %{url_effective} https://github.com/christoffernissen/helmper/releases/latest | grep -o '[^/]*$')
@@ -191,7 +216,7 @@ chmod +x helmper-darwin-amd64
 sudo mv helmper-darwin-amd64 /usr/local/bin/helmper
 ```
 
-### Windows
+#### Windows
 
 Extract the tar and launch the exe file.
 
@@ -199,20 +224,20 @@ Extract the tar and launch the exe file.
 
 ### In scope
 
-* Helmper operates with OCI compliant artifacts and OCI compliant registries.
-* Helmper must remain without dependency on a container runtime daemon to work in containers without root privileges.
+- Helmper operates with OCI compliant artifacts and OCI compliant registries.
+- Helmper must remain without dependency on a container runtime daemon to work in containers without root privileges.
 
 ### Out of scope
 
-* Helmper does not work with other Kubernetes package formats
-* Helmper authenticates with registries with the docker config. Therefore, Helmper will not have any proprietary libraries to facilitate authentication for any cloud providers. Simply use `docker login` or equivalent before running Helmper, and you should be authenticated for 3 hours for each registry.
+- Helmper does not work with other Kubernetes package formats
+- Helmper authenticates with registries with the docker config. Therefore, Helmper will not have any proprietary libraries to facilitate authentication for any cloud providers. Simply use `docker login` or equivalent before running Helmper, and you should be authenticated for 3 hours for each registry.
 
 ## Roadmap
 
-* Operator Framework to enable using Helmper with GitOps in management clusters
-* Add option to import to registries via pipeline for compliance audit trail retention
-* SBOM
-* OpenTelemetry
+- Operator Framework to enable using Helmper with GitOps in management clusters
+- Add option to import to registries via pipeline for compliance audit trail retention
+- SBOM
+- OpenTelemetry
 
 ## Code of Conduct
 

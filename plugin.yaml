@@ -1,0 +1,22 @@
+name: "helmper"
+version: "0.3.0"
+usage: "Import Helm charts and container images to registry"
+description: |-
+  This plugin helps you import Helm charts and their container images into any OCI-compliant Registry.
+  Features:
+  - Vulnerability scanning with Trivy
+  - Automatic patching of vulnerable images with Copa
+  - Optional artifact signing with cosign
+  - Support for any OCI-compliant registry
+
+  Basic usage:
+    $ helm helmper -f config.yaml 
+
+  With signing:
+    $ helm helmper -f config.yaml
+
+command: "$HELM_PLUGIN_DIR/bin/helmper"
+hooks:
+  install: "cd $HELM_PLUGIN_DIR; scripts/install.sh"
+  update: "cd $HELM_PLUGIN_DIR; scripts/install.sh"
+  uninstall: "cd $HELM_PLUGIN_DIR; scripts/uninstall.sh"
