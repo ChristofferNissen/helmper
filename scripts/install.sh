@@ -2,7 +2,7 @@
 
 set -e
 
-prerequisites=(cosign trivy copa)
+prerequisites=(trivy copa)
 
 # Check for prerequisites
 for command in $"${prerequisites[@]}"; do
