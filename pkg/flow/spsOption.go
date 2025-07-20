@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -85,7 +84,7 @@ func (o SpsOption) Run(ctx context.Context) error {
 				return nil, nil, err
 			}
 
-			switch copa.SupportedOS(r.Metadata.OS) {
+			switch copa.SupportedOS(string(r.Metadata.OS.Family)) {
 			case true:
 				// filter images with no os-pkgs as copa has nothing to do
 				switch trivy.ContainsOsPkgs(r.Results) {

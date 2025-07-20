@@ -19,7 +19,7 @@ type ChartSetupper interface {
 	SetupHelm(settings *cli.EnvSettings, setters ...helm.Option) (*helm.ChartCollection, error)
 }
 
-// Add Helm repos to user's local helm configuration file, Optionupdate all existing repos and pulls charts
+// Add Helm repos to user's local helm configuration file, Option update all existing repos and pulls charts
 func SetupHelm(settings *cli.EnvSettings, charts ChartSetupper, setters ...helm.Option) (*helm.ChartCollection, error) {
 	// Default Options
 	args := &helm.Options{

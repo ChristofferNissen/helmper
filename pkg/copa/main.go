@@ -22,6 +22,15 @@ import (
 	myBar "github.com/ChristofferNissen/helmper/pkg/util/bar"
 )
 
+func SupportedOS(os string) bool {
+	switch os {
+	case "photon":
+		return false
+	default:
+		return true
+	}
+}
+
 type PatchOption struct {
 	Data map[*registry.Registry]map[*image.Image]bool
 
