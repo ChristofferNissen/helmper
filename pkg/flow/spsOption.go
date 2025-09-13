@@ -84,25 +84,30 @@ func (o SpsOption) Run(ctx context.Context) error {
 				return nil, nil, err
 			}
 
-			switch copa.SupportedOS(string(r.Metadata.OS.Family)) {
-			case true:
+			if r.Metadata.OS == nil {
+				// Distroless/scratch images report no OS; nothing Copa can patch.
+				slog.Warn("Image has no detected OS (likely distroless/scratch). The image will not be patched.",
+					slog.String("image", ref),
+				)
+				push = append(push, i)
+			} else if !copa.SupportedOS(string(r.Metadata.OS.Family)) {
+				slog.Warn("Image contains an unsupported OS. The image will not be patched.",
+					slog.String("image", ref),
+					slog.String("os", string(r.Metadata.OS.Family)),
+				)
+				push = append(push, i)
+			} else {
 				// filter images with no os-pkgs as copa has nothing to do
-				switch trivy.ContainsOsPkgs(r.Results) {
-				case true:
+				if trivy.ContainsOsPkgs(r.Results) {
 					slog.Debug("Image does contain os-pkgs vulnerabilities",
 						slog.String("image", ref))
 					patch = append(patch, i)
-				case false:
+				} else {
 					slog.Warn("Image does not contain os-pkgs. The image will not be patched.",
 						slog.String("image", ref),
 					)
 					push = append(push, i)
 				}
-			case false:
-				slog.Warn("Image contains an unsupported OS. The image will not be patched.",
-					slog.String("image", ref),
-				)
-				push = append(push, i)
 			}
 
 			// Write report to filesystem
