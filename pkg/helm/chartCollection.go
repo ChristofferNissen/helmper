@@ -1,6 +1,7 @@
 package helm
 
 import (
+	"fmt"
 	"log"
 	"log/slog"
 	"strings"
@@ -70,17 +71,26 @@ func (collection ChartCollection) SetupHelm(settings *cli.EnvSettings, setters .
 
 	// Expand collection if semantic version range
 	res := []*Chart{}
+	var skipped []string
 	for _, c := range collection.Charts {
 		vs, err := c.ResolveVersions(settings)
 		if err != nil {
 			// resolve Glob version
 			v, err := c.ResolveVersion(settings)
 			if err != nil {
-				slog.Info("version is not semver. skipping this version", slog.String("name", c.Name), slog.String("version", c.Version))
+				slog.Error("failed to resolve chart version", slog.String("name", c.Name), slog.String("version", c.Version), slog.Any("error", err))
+				skipped = append(skipped, fmt.Sprintf("%s:%s", c.Name, c.Version))
 				continue
 			}
 			c.Version = v
 			res = append(res, c)
+			continue
+		}
+
+		if len(vs) == 0 {
+			slog.Error("no matching versions found for chart", slog.String("name", c.Name), slog.String("version", c.Version))
+			skipped = append(skipped, fmt.Sprintf("%s:%s", c.Name, c.Version))
+			continue
 		}
 
 		for _, v := range vs {
@@ -92,6 +102,9 @@ func (collection ChartCollection) SetupHelm(settings *cli.EnvSettings, setters .
 			cv.Version = v
 			res = append(res, cv)
 		}
+	}
+	if len(skipped) > 0 {
+		return nil, fmt.Errorf("failed to resolve versions for charts: %v", skipped)
 	}
 	collection.Charts = res
 
