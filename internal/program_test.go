@@ -8,9 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ChristofferNissen/helmper/pkg/helm"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/repo"
+
+	"github.com/ChristofferNissen/helmper/pkg/helm"
 )
 
 // "Integration" tests below. Tests the expected result of parsing a Helm Chart (number of charts, images)
@@ -92,9 +93,10 @@ func TestFindImagesWithoutCharts(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -157,9 +159,10 @@ func TestFindImagesInHelmChartsOnPrometheusChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -222,9 +225,10 @@ func TestFindImagesInHelmChartsOnPromtailChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -287,9 +291,10 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -297,7 +302,7 @@ func TestFindImagesInHelmChartsOnLokiChart(t *testing.T) {
 	}
 
 	expectedChartCount := 2
-	expectedImageCount := 6
+	expectedImageCount := 7
 
 	// Act
 	data, err := co.Run(ctx)
@@ -352,9 +357,10 @@ func TestFindImagesInHelmChartsOnMimirDistributedChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -417,9 +423,10 @@ func TestFindImagesInHelmChartsOnGrafanaChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -482,9 +489,10 @@ func TestFindImagesInHelmChartsOnCiliumChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -550,7 +558,8 @@ func TestFindImagesInHelmChartsOnCertManagerChart(t *testing.T) {
 		ChartCollection: &charts,
 		IdentifyImages:  true,
 
-		Settings: settings,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -613,9 +622,10 @@ func TestFindImagesInHelmChartsOnNginxChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -678,9 +688,10 @@ func TestFindImagesInHelmChartsOnReflectorChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -743,9 +754,10 @@ func TestFindImagesInHelmChartsOnVeleroChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -808,9 +820,10 @@ func TestFindImagesInHelmChartsOnKuredChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -873,9 +886,10 @@ func TestFindImagesInHelmChartsOnKedaChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -938,9 +952,10 @@ func TestFindImagesInHelmChartsOnTrivyOperatorChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -1003,9 +1018,10 @@ func TestFindImagesInHelmChartsOnKubescapeChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -1080,9 +1096,10 @@ func TestFindImagesInHelmChartsOnKyvernoChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -1145,9 +1162,10 @@ func TestFindImagesInHelmChartsOnArgoCDChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -1210,9 +1228,10 @@ func TestFindImagesInHelmChartsOnHarborChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -1275,9 +1294,10 @@ func TestFindImagesInHelmChartsOnExternalSecretsChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {
@@ -1340,9 +1360,10 @@ func TestFindImagesInHelmChartsOnKubePrometheusStackChart(t *testing.T) {
 	}
 
 	co := helm.ChartOption{
-		ChartCollection: &charts,
-		IdentifyImages:  true,
-		Settings:        settings,
+		ChartCollection:     &charts,
+		IdentifyImages:      true,
+		Settings:            settings,
+		IgnoreMissingImages: true,
 	}
 	_, err = co.ChartCollection.SetupHelm(settings)
 	if err != nil {

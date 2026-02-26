@@ -30,6 +30,7 @@ type ChartOption struct {
 	IdentifyImages      bool
 	UseCustomValues     bool
 	FailOnMissingImages bool
+	IgnoreMissingImages bool
 
 	Mirrors []Mirror
 	Images  []image.Image
@@ -429,7 +430,9 @@ func (co *ChartOption) Run(ctx context.Context, setters ...Option) (ChartData, e
 				if co.FailOnMissingImages {
 					return nil, xerrors.New("image not available")
 				}
-				continue
+				if !co.IgnoreMissingImages {
+					continue
+				}
 			}
 
 			// Add Helm values to image map
