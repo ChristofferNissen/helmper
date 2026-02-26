@@ -66,6 +66,10 @@ type ImportConfigSection struct {
 			Enabled bool   `yaml:"enabled"`
 			Folder  string `yaml:"folder"`
 		} `yaml:"artifacts"`
+		Report struct {
+			Enabled bool   `yaml:"enabled"`
+			Folder  string `yaml:"folder"`
+		} `yaml:"report"`
 	} `yaml:"export"`
 }
 
@@ -146,6 +150,7 @@ func LoadViperConfiguration() (*viper.Viper, error) {
 	viper.SetDefault("update", false)
 	viper.SetDefault("k8s_version", "1.31.1")
 	viper.SetDefault("export.artifacts.enabled", false)
+	viper.SetDefault("export.report.enabled", false)
 
 	// Unmarshal registries config section
 	conf := config{}
@@ -290,6 +295,16 @@ export:
 `
 			return nil, xerrors.Errorf("You have enabled artifacts output but did not specify the output path. Please add the value and try again...\nExample config:\n%s", s)
 		}
+	}
+
+	if importConf.Export.Report.Enabled && importConf.Export.Report.Folder == "" {
+		s := `
+export:
+  report:
+    enabled: true
+    folder: /workspace/.out/report  <---
+`
+		return nil, xerrors.Errorf("You have enabled report output but did not specify the output path. Please add the value and try again...\nExample config:\n%s", s)
 	}
 
 	viper.Set("importConfig", importConf)
