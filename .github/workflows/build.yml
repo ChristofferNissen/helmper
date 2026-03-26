@@ -6,20 +6,23 @@ on:
       - main
   pull_request:
 
+env:
+  TRIVY_VERSION: 0.69.3
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.22.2
+          go-version: 1.24.4
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -27,8 +30,8 @@ jobs:
             ${{ runner.os }}-go-
       - name: Install Trivy
         run: |
-          wget https://github.com/aquasecurity/trivy/releases/download/v0.61.0/trivy_0.61.0_Linux-64bit.deb
-          sudo dpkg -i trivy_0.61.0_Linux-64bit.deb
+          wget https://github.com/aquasecurity/trivy/releases/download/v${{ env.TRIVY_VERSION }}/trivy_${{ env.TRIVY_VERSION }}_Linux-64bit.deb
+          sudo dpkg -i trivy_${{ env.TRIVY_VERSION }}_Linux-64bit.deb
       - name: Build
         run: |
           cd cmd/helmper/
