@@ -153,6 +153,21 @@ func program(ctx context.Context, _ []string, viper *viper.Viper, settings *cli.
 	io.ImagesOverview.Render()
 	slog.Debug("Checking presence of images from chart(s) in registries completed")
 
+	// Step 3.5: Generate repository report
+	if importConfig.Export.Report.Enabled {
+		folder := importConfig.Export.Report.Folder
+		ro := exportArtifacts.ReportOption{
+			Fs:    afero.NewOsFs(),
+			Chart: mCharts,
+			Image: mImgs,
+		}
+		_, err = ro.Run(context.WithoutCancel(ctx), folder)
+		if err != nil {
+			slog.Error("Error generating repository report.")
+			return err
+		}
+	}
+
 	// Step 4: Import charts to registries
 	if importConfig.Import.Enabled {
 		err := helm.ChartImportOption{
